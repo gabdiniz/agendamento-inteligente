@@ -59,15 +59,15 @@ export class CheckVacanciesUseCase {
         // Envia notificação real se notificationRepo foi injetado
         if (this.notificationRepo) {
           // Canal preferido do paciente, ou WhatsApp como padrão
-          const channel = (entry.patient as { preferredContactChannel?: string })
-            .preferredContactChannel ?? 'WHATSAPP'
           const validChannels = ['WHATSAPP', 'SMS', 'EMAIL'] as const
-          const resolvedChannel = validChannels.includes(channel as typeof validChannels[number])
-            ? (channel as typeof validChannels[number])
+          type Channel = typeof validChannels[number]
+          const rawChannel = entry.patient.preferredContactChannel ?? 'WHATSAPP'
+          const resolvedChannel: Channel = validChannels.includes(rawChannel as Channel)
+            ? (rawChannel as Channel)
             : 'WHATSAPP'
 
           const recipient = resolvedChannel === 'EMAIL'
-            ? (entry.patient as { email?: string }).email ?? entry.patient.phone
+            ? (entry.patient.email ?? entry.patient.phone)
             : entry.patient.phone
 
           const content =

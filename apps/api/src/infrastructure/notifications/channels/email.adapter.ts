@@ -37,11 +37,14 @@ export class EmailAdapter {
       return { externalId: `dry-run-${Date.now()}` }
     }
 
-    // Importação dinâmica para evitar erro em ambientes sem nodemailer instalado
-    const nodemailer = await import('nodemailer').catch(() => null)
-    if (!nodemailer) {
+    // Importação dinâmica para evitar erro em ambientes sem nodemailer instalado.
+    // Em ESM, módulos CJS como nodemailer expõem a API em `.default`.
+    const nodemailerMod = await import('nodemailer').catch(() => null)
+    if (!nodemailerMod) {
       throw new Error('nodemailer não está instalado. Execute: pnpm add nodemailer')
     }
+    // Compatibilidade ESM/CJS: tenta .default primeiro, cai para o módulo direto
+    const nodemailer = nodemailerMod.default ?? nodemailerMod
 
     const transporter = nodemailer.createTransport({
       host: process.env['SMTP_HOST'],

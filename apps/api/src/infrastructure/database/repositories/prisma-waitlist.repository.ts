@@ -42,7 +42,7 @@ const waitlistSelect = {
   appointmentId: true,
   createdAt: true,
   updatedAt: true,
-  patient: { select: { id: true, name: true, phone: true } },
+  patient: { select: { id: true, name: true, phone: true, email: true, preferredContactChannel: true } },
   professional: { select: { id: true, name: true } },
   procedure: { select: { id: true, name: true, durationMinutes: true } },
 }
@@ -64,7 +64,7 @@ interface WaitlistRow {
   appointmentId: string | null
   createdAt: Date
   updatedAt: Date
-  patient: { id: string; name: string; phone: string }
+  patient: { id: string; name: string; phone: string; email: string | null; preferredContactChannel: string | null }
   professional: { id: string; name: string } | null
   procedure: { id: string; name: string; durationMinutes: number }
 }

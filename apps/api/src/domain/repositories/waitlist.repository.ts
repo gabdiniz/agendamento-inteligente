@@ -8,6 +8,8 @@ export interface WaitlistPatient {
   id: string
   name: string
   phone: string
+  email: string | null
+  preferredContactChannel: string | null   // WHATSAPP | SMS | EMAIL
 }
 
 export interface WaitlistProfessional {
