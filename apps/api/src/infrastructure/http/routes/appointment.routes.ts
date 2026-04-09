@@ -83,7 +83,7 @@ export const appointmentRoutes: FastifyPluginAsync = async (app) => {
       new PrismaWorkScheduleRepository(prisma),
     ).execute({
       ...body,
-      createdByUserId: request.currentUser?.id,
+      createdByUserId: request.currentUser?.sub,
     })
 
     return reply.status(201).send({ success: true, data: appointment })
@@ -102,7 +102,7 @@ export const appointmentRoutes: FastifyPluginAsync = async (app) => {
       const appointment = await new UpdateAppointmentStatusUseCase(repo).execute({
         appointmentId: id,
         newStatus: body.status,
-        changedByUserId: request.currentUser?.id,
+        changedByUserId: request.currentUser?.sub,
         notes: body.notes,
       })
 
@@ -124,7 +124,7 @@ export const appointmentRoutes: FastifyPluginAsync = async (app) => {
         appointmentId: id,
         reason: body.reason,
         canceledBy: 'STAFF',
-        changedByUserId: request.currentUser?.id,
+        changedByUserId: request.currentUser?.sub,
       })
 
       return reply.status(200).send({ success: true, data: appointment })
