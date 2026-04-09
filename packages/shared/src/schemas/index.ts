@@ -92,19 +92,33 @@ export const workScheduleSchema = z.object({
 
 // ─── Patient ───────────────────────────────────────────────────────────────
 
+const genderEnum = z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY'])
+const notificationChannelEnum = z.enum(['WHATSAPP', 'SMS', 'EMAIL'])
+
 export const createPatientSchema = z.object({
   name: z.string().min(2).max(255),
   phone: z
     .string()
     .min(10)
     .max(20)
-    .regex(/^\+?[\d\s()-]+$/),
+    .regex(/^\+?[\d\s()-]+$/, 'Telefone inválido'),
   email: z.string().email().optional(),
-  birthDate: z.string().date().optional(),
+  birthDate: z.string().date().optional(),          // "YYYY-MM-DD"
+  gender: genderEnum.optional(),
+  city: z.string().max(255).optional(),
+  preferredContactChannel: notificationChannelEnum.optional(),
+  marketingOptIn: z.boolean().optional(),
   notes: z.string().optional(),
 })
 
-export const updatePatientSchema = createPatientSchema.partial()
+export const updatePatientSchema = createPatientSchema.partial().extend({
+  email: z.string().email().optional().nullable(),
+  birthDate: z.string().date().optional().nullable(),
+  gender: genderEnum.optional().nullable(),
+  city: z.string().max(255).optional().nullable(),
+  preferredContactChannel: notificationChannelEnum.optional().nullable(),
+  notes: z.string().optional().nullable(),
+})
 
 // ─── Appointment ───────────────────────────────────────────────────────────
 

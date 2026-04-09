@@ -11,6 +11,7 @@ import { tenantManagementRoutes } from './routes/tenant-management.routes.js'
 import { professionalRoutes } from './routes/professional.routes.js'
 import { procedureRoutes } from './routes/procedure.routes.js'
 import { workScheduleRoutes } from './routes/work-schedule.routes.js'
+import { patientRoutes } from './routes/patient.routes.js'
 
 export async function buildApp() {
   const app = Fastify({
@@ -50,6 +51,7 @@ export async function buildApp() {
       await tenantScope.register(procedureRoutes, { prefix: '/procedures' })
       // Work schedule nested under professional — :professionalId é resolvido pelo Fastify
       await tenantScope.register(workScheduleRoutes, { prefix: '/professionals/:professionalId/schedule' })
+      await tenantScope.register(patientRoutes, { prefix: '/patients' })
 
       // TODO (próximos módulos):
       // await tenantScope.register(patientRoutes, { prefix: '/patients' })
