@@ -87,7 +87,7 @@ Isso cria o usuário **Super Admin** padrão:
 | Campo | Valor |
 |-------|-------|
 | E-mail | `admin@myagendix.com` |
-| Senha | `change-me-in-production` |
+| Senha | `Admin@123456` |
 
 ### 7. Iniciar a aplicação
 
