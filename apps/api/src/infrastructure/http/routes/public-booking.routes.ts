@@ -41,37 +41,55 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
   //
   app.get('/professionals', async (request, reply) => {
     const prisma = request.tenantPrisma!
-    const repo = new PrismaProfessionalRepository(prisma)
-    const procedureRepo = new PrismaProcedureRepository(prisma)
 
-    // Busca todos os profissionais ativos (sem paginação — página pública exibe todos)
-    const result = await repo.list({ page: 1, limit: 200, isActive: true })
+    // ── Query única — filtra isActive de profissional e de procedimento ──
+    // Evita N+1: uma query com JOIN nested ao invés de 1 query por procedimento.
+    type ProfPublicRow = {
+      id: string
+      name: string
+      specialty: string | null
+      bio: string | null
+      avatarUrl: string | null
+      color: string | null
+      procedures: Array<{
+        procedure: { id: string; name: string; durationMinutes: number; color: string | null }
+      }>
+    }
+    const rows: ProfPublicRow[] = await prisma.professional.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        specialty: true,
+        bio: true,
+        avatarUrl: true,
+        color: true,
+        procedures: {
+          where: { procedure: { isActive: true } },
+          select: {
+            procedure: {
+              select: { id: true, name: true, durationMinutes: true, color: true },
+            },
+          },
+        },
+      },
+    })
 
-    // Para cada profissional, filtra apenas procedimentos ativos
-    const professionals = await Promise.all(
-      result.data.map(async (prof) => {
-        // Os procedimentos já vêm no ProfessionalWithProcedures; filtramos ativos
-        const activeProcedures: typeof prof.procedures = []
-        for (const proc of prof.procedures) {
-          const full = await procedureRepo.findById(proc.id)
-          if (full?.isActive) activeProcedures.push(proc)
-        }
-        return {
-          id: prof.id,
-          name: prof.name,
-          specialty: prof.specialty,
-          bio: prof.bio,
-          avatarUrl: prof.avatarUrl,
-          color: prof.color,
-          procedures: activeProcedures,
-        }
-      }),
-    )
+    const professionals = rows
+      .map((prof) => ({
+        id: prof.id,
+        name: prof.name,
+        specialty: prof.specialty,
+        bio: prof.bio,
+        avatarUrl: prof.avatarUrl,
+        color: prof.color,
+        procedures: prof.procedures.map((pp) => pp.procedure),
+      }))
+      // Exclui profissionais sem procedimento ativo vinculado
+      .filter((p) => p.procedures.length > 0)
 
-    // Exclui profissionais sem nenhum procedimento ativo
-    const withProcedures = professionals.filter((p) => p.procedures.length > 0)
-
-    return reply.status(200).send({ success: true, data: withProcedures })
+    return reply.status(200).send({ success: true, data: professionals })
   })
 
   // ─── GET /slots ───────────────────────────────────────────────

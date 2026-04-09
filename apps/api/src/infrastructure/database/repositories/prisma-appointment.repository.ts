@@ -170,7 +170,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
       select: { id: true, startTime: true, endTime: true, status: true },
       orderBy: { startTime: 'asc' },
     })
-    return rows.map((r) => ({
+    return rows.map((r: { id: string; startTime: unknown; endTime: unknown; status: unknown }) => ({
       id: r.id,
       startTime: dateToTimeString(r.startTime as Date),
       endTime: dateToTimeString(r.endTime as Date),

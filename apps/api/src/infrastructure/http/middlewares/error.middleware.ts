@@ -36,7 +36,8 @@ export function errorHandler(
 
     // P2002: Unique constraint violation
     if (error.code === 'P2002') {
-      const fields = (error.meta?.['target'] as string[] | undefined)?.join(', ') ?? 'campo'
+      const prismaError = error as Prisma.PrismaClientKnownRequestError
+      const fields = (prismaError.meta?.['target'] as string[] | undefined)?.join(', ') ?? 'campo'
       reply.status(409).send({
         success: false,
         error: `Conflito: ${fields} já está em uso`,
