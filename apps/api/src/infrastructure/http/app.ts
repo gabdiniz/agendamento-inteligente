@@ -14,6 +14,7 @@ import { workScheduleRoutes } from './routes/work-schedule.routes.js'
 import { patientRoutes } from './routes/patient.routes.js'
 import { appointmentRoutes } from './routes/appointment.routes.js'
 import { waitlistRoutes } from './routes/waitlist.routes.js'
+import { publicBookingRoutes } from './routes/public-booking.routes.js'
 
 export async function buildApp() {
   const app = Fastify({
@@ -56,6 +57,7 @@ export async function buildApp() {
       await tenantScope.register(patientRoutes, { prefix: '/patients' })
       await tenantScope.register(appointmentRoutes, { prefix: '/appointments' })
       await tenantScope.register(waitlistRoutes, { prefix: '/waitlist' })
+      await tenantScope.register(publicBookingRoutes, { prefix: '/public' })
 
       // TODO (próximos módulos):
       // await tenantScope.register(notificationRoutes, { prefix: '/notifications' })
