@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url'
 import { prisma } from './prisma-client.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const PRISMA_SCHEMA = resolve(__dirname, '..', 'prisma', 'schema.prisma')
+// tenant-schema.prisma contém APENAS os modelos do tenant (sem Tenant, SuperAdminUser, Plan, etc.)
+// Usar schema.prisma aqui criaria todas as tabelas do public schema em cada tenant — bug crítico.
+const PRISMA_SCHEMA = resolve(__dirname, '..', 'prisma', 'tenant-schema.prisma')
 
 // ─── createTenantSchema ───────────────────────────────────────────────────
 //

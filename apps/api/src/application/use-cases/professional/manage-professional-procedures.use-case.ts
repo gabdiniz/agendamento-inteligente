@@ -1,5 +1,6 @@
 import type { IProfessionalRepository } from '../../../domain/repositories/professional.repository.js'
-import { NotFoundError } from '../../../domain/errors/app-error.js'
+import type { IProcedureRepository } from '../../../domain/repositories/procedure.repository.js'
+import { NotFoundError, ValidationError } from '../../../domain/errors/app-error.js'
 
 // ─── Link Procedures ─────────────────────────────────────────────────────────
 
@@ -9,11 +10,23 @@ interface LinkProceduresInput {
 }
 
 export class LinkProceduresUseCase {
-  constructor(private readonly professionalRepo: IProfessionalRepository) {}
+  constructor(
+    private readonly professionalRepo: IProfessionalRepository,
+    private readonly procedureRepo: IProcedureRepository,
+  ) {}
 
   async execute(input: LinkProceduresInput): Promise<void> {
     const professional = await this.professionalRepo.findById(input.professionalId)
     if (!professional) throw new NotFoundError('Profissional')
+
+    // Valida que todos os procedures existem e estão ativos antes de linkar
+    for (const procedureId of input.procedureIds) {
+      const procedure = await this.procedureRepo.findById(procedureId)
+      if (!procedure) throw new NotFoundError(`Procedimento ${procedureId}`)
+      if (!procedure.isActive) {
+        throw new ValidationError(`Procedimento "${procedure.name}" está inativo e não pode ser vinculado`)
+      }
+    }
 
     await this.professionalRepo.linkProcedures(input.professionalId, input.procedureIds)
   }

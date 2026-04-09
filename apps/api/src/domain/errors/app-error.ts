@@ -44,3 +44,10 @@ export class UnprocessableError extends AppError {
     super(message, 422)
   }
 }
+
+// Alias semântico para validações de negócio (não-Zod)
+export class ValidationError extends AppError {
+  constructor(message: string) {
+    super(message, 422)
+  }
+}

@@ -15,6 +15,7 @@ import { ToggleProfessionalActiveUseCase } from '../../../application/use-cases/
 import { LinkProceduresUseCase, UnlinkProcedureUseCase } from '../../../application/use-cases/professional/manage-professional-procedures.use-case.js'
 
 import { PrismaProfessionalRepository } from '../../database/repositories/prisma-professional.repository.js'
+import { PrismaProcedureRepository } from '../../database/repositories/prisma-procedure.repository.js'
 
 import { requireAuth } from '../middlewares/auth.middleware.js'
 import { requireRoles } from '../middlewares/auth.middleware.js'
@@ -127,8 +128,9 @@ export const professionalRoutes: FastifyPluginAsync = async (app) => {
     const id = uuidSchema.parse(params['id'])
     const body = linkProceduresBodySchema.parse(request.body)
     const repo = new PrismaProfessionalRepository(request.tenantPrisma!)
+    const procedureRepo = new PrismaProcedureRepository(request.tenantPrisma!)
 
-    await new LinkProceduresUseCase(repo).execute({
+    await new LinkProceduresUseCase(repo, procedureRepo).execute({
       professionalId: id,
       procedureIds: body.procedureIds,
     })
