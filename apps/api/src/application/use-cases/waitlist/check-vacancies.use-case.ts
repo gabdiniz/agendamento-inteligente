@@ -13,9 +13,12 @@
 // Ação:
 //   • Para cada candidato, atualiza para NOTIFIED com notifiedAt e expiresAt
 //     (expiresAt = agora + 24 h por padrão).
+//   • Dispara SendNotificationUseCase para envio real pelo canal preferido do paciente.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { IWaitlistRepository, WaitlistRecord } from '../../../domain/repositories/waitlist.repository.js'
+import type { INotificationRepository } from '../../../domain/repositories/notification.repository.js'
+import { SendNotificationUseCase } from '../notification/send-notification.use-case.js'
 
 const NOTIFICATION_TTL_MS = 24 * 60 * 60 * 1000 // 24 horas
 
@@ -27,7 +30,10 @@ export interface CheckVacanciesInput {
 }
 
 export class CheckVacanciesUseCase {
-  constructor(private readonly waitlistRepo: IWaitlistRepository) {}
+  constructor(
+    private readonly waitlistRepo: IWaitlistRepository,
+    private readonly notificationRepo?: INotificationRepository,
+  ) {}
 
   async execute(input: CheckVacanciesInput): Promise<WaitlistRecord[]> {
     const candidates = await this.waitlistRepo.findCandidates({
@@ -42,14 +48,49 @@ export class CheckVacanciesUseCase {
     const now = new Date()
     const expiresAt = new Date(now.getTime() + NOTIFICATION_TTL_MS)
 
-    // Notifica cada candidato em paralelo
+    // Atualiza status + envia notificações em paralelo
     const notified = await Promise.all(
-      candidates.map((entry) =>
-        this.waitlistRepo.updateStatus(entry.id, 'NOTIFIED', {
+      candidates.map(async (entry) => {
+        const updated = await this.waitlistRepo.updateStatus(entry.id, 'NOTIFIED', {
           notifiedAt: now,
           expiresAt,
-        }),
-      ),
+        })
+
+        // Envia notificação real se notificationRepo foi injetado
+        if (this.notificationRepo) {
+          // Canal preferido do paciente, ou WhatsApp como padrão
+          const channel = (entry.patient as { preferredContactChannel?: string })
+            .preferredContactChannel ?? 'WHATSAPP'
+          const validChannels = ['WHATSAPP', 'SMS', 'EMAIL'] as const
+          const resolvedChannel = validChannels.includes(channel as typeof validChannels[number])
+            ? (channel as typeof validChannels[number])
+            : 'WHATSAPP'
+
+          const recipient = resolvedChannel === 'EMAIL'
+            ? (entry.patient as { email?: string }).email ?? entry.patient.phone
+            : entry.patient.phone
+
+          const content =
+            `Olá, ${entry.patient.name}! Uma vaga abriu para ${entry.procedure.name} ` +
+            `em ${input.vacancyDate} às ${input.vacancyStartTime}. ` +
+            `Confirme seu agendamento nas próximas 24 horas.`
+
+          // Falha silenciosa — não deve bloquear a atualização da waitlist
+          await new SendNotificationUseCase(this.notificationRepo)
+            .execute({
+              type: 'WAITLIST_VACANCY',
+              channel: resolvedChannel,
+              recipient,
+              content,
+              patientId: entry.patientId,
+            })
+            .catch((err: unknown) => {
+              console.error('[CheckVacancies] Falha ao enviar notificação:', err)
+            })
+        }
+
+        return updated
+      }),
     )
 
     return notified

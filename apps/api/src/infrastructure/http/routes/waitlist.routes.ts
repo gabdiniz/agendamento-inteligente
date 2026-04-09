@@ -18,6 +18,7 @@ import { PrismaWaitlistRepository } from '../../database/repositories/prisma-wai
 import { PrismaPatientRepository } from '../../database/repositories/prisma-patient.repository.js'
 import { PrismaProcedureRepository } from '../../database/repositories/prisma-procedure.repository.js'
 import { PrismaProfessionalRepository } from '../../database/repositories/prisma-professional.repository.js'
+import { PrismaNotificationRepository } from '../../database/repositories/prisma-notification.repository.js'
 
 import { requireAuth, requireRoles } from '../middlewares/auth.middleware.js'
 
@@ -119,7 +120,10 @@ export const waitlistRoutes: FastifyPluginAsync = async (app) => {
       const body = checkVacanciesSchema.parse(request.body)
       const repo = new PrismaWaitlistRepository(request.tenantPrisma!)
 
-      const notified = await new CheckVacanciesUseCase(repo).execute(body)
+      const notified = await new CheckVacanciesUseCase(
+        repo,
+        new PrismaNotificationRepository(request.tenantPrisma!),
+      ).execute(body)
 
       return reply.status(200).send({
         success: true,
