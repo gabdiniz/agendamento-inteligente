@@ -27,6 +27,9 @@ import { LoginPage as SuperAdminLoginPage } from '@/features/super-admin/pages/L
 import { TenantsPage } from '@/features/super-admin/pages/TenantsPage'
 import { NewTenantPage } from '@/features/super-admin/pages/NewTenantPage'
 
+// ── Public Booking ───────────────────────────────────────────────────────────
+import { BookingPage } from '@/features/public-booking/BookingPage'
+
 // ── Clinic ───────────────────────────────────────────────────────────────────
 import { ClinicLayout } from '@/features/clinic/ClinicLayout'
 import { requireClinicAuth } from '@/features/clinic/guards/ClinicGuard'
@@ -128,12 +131,12 @@ const newPatientRoute = createRoute({
   component: NewPatientPage,
 })
 
-// ─── Público — Grupo 7C ───────────────────────────────────────────────────────
+// ─── Público — Booking ────────────────────────────────────────────────────────
 
 const publicRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/$slug',
-  component: () => <div>Página pública de agendamento — Grupo 7C</div>,
+  component: BookingPage,
 })
 
 // ─── Route tree ───────────────────────────────────────────────────────────────

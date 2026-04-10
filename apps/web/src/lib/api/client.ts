@@ -1,13 +1,18 @@
 // ─── Clinic API Client ────────────────────────────────────────────────────────
 //
 // Axios instance para o painel da clínica.
-// Injeta JWT (Authorization) e x-tenant-slug em todas as requisições.
-// Em 401, tenta refresh automático e redireciona para login se falhar.
+//
+// Rotas do tenant ficam em /t/:slug/* no backend.
+// O interceptor de request prefixa automaticamente com /t/:slug quando
+// o slug está armazenado e a URL ainda não possui esse prefixo.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import axios from 'axios'
 
-// Helpers de token — chaves isoladas do Super Admin
+const BASE_URL = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3333'
+
+// ─── Token helpers ────────────────────────────────────────────────────────────
+
 export const clinicTokens = {
   set(accessToken: string, refreshToken: string, slug: string) {
     localStorage.setItem('access_token', accessToken)
@@ -24,23 +29,31 @@ export const clinicTokens = {
   getSlug: () => localStorage.getItem('tenant_slug'),
 }
 
+// ─── Axios instance ───────────────────────────────────────────────────────────
+
 export const apiClient = axios.create({
-  baseURL: import.meta.env['VITE_API_URL'] ?? 'http://localhost:3333',
+  baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
 })
 
-// ─── Request interceptor — injeta JWT e tenant slug ───────────────────────────
+// ─── Request interceptor ──────────────────────────────────────────────────────
+// Injeta JWT e prefixa a URL com /t/:slug quando necessário.
+
 apiClient.interceptors.request.use((config) => {
   const token = clinicTokens.getAccess()
   if (token) config.headers.Authorization = `Bearer ${token}`
 
+  // Prefixa com /t/:slug se a URL não for de super-admin e o slug existir
   const slug = clinicTokens.getSlug()
-  if (slug) config.headers['x-tenant-slug'] = slug
+  if (slug && config.url && !config.url.startsWith('/t/') && !config.url.startsWith('/super-admin')) {
+    config.url = `/t/${slug}${config.url}`
+  }
 
   return config
 })
 
 // ─── Response interceptor — refresh em 401 ───────────────────────────────────
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -53,16 +66,15 @@ apiClient.interceptors.response.use(
         const slug = clinicTokens.getSlug() ?? ''
         const refreshToken = clinicTokens.getRefresh()
         const { data } = await axios.post(
-          `${import.meta.env['VITE_API_URL'] ?? 'http://localhost:3333'}/auth/refresh`,
+          `${BASE_URL}/t/${slug}/auth/refresh`,
           { refreshToken },
-          { headers: { 'x-tenant-slug': slug } },
         )
         clinicTokens.set(data.data.accessToken, data.data.refreshToken, slug)
         originalRequest.headers.Authorization = `Bearer ${data.data.accessToken}`
         return apiClient(originalRequest)
       } catch {
-        clinicTokens.clear()
         const slug = clinicTokens.getSlug() ?? ''
+        clinicTokens.clear()
         window.location.href = `/app/${slug}/login`
       }
     }

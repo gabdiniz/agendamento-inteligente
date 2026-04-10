@@ -26,12 +26,9 @@ export interface ClinicAuthTokens {
 }
 
 export const clinicAuthApi = {
+  // Login usa slug explícito na URL — token ainda não está armazenado
   async login(slug: string, email: string, password: string): Promise<ClinicAuthTokens> {
-    const { data } = await apiClient.post(
-      '/auth/login',
-      { email, password },
-      { headers: { 'x-tenant-slug': slug } },
-    )
+    const { data } = await apiClient.post(`/t/${slug}/auth/login`, { email, password })
     return data.data as ClinicAuthTokens
   },
 
