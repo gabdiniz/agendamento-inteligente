@@ -1,25 +1,29 @@
-import { create } from 'zustand'
-import type { Role } from '@myagendix/shared'
+// ─── Clinic Auth Store ────────────────────────────────────────────────────────
 
-interface AuthUser {
-  id: string
-  name: string
-  email: string
-  roles: Role[]
-  tenantId: string
-  tenantSlug: string
-}
+import { create } from 'zustand'
+import { clinicTokens } from '@/lib/api/client'
+import type { ClinicUser } from '@/lib/api/clinic.api'
 
 interface AuthStore {
-  user: AuthUser | null
+  user: ClinicUser | null
+  tenantSlug: string | null
   isAuthenticated: boolean
-  setUser: (user: AuthUser) => void
+  setUser: (user: ClinicUser, accessToken: string, refreshToken: string, slug: string) => void
   clearUser: () => void
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
-  isAuthenticated: false,
-  setUser: (user) => set({ user, isAuthenticated: true }),
-  clearUser: () => set({ user: null, isAuthenticated: false }),
+  tenantSlug: clinicTokens.getSlug(),
+  isAuthenticated: Boolean(clinicTokens.getAccess()),
+
+  setUser: (user, accessToken, refreshToken, slug) => {
+    clinicTokens.set(accessToken, refreshToken, slug)
+    set({ user, tenantSlug: slug, isAuthenticated: true })
+  },
+
+  clearUser: () => {
+    clinicTokens.clear()
+    set({ user: null, tenantSlug: null, isAuthenticated: false })
+  },
 }))
