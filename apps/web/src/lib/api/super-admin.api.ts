@@ -48,6 +48,14 @@ export interface CreateTenantPayload {
   }
 }
 
+export interface UpdateTenantPayload {
+  name?: string
+  email?: string
+  phone?: string | null
+  address?: string | null
+  planType?: string
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export const superAdminApi = {
@@ -95,5 +103,14 @@ export const superAdminApi = {
   async deactivateTenant(id: string): Promise<Tenant> {
     const { data } = await saClient.patch(`/super-admin/tenants/${id}/deactivate`)
     return data.data as Tenant
+  },
+
+  async updateTenant(id: string, payload: UpdateTenantPayload): Promise<Tenant> {
+    const { data } = await saClient.patch(`/super-admin/tenants/${id}`, payload)
+    return data.data as Tenant
+  },
+
+  async deleteTenant(id: string): Promise<void> {
+    await saClient.delete(`/super-admin/tenants/${id}`)
   },
 }

@@ -13,6 +13,7 @@ import { ListTenantsUseCase } from '../../../application/use-cases/tenant-manage
 import { GetTenantUseCase } from '../../../application/use-cases/tenant-management/get-tenant.use-case.js'
 import { UpdateTenantUseCase } from '../../../application/use-cases/tenant-management/update-tenant.use-case.js'
 import { ToggleTenantActiveUseCase } from '../../../application/use-cases/tenant-management/toggle-tenant-active.use-case.js'
+import { DeleteTenantUseCase } from '../../../application/use-cases/tenant-management/delete-tenant.use-case.js'
 
 import { PrismaTenantRepository } from '../../database/repositories/prisma-tenant.repository.js'
 import { HashService } from '../../services/hash.service.js'
@@ -21,7 +22,7 @@ import { requireSuperAdmin } from '../middlewares/super-admin-auth.middleware.js
 
 // ─── Singletons ─────────────────────────────────────────────────────────────
 
-const tenantRepo = new PrismaTenantRepository(prisma)
+const tenantRepo  = new PrismaTenantRepository(prisma)
 const hashService = new HashService()
 
 // ─── Query Params Schema ────────────────────────────────────────────────────
@@ -38,12 +39,13 @@ const listTenantsQuerySchema = paginationSchema.extend({
 //
 // Registradas dentro do scope /super-admin/tenants/ (requireSuperAdmin).
 //
-// POST   /super-admin/tenants           → criar tenant + gestor
-// GET    /super-admin/tenants           → listar tenants (paginado, filtros)
-// GET    /super-admin/tenants/:id       → detalhes de um tenant
-// PATCH  /super-admin/tenants/:id       → atualizar dados do tenant
+// POST   /super-admin/tenants                → criar tenant + gestor
+// GET    /super-admin/tenants                → listar tenants (paginado, filtros)
+// GET    /super-admin/tenants/:id            → detalhes de um tenant
+// PATCH  /super-admin/tenants/:id            → atualizar dados do tenant
 // PATCH  /super-admin/tenants/:id/activate   → ativar tenant
 // PATCH  /super-admin/tenants/:id/deactivate → desativar tenant
+// DELETE /super-admin/tenants/:id            → excluir tenant permanentemente
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const tenantManagementRoutes: FastifyPluginAsync = async (app) => {
@@ -161,5 +163,16 @@ export const tenantManagementRoutes: FastifyPluginAsync = async (app) => {
       success: true,
       data: tenant,
     })
+  })
+
+  // ─── DELETE /:id ──────────────────────────────────────────
+  app.delete('/:id', async (request, reply) => {
+    const params = request.params as Record<string, string>
+    const id = uuidSchema.parse(params['id'])
+
+    const useCase = new DeleteTenantUseCase(tenantRepo)
+    await useCase.execute(id)
+
+    return reply.status(204).send()
   })
 }

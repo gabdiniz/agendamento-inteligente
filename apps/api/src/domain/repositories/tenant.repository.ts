@@ -61,4 +61,6 @@ export interface ITenantRepository {
   update(id: string, data: UpdateTenantData): Promise<TenantRecord>
 
   setActive(id: string, isActive: boolean): Promise<TenantRecord>
+
+  delete(id: string): Promise<void>
 }
