@@ -39,6 +39,14 @@ import { ProfessionalsPage } from '@/features/clinic/pages/ProfessionalsPage'
 import { NewProfessionalPage } from '@/features/clinic/pages/NewProfessionalPage'
 import { PatientsPage } from '@/features/clinic/pages/PatientsPage'
 import { NewPatientPage } from '@/features/clinic/pages/NewPatientPage'
+import { AppointmentsPage } from '@/features/clinic/pages/AppointmentsPage'
+import { NewAppointmentPage } from '@/features/clinic/pages/NewAppointmentPage'
+import { EditAppointmentPage } from '@/features/clinic/pages/EditAppointmentPage'
+import { EditProfessionalPage } from '@/features/clinic/pages/EditProfessionalPage'
+import { PatientProfilePage } from '@/features/clinic/pages/PatientProfilePage'
+import { EditPatientPage } from '@/features/clinic/pages/EditPatientPage'
+import { ProfilePage } from '@/features/clinic/pages/ProfilePage'
+import { ChangePasswordPage } from '@/features/clinic/pages/ChangePasswordPage'
 
 // ─── Dispatcher de seção ─────────────────────────────────────────────────────
 // Rota /$section serve dashboard | professionals | patients sem criar N rotas.
@@ -46,6 +54,7 @@ import { NewPatientPage } from '@/features/clinic/pages/NewPatientPage'
 function SectionDispatcher() {
   const { section } = useParams({ strict: false }) as { section?: string }
   switch (section) {
+    case 'appointments':  return <AppointmentsPage />
     case 'professionals': return <ProfessionalsPage />
     case 'patients':      return <PatientsPage />
     default:              return <DashboardPage />
@@ -131,6 +140,48 @@ const newPatientRoute = createRoute({
   component: NewPatientPage,
 })
 
+const newAppointmentRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/appointments/new',
+  component: NewAppointmentPage,
+})
+
+const editAppointmentRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/appointments/$id/edit',
+  component: EditAppointmentPage,
+})
+
+const editProfessionalRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/professionals/$id/edit',
+  component: EditProfessionalPage,
+})
+
+const patientProfileRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/patients/$id',
+  component: PatientProfilePage,
+})
+
+const editPatientRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/patients/$id/edit',
+  component: EditPatientPage,
+})
+
+const profileRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/profile',
+  component: ProfilePage,
+})
+
+const changePasswordRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/change-password',
+  component: ChangePasswordPage,
+})
+
 // ─── Público — Booking ────────────────────────────────────────────────────────
 
 const publicRoute = createRoute({
@@ -153,7 +204,14 @@ const routeTree = rootRoute.addChildren([
     clinicIndexRoute,
     clinicSectionRoute,
     newProfessionalRoute,
+    editProfessionalRoute,
     newPatientRoute,
+    patientProfileRoute,
+    editPatientRoute,
+    newAppointmentRoute,
+    editAppointmentRoute,
+    profileRoute,
+    changePasswordRoute,
   ]),
   publicRoute,
 ])
