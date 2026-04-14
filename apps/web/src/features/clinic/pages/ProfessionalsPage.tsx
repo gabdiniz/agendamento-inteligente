@@ -5,8 +5,6 @@ import { Link, useParams } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { professionalsApi, type Professional } from '@/lib/api/clinic.api'
 import { clinicTokens } from '@/lib/api/client'
-import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 
 function ProfessionalRow({
   prof,
@@ -20,42 +18,68 @@ function ProfessionalRow({
   isToggling: boolean
 }) {
   return (
-    <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-3">
+    <tr style={{ borderBottom: '1px solid #f0f2f5' }}>
+      <td style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* Avatar colorido */}
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-            style={{ background: prof.color ?? 'var(--color-primary)' }}
-          >
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+            background: prof.color ?? 'var(--color-primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontSize: '14px', fontWeight: 700,
+          }}>
             {prof.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{prof.name}</p>
+            <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 600, color: '#1a2530' }}>
+              {prof.name}
+            </p>
             {prof.specialty && (
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{prof.specialty}</p>
+              <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>{prof.specialty}</p>
             )}
           </div>
         </div>
       </td>
-      <td className="px-6 py-4">
-        <Badge variant={prof.isActive ? 'success' : 'danger'}>
+      <td style={{ padding: '14px 16px' }}>
+        <span style={{
+          display: 'inline-block', borderRadius: '20px', padding: '4px 10px',
+          background: prof.isActive ? '#ebfbee' : '#fff1f1',
+          color: prof.isActive ? '#2f9e44' : '#c92a2a',
+          fontSize: '12px', fontWeight: 600,
+        }}>
           {prof.isActive ? 'Ativo' : 'Inativo'}
-        </Badge>
+        </span>
       </td>
-      <td className="px-6 py-4 text-right">
-        <div className="flex items-center justify-end gap-2">
-          <Link to="/app/$slug/professionals/$id/edit" params={{ slug, id: prof.id }}>
-            <Button variant="secondary" size="sm">Editar</Button>
-          </Link>
-          <Button
-            variant={prof.isActive ? 'danger' : 'secondary'}
-            size="sm"
-            loading={isToggling}
-            onClick={() => onToggle(prof)}
+      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+          <Link
+            to="/app/$slug/professionals/$id/edit"
+            params={{ slug, id: prof.id }}
+            style={{
+              display: 'inline-flex', alignItems: 'center',
+              padding: '5px 10px', borderRadius: '8px',
+              background: '#f8fafc', color: '#374151',
+              border: '1px solid #e2e8f0',
+              fontSize: '12px', fontWeight: 600, textDecoration: 'none',
+            }}
           >
-            {prof.isActive ? 'Desativar' : 'Ativar'}
-          </Button>
+            Editar
+          </Link>
+          <button
+            onClick={() => onToggle(prof)}
+            disabled={isToggling}
+            style={{
+              padding: '5px 10px', borderRadius: '8px',
+              background: prof.isActive ? '#fef2f2' : '#ebfbee',
+              color: prof.isActive ? '#dc2626' : '#2f9e44',
+              border: prof.isActive ? '1px solid #fecaca' : '1px solid #b2f2bb',
+              fontSize: '12px', fontWeight: 600, cursor: isToggling ? 'not-allowed' : 'pointer',
+              fontFamily: 'var(--font-sans)',
+              opacity: isToggling ? 0.7 : 1,
+            }}
+          >
+            {isToggling ? 'Processando...' : prof.isActive ? 'Desativar' : 'Ativar'}
+          </button>
         </div>
       </td>
     </tr>
@@ -85,61 +109,81 @@ export function ProfessionalsPage() {
   })
 
   const profs = data?.data ?? []
+  const totalPages = data?.totalPages ?? 1
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div style={{ padding: '32px', maxWidth: '1200px', fontFamily: 'var(--font-sans)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', animation: 'fadeUp 0.35s ease both' }}>
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>Profissionais</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
+          <h1 style={{
+            margin: 0, fontSize: '26px', fontWeight: 400,
+            fontFamily: 'var(--font-display)', fontStyle: 'italic',
+            color: '#1a2530', letterSpacing: '-0.02em',
+          }}>
+            Profissionais
+          </h1>
+          <p style={{ margin: '4px 0 0', fontSize: '13.5px', color: '#64748b' }}>
             {data ? `${data.total} profissional${data.total !== 1 ? 'is' : ''}` : ''}
           </p>
         </div>
-        <Link to="/app/$slug/professionals/new" params={{ slug }}>
-          <Button variant="primary">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Novo Profissional
-          </Button>
+        <Link to="/app/$slug/professionals/new" params={{ slug }} style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          padding: '9px 18px', borderRadius: '10px',
+          background: 'var(--color-primary)', color: '#fff',
+          fontSize: '13.5px', fontWeight: 600,
+          textDecoration: 'none',
+          boxShadow: '0 4px 12px color-mix(in srgb, var(--color-primary) 30%, transparent)',
+        }}>
+          <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          </svg>
+          Novo Profissional
         </Link>
       </div>
 
-      <div
-        className="rounded-xl overflow-hidden"
-        style={{
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          boxShadow: 'var(--shadow-sm)',
-        }}
-      >
+      <div style={{
+        background: '#fff', borderRadius: '16px',
+        border: '1px solid #f0f2f5',
+        boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
+        overflow: 'hidden',
+      }}>
         {isLoading ? (
-          <div className="flex items-center justify-center py-16" style={{ color: 'var(--color-text-muted)' }}>
-            <svg className="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
-            Carregando...
+          <div style={{ padding: '60px 32px', textAlign: 'center', color: '#94a3b8' }}>
+            <div style={{
+              width: '32px', height: '32px',
+              border: '2px solid #eaecef',
+              borderTopColor: 'var(--color-primary)',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+              margin: '0 auto 12px',
+            }} />
+            <p style={{ fontSize: '13px', margin: 0 }}>Carregando profissionais...</p>
+            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           </div>
         ) : profs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16" style={{ color: 'var(--color-text-muted)' }}>
-            <svg className="w-10 h-10 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div style={{ padding: '72px 32px', textAlign: 'center' }}>
+            <svg width="40" height="40" fill="none" stroke="#cbd5e1" viewBox="0 0 24 24" style={{ margin: '0 auto 12px', display: 'block' }}>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <p className="text-sm mb-3">Nenhum profissional cadastrado.</p>
-            <Link to="/app/$slug/professionals/new" params={{ slug }}>
-              <Button variant="primary" size="sm">Cadastrar primeiro profissional</Button>
-            </Link>
+            <p style={{ margin: '0 0 4px', fontSize: '14px', color: '#94a3b8', fontWeight: 600 }}>
+              Nenhum profissional cadastrado
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#cbd5e1' }}>
+              Crie o primeiro profissional para começar.
+            </p>
           </div>
         ) : (
           <>
-            <table className="w-full">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: 'var(--color-bg-subtle)', borderBottom: '1px solid var(--color-border)' }}>
+                <tr style={{ background: '#fafbfc', borderBottom: '1px solid #f0f2f5' }}>
                   {['Profissional', 'Status', ''].map((h) => (
-                    <th key={h} className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider"
-                      style={{ color: 'var(--color-text-muted)' }}>
+                    <th key={h} style={{
+                      padding: '11px 16px', textAlign: 'left',
+                      fontSize: '11px', fontWeight: 700,
+                      color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em',
+                    }}>
                       {h}
                     </th>
                   ))}
@@ -157,12 +201,40 @@ export function ProfessionalsPage() {
                 ))}
               </tbody>
             </table>
-            {data && data.totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Página {page} de {data.totalPages}</p>
-                <div className="flex gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => setPage(p => p - 1)} disabled={page <= 1}>Anterior</Button>
-                  <Button variant="secondary" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= data.totalPages}>Próxima</Button>
+            {totalPages > 1 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 20px', borderTop: '1px solid #f0f2f5',
+              }}>
+                <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Página {page} de {totalPages}
+                </span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    style={{
+                      padding: '7px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 500,
+                      border: '1.5px solid #e2e8f0', background: '#fff', color: '#4a5568',
+                      cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.5 : 1,
+                      fontFamily: 'var(--font-sans)',
+                    }}
+                  >
+                    ← Anterior
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    style={{
+                      padding: '7px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 500,
+                      border: '1.5px solid #e2e8f0', background: '#fff', color: '#4a5568',
+                      cursor: page === totalPages ? 'not-allowed' : 'pointer',
+                      opacity: page === totalPages ? 0.5 : 1,
+                      fontFamily: 'var(--font-sans)',
+                    }}
+                  >
+                    Próxima →
+                  </button>
                 </div>
               </div>
             )}

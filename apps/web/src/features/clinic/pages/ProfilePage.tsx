@@ -23,7 +23,7 @@ export function ProfilePage() {
   return (
     <div style={{ padding: '32px', maxWidth: '560px', fontFamily: 'var(--font-sans)' }}>
 
-      <div style={{ marginBottom: '28px' }}>
+      <div style={{ marginBottom: '28px', animation: 'fadeUp 0.35s ease both' }}>
         <button
           onClick={() => void navigate({ to: '/app/$slug/dashboard', params: { slug } })}
           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#64748b', padding: 0, marginBottom: '12px', fontFamily: 'var(--font-sans)' }}

@@ -13,34 +13,54 @@ function PatientRow({ patient, slug }: { patient: Patient; slug: string }) {
     : null
 
   return (
-    <tr
-      style={{ borderBottom: '1px solid var(--color-border)' }}
-    >
-      <td className="px-6 py-4">
-        <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{patient.name}</p>
+    <tr style={{ borderBottom: '1px solid #f0f2f5' }}>
+      <td style={{ padding: '14px 16px' }}>
+        <p style={{ margin: '0 0 3px', fontSize: '13px', fontWeight: 600, color: '#1a2530' }}>
+          {patient.name}
+        </p>
         {age !== null && (
-          <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{age} anos</p>
+          <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>{age} anos</p>
         )}
       </td>
-      <td className="px-6 py-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+      <td style={{ padding: '14px 16px', fontSize: '13px', color: '#4a5568' }}>
         {patient.phone}
       </td>
-      <td className="px-6 py-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+      <td style={{ padding: '14px 16px', fontSize: '13px', color: '#4a5568' }}>
         {patient.email ?? '—'}
       </td>
-      <td className="px-6 py-4 text-sm" style={{ color: 'var(--color-text-muted)' }}>
+      <td style={{ padding: '14px 16px', fontSize: '13px', color: '#94a3b8' }}>
         {patient.city ?? '—'}
       </td>
-      <td className="px-6 py-4 text-sm" style={{ color: 'var(--color-text-muted)' }}>
+      <td style={{ padding: '14px 16px', fontSize: '13px', color: '#94a3b8' }}>
         {new Date(patient.createdAt).toLocaleDateString('pt-BR')}
       </td>
-      <td className="px-6 py-4 text-right">
-        <div className="flex items-center justify-end gap-2">
-          <Link to="/app/$slug/patients/$id" params={{ slug, id: patient.id }}>
-            <Button variant="secondary" size="sm">Ver ficha</Button>
+      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+          <Link
+            to="/app/$slug/patients/$id"
+            params={{ slug, id: patient.id }}
+            style={{
+              display: 'inline-flex', alignItems: 'center',
+              padding: '5px 10px', borderRadius: '8px',
+              background: '#f8fafc', color: '#374151',
+              border: '1px solid #e2e8f0',
+              fontSize: '12px', fontWeight: 600, textDecoration: 'none',
+            }}
+          >
+            Ver ficha
           </Link>
-          <Link to="/app/$slug/patients/$id/edit" params={{ slug, id: patient.id }}>
-            <Button variant="secondary" size="sm">Editar</Button>
+          <Link
+            to="/app/$slug/patients/$id/edit"
+            params={{ slug, id: patient.id }}
+            style={{
+              display: 'inline-flex', alignItems: 'center',
+              padding: '5px 10px', borderRadius: '8px',
+              background: '#f8fafc', color: '#374151',
+              border: '1px solid #e2e8f0',
+              fontSize: '12px', fontWeight: 600, textDecoration: 'none',
+            }}
+          >
+            Editar
           </Link>
         </div>
       </td>
@@ -67,78 +87,144 @@ export function PatientsPage() {
   }
 
   const patients = data?.data ?? []
+  const totalPages = data?.totalPages ?? 1
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div style={{ padding: '32px', maxWidth: '1200px', fontFamily: 'var(--font-sans)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', animation: 'fadeUp 0.35s ease both' }}>
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>Pacientes</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
+          <h1 style={{
+            margin: 0, fontSize: '26px', fontWeight: 400,
+            fontFamily: 'var(--font-display)', fontStyle: 'italic',
+            color: '#1a2530', letterSpacing: '-0.02em',
+          }}>
+            Pacientes
+          </h1>
+          <p style={{ margin: '4px 0 0', fontSize: '13.5px', color: '#64748b' }}>
             {data ? `${data.total} paciente${data.total !== 1 ? 's' : ''} cadastrado${data.total !== 1 ? 's' : ''}` : ''}
           </p>
         </div>
-        <Link to="/app/$slug/patients/new" params={{ slug }}>
-          <Button variant="primary">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Novo Paciente
-          </Button>
+        <Link to="/app/$slug/patients/new" params={{ slug }} style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          padding: '9px 18px', borderRadius: '10px',
+          background: 'var(--color-primary)', color: '#fff',
+          fontSize: '13.5px', fontWeight: 600,
+          textDecoration: 'none',
+          boxShadow: '0 4px 12px color-mix(in srgb, var(--color-primary) 30%, transparent)',
+        }}>
+          <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          </svg>
+          Novo Paciente
         </Link>
       </div>
 
-      {/* Busca */}
-      <form onSubmit={handleSearch} className="mb-6 flex gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-            style={{ color: 'var(--color-text-muted)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Buscar por nome ou telefone..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg text-sm outline-none transition-colors"
-            style={{ border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--color-primary-light)' }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none' }}
-          />
+      {/* Busca e Filtros */}
+      <form onSubmit={handleSearch} style={{
+        display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'flex-end',
+        padding: '16px', background: '#fff', borderRadius: '14px',
+        border: '1px solid #f0f2f5', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, maxWidth: '320px' }}>
+          <label style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Buscar Paciente
+          </label>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{
+              position: 'absolute', left: '10px', color: '#94a3b8'
+            }}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Nome ou telefone..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              style={{
+                width: '100%', paddingLeft: '36px', paddingRight: '12px', height: '36px',
+                border: '1.5px solid #e2e8f0', borderRadius: '10px',
+                fontSize: '13px', color: '#1a2530',
+                background: '#fff', outline: 'none', fontFamily: 'var(--font-sans)',
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--color-primary-light)' }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none' }}
+            />
+          </div>
         </div>
-        <Button type="submit" variant="secondary">Buscar</Button>
-        {search && (
-          <Button type="button" variant="ghost" onClick={() => { setSearch(''); setSearchInput(''); setPage(1) }}>
-            Limpar
-          </Button>
-        )}
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            type="submit"
+            style={{
+              padding: '8px 16px', borderRadius: '10px', fontSize: '13.5px', fontWeight: 600,
+              border: 'none', background: 'var(--color-primary)', color: '#fff',
+              cursor: 'pointer', fontFamily: 'var(--font-sans)',
+            }}
+          >
+            Buscar
+          </button>
+          {search && (
+            <button
+              type="button"
+              onClick={() => { setSearch(''); setSearchInput(''); setPage(1) }}
+              style={{
+                padding: '8px 16px', borderRadius: '10px', fontSize: '13.5px', fontWeight: 600,
+                border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#64748b',
+                cursor: 'pointer', fontFamily: 'var(--font-sans)',
+              }}
+            >
+              Limpar
+            </button>
+          )}
+        </div>
       </form>
 
       {/* Tabela */}
-      <div className="rounded-xl overflow-hidden"
-        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{
+        background: '#fff', borderRadius: '16px',
+        border: '1px solid #f0f2f5',
+        boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
+        overflow: 'hidden',
+      }}>
         {isLoading ? (
-          <div className="flex items-center justify-center py-16" style={{ color: 'var(--color-text-muted)' }}>
-            <svg className="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
-            Carregando...
+          <div style={{ padding: '60px 32px', textAlign: 'center', color: '#94a3b8' }}>
+            <div style={{
+              width: '32px', height: '32px',
+              border: '2px solid #eaecef',
+              borderTopColor: 'var(--color-primary)',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+              margin: '0 auto 12px',
+            }} />
+            <p style={{ fontSize: '13px', margin: 0 }}>Carregando pacientes...</p>
+            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           </div>
         ) : patients.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16" style={{ color: 'var(--color-text-muted)' }}>
-            <svg className="w-10 h-10 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          <div style={{ padding: '72px 32px', textAlign: 'center' }}>
+            <svg width="40" height="40" fill="none" stroke="#cbd5e1" viewBox="0 0 24 24" style={{ margin: '0 auto 12px', display: 'block' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            <p className="text-sm">{search ? 'Nenhum paciente encontrado.' : 'Ainda não há pacientes cadastrados.'}</p>
+            <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8', fontWeight: 600 }}>
+              {search ? 'Nenhum paciente encontrado' : 'Ainda não há pacientes'}
+            </p>
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#cbd5e1' }}>
+              {search ? 'Tente outro termo de busca.' : 'Crie o primeiro paciente para começar.'}
+            </p>
           </div>
         ) : (
           <>
-            <table className="w-full">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: 'var(--color-bg-subtle)', borderBottom: '1px solid var(--color-border)' }}>
+                <tr style={{ background: '#fafbfc', borderBottom: '1px solid #f0f2f5' }}>
                   {['Paciente', 'Telefone', 'E-mail', 'Cidade', 'Cadastrado em', ''].map((h) => (
-                    <th key={h} className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider"
-                      style={{ color: 'var(--color-text-muted)' }}>{h}</th>
+                    <th key={h} style={{
+                      padding: '11px 16px', textAlign: 'left',
+                      fontSize: '11px', fontWeight: 700,
+                      color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em',
+                    }}>
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -148,12 +234,40 @@ export function PatientsPage() {
                 ))}
               </tbody>
             </table>
-            {data && data.totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Página {page} de {data.totalPages}</p>
-                <div className="flex gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => setPage(p => p - 1)} disabled={page <= 1}>Anterior</Button>
-                  <Button variant="secondary" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= data.totalPages}>Próxima</Button>
+            {totalPages > 1 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 20px', borderTop: '1px solid #f0f2f5',
+              }}>
+                <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+                  Página {page} de {totalPages}
+                </span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    style={{
+                      padding: '7px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 500,
+                      border: '1.5px solid #e2e8f0', background: '#fff', color: '#4a5568',
+                      cursor: page === 1 ? 'not-allowed' : 'pointer', opacity: page === 1 ? 0.5 : 1,
+                      fontFamily: 'var(--font-sans)',
+                    }}
+                  >
+                    ← Anterior
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    style={{
+                      padding: '7px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 500,
+                      border: '1.5px solid #e2e8f0', background: '#fff', color: '#4a5568',
+                      cursor: page === totalPages ? 'not-allowed' : 'pointer',
+                      opacity: page === totalPages ? 0.5 : 1,
+                      fontFamily: 'var(--font-sans)',
+                    }}
+                  >
+                    Próxima →
+                  </button>
                 </div>
               </div>
             )}

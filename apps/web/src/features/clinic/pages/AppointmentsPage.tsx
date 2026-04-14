@@ -291,6 +291,13 @@ export function AppointmentsPage() {
   const slug = params.slug ?? ''
   const qc = useQueryClient()
 
+  // ── Formato de data legível ──────────────────────────────────────────────
+  function formatDateLong(iso: string) {
+    const [y, m, d] = iso.split('-')
+    const date = new Date(`${y}-${m}-${d}T00:00:00`)
+    return date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+  }
+
   // ── Filtros ──────────────────────────────────────────────────────────────
   const [dateFilter, setDateFilter]         = useState(todayISO())
   const [profFilter, setProfFilter]         = useState('')
