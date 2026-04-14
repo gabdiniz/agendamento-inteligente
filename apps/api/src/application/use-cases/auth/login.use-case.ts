@@ -16,6 +16,8 @@ export interface LoginInput {
 export interface LoginOutput {
   accessToken: string
   refreshToken: string
+  tenantId: string
+  tenantSlug: string
   user: {
     id: string
     name: string
@@ -78,6 +80,8 @@ export class LoginUseCase {
     return {
       accessToken: tokenPair.accessToken,
       refreshToken: tokenPair.refreshToken,
+      tenantId: input.tenantId,
+      tenantSlug: input.tenantSlug,
       user: {
         id: user.id,
         name: user.name,

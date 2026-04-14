@@ -26,6 +26,7 @@ import { requireAuth, requireRoles } from '../middlewares/auth.middleware.js'
 // GET    /t/:slug/appointments                   → listar (requireAuth)
 // GET    /t/:slug/appointments/:id               → buscar (requireAuth)
 // POST   /t/:slug/appointments                   → criar (GESTOR | RECEPCAO)
+// PATCH  /t/:slug/appointments/:id               → editar notas / reagendar (GESTOR | RECEPCAO)
 // PATCH  /t/:slug/appointments/:id/status        → mudar status (GESTOR | RECEPCAO | PROFISSIONAL)
 // POST   /t/:slug/appointments/:id/cancel        → cancelar (GESTOR | RECEPCAO)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,6 +43,12 @@ const listQuerySchema = paginationSchema.extend({
 const updateStatusBodySchema = z.object({
   status: z.enum(['PATIENT_PRESENT', 'IN_PROGRESS', 'COMPLETED', 'CANCELED']),
   notes: z.string().optional(),
+})
+
+const updateAppointmentBodySchema = z.object({
+  scheduledDate: z.string().date().optional(),
+  startTime: z.string().regex(/^([0-1]\d|2[0-3]):[0-5]\d$/).optional(),
+  notes: z.string().nullable().optional(),
 })
 
 export const appointmentRoutes: FastifyPluginAsync = async (app) => {
@@ -68,6 +75,69 @@ export const appointmentRoutes: FastifyPluginAsync = async (app) => {
     const appointment = await new GetAppointmentUseCase(repo).execute(id)
 
     return reply.status(200).send({ success: true, data: appointment })
+  })
+
+  // ─── PATCH /:id — editar notas / reagendar ────────────────
+  app.patch('/:id', { preHandler: [requireAuth, requireRoles('GESTOR', 'RECEPCAO')] }, async (request, reply) => {
+    const params = request.params as Record<string, string>
+    const id = uuidSchema.parse(params['id'])
+    const body = updateAppointmentBodySchema.parse(request.body)
+    const prisma = request.tenantPrisma!
+
+    // Funções de conversão inline (necessário sem expor helpers do repository)
+    function timeStringToDate(time: string): Date {
+      return new Date(`1970-01-01T${time}:00.000Z`)
+    }
+    function dateStringToDate(dateStr: string): Date {
+      return new Date(`${dateStr}T00:00:00.000Z`)
+    }
+
+    // Busca o agendamento existente para calcular endTime
+    const existing = await prisma.appointment.findUnique({
+      where: { id },
+      include: { procedure: { select: { durationMinutes: true } } },
+    })
+    if (!existing) {
+      return reply.status(404).send({ success: false, error: 'Agendamento não encontrado' })
+    }
+
+    const newStartTime = body.startTime ? timeStringToDate(body.startTime) : existing.startTime
+    const durationMs = existing.procedure.durationMinutes * 60 * 1000
+    const newEndTime = new Date(newStartTime.getTime() + durationMs)
+
+    const updated = await prisma.appointment.update({
+      where: { id },
+      data: {
+        ...(body.scheduledDate && { scheduledDate: dateStringToDate(body.scheduledDate) }),
+        ...(body.startTime && { startTime: newStartTime, endTime: newEndTime }),
+        ...(body.notes !== undefined && { notes: body.notes }),
+      },
+      select: {
+        id: true, patientId: true, professionalId: true, procedureId: true,
+        scheduledDate: true, startTime: true, endTime: true,
+        status: true, cancellationReason: true, canceledBy: true,
+        notes: true, createdByUserId: true, createdAt: true, updatedAt: true,
+        patient:      { select: { id: true, name: true, phone: true } },
+        professional: { select: { id: true, name: true, specialty: true } },
+        procedure:    { select: { id: true, name: true, durationMinutes: true, color: true } },
+      },
+    })
+
+    // Serializar datas para strings
+    const toTimeStr = (d: Date) => d.toISOString().slice(11, 16)
+    const toDateStr = (d: Date) => d.toISOString().slice(0, 10)
+
+    return reply.status(200).send({
+      success: true,
+      data: {
+        ...updated,
+        scheduledDate: toDateStr(updated.scheduledDate),
+        startTime: toTimeStr(updated.startTime),
+        endTime: toTimeStr(updated.endTime),
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt,
+      },
+    })
   })
 
   // ─── POST / ───────────────────────────────────────────────

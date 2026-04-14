@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify'
+import fp from 'fastify-plugin'
 import { prisma, createTenantClient, type PrismaClient } from '@myagendix/database'
 
 import { NotFoundError } from '../../../domain/errors/app-error.js'
@@ -17,7 +18,12 @@ declare module 'fastify' {
 // ─── Tenant Plugin ───────────────────────────────────────────────────────
 //
 // Resolve o tenant a partir do :slug na URL.
-// Registrado DENTRO do scope /t/:slug/ (encapsulado — não usa fp()).
+//
+// IMPORTANTE: usa fp() (fastify-plugin) para que os decorators e hooks
+// sejam registrados no scope PAI (/t/:slug), e não apenas dentro do plugin.
+// Sem fp(), os hooks ficam encapsulados no escopo interno do plugin e NÃO
+// alcançam as rotas irmãs (authRoutes, publicBookingRoutes, etc.) — fazendo
+// com que request.tenantPrisma fique undefined nessas rotas.
 //
 // Após este hook, o request terá:
 //   - tenantId: UUID do tenant
@@ -28,7 +34,7 @@ declare module 'fastify' {
 // O tenantPrisma é descartado (disconnect) ao finalizar o response.
 // ─────────────────────────────────────────────────────────────────────────
 
-const tenantPlugin: FastifyPluginAsync = async (fastify) => {
+const tenantPluginImpl: FastifyPluginAsync = async (fastify) => {
   // Decora o request com valores iniciais (Fastify exige isso)
   fastify.decorateRequest('tenantId', '')
   fastify.decorateRequest('tenantSchema', '')
@@ -44,7 +50,9 @@ const tenantPlugin: FastifyPluginAsync = async (fastify) => {
     }
 
     // Busca o tenant no schema public
-    const tenant = await prisma.tenant.findUnique({
+    // IMPORTANTE: usar findFirst (não findUnique) porque isActive não é campo único.
+    // findUnique só aceita campos com @unique — adicionar isActive causaria PrismaClientValidationError.
+    const tenant = await prisma.tenant.findFirst({
       where: { slug, isActive: true },
       select: { id: true, slug: true },
     })
@@ -67,6 +75,14 @@ const tenantPlugin: FastifyPluginAsync = async (fastify) => {
     }
   })
 }
+
+// fp() faz o plugin "vazar" para o scope pai — sem encapsulação.
+// Isso garante que decorators e hooks se apliquem a TODAS as rotas
+// registradas no mesmo scope (/t/:slug), não apenas dentro do plugin.
+const tenantPlugin = fp(tenantPluginImpl, {
+  name: 'tenant-plugin',
+  fastify: '5.x',
+})
 
 export default tenantPlugin
 export { tenantPlugin }

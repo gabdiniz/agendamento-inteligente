@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify'
+import { z } from 'zod'
 import { loginSchema, refreshTokenSchema } from '@myagendix/shared'
 
 import { LoginUseCase } from '../../../application/use-cases/auth/login.use-case.js'
@@ -120,5 +121,30 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         roles: user.roles.map((r) => r.role),
       },
     })
+  })
+
+  // ─── PATCH /password ──────────────────────────────────────
+  app.patch('/password', { preHandler: [requireAuth] }, async (request, reply) => {
+    const body = z.object({
+      currentPassword: z.string().min(1),
+      newPassword: z.string().min(8, 'Nova senha deve ter pelo menos 8 caracteres'),
+    }).parse(request.body)
+
+    const userRepo = new PrismaUserRepository(request.tenantPrisma)
+    const user = await userRepo.findById(request.currentUser.sub)
+
+    if (!user || !user.isActive) {
+      return reply.status(401).send({ success: false, error: 'Usuário não encontrado' })
+    }
+
+    const match = await hashService.comparePassword(body.currentPassword, user.passwordHash)
+    if (!match) {
+      return reply.status(422).send({ success: false, error: 'Senha atual incorreta' })
+    }
+
+    const newHash = await hashService.hashPassword(body.newPassword)
+    await userRepo.updatePassword(user.id, newHash)
+
+    return reply.status(200).send({ success: true, message: 'Senha alterada com sucesso' })
   })
 }

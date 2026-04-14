@@ -21,4 +21,11 @@ export class PrismaUserRepository implements IUserRepository {
       include: { roles: { select: { role: true } } },
     }) as Promise<UserWithRoles | null>
   }
+
+  async updatePassword(id: string, passwordHash: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+    })
+  }
 }
