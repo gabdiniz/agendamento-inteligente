@@ -82,12 +82,21 @@ pnpm --filter @myagendix/database db:migrate:dev --name init
 pnpm --filter @myagendix/database db:seed
 ```
 
-Isso cria o usuário **Super Admin** padrão:
+Isso cria o usuário **Super Admin** e a clínica de demonstração com dados iniciais:
+
+**Super Admin**
 
 | Campo | Valor |
 |-------|-------|
 | E-mail | `admin@myagendix.com` |
 | Senha | `Admin@123456` |
+
+**Clínica Demo (gestor)**
+
+| Campo | Valor |
+|-------|-------|
+| E-mail | `gestor@clinica-demo.com` |
+| Senha | `Gestor@123456` |
 
 ### 7. Iniciar a aplicação
 
@@ -101,7 +110,21 @@ Isso sobe a API e o Web em paralelo via Turborepo.
 |---------|-----|
 | Web (React) | http://localhost:5173 |
 | API (Fastify) | http://localhost:3333 |
-| Super Admin | http://localhost:5173/super-admin/login |
+
+---
+
+## URLs de acesso
+
+| Tela | URL | Credenciais |
+|------|-----|-------------|
+| Super Admin — Login | http://localhost:5173/super-admin/login | `admin@myagendix.com` / `Admin@123456` |
+| Super Admin — Tenants | http://localhost:5173/super-admin/tenants | — |
+| Clínica Demo — Login | http://localhost:5173/app/clinica-demo/login | `gestor@clinica-demo.com` / `Gestor@123456` |
+| Clínica Demo — Dashboard | http://localhost:5173/app/clinica-demo/dashboard | — |
+| Clínica Demo — Agendamentos | http://localhost:5173/app/clinica-demo/appointments | — |
+| Clínica Demo — Profissionais | http://localhost:5173/app/clinica-demo/professionals | — |
+| Clínica Demo — Pacientes | http://localhost:5173/app/clinica-demo/patients | — |
+| Página pública de agendamento | http://localhost:5173/clinica-demo | Sem login |
 
 ---
 

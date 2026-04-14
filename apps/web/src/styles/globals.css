@@ -1,4 +1,5 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap');
 
 /* ─── Design Tokens ──────────────────────────────────────────────────────────
    Todas as cores do sistema vivem aqui como variáveis CSS.
@@ -6,97 +7,100 @@
    ─────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* ── Paleta base — Clinic (azul) ──────────────────────────────────────── */
-  --brand-50:  #eff6ff;
-  --brand-100: #dbeafe;
-  --brand-200: #bfdbfe;
-  --brand-300: #93c5fd;
-  --brand-400: #60a5fa;
-  --brand-500: #3b82f6;
-  --brand-600: #2563eb;
-  --brand-700: #1d4ed8;
-  --brand-800: #1e40af;
-  --brand-900: #1e3a8a;
+  /* ── Paleta base — Hospital pastel (azul) ───────────────────────────── */
+  --brand-50: #f4f9fd;
+  --brand-100: #e6f2fb;
+  --brand-200: #cfe7f7;
+  --brand-300: #afd7f0;
+  --brand-400: #8ac4e8;
+  --brand-500: #66b1df;
+  --brand-600: #4d9fd4;
+  --brand-700: #3d86b5;
+  --brand-800: #336f95;
+  --brand-900: #2c5d7b;
 
-  /* ── Paleta base — Super Admin (roxo) ────────────────────────────────── */
-  --admin-50:  #f5f3ff;
-  --admin-100: #ede9fe;
-  --admin-200: #ddd6fe;
-  --admin-500: #8b5cf6;
-  --admin-600: #7c3aed;
-  --admin-700: #6d28d9;
-  --admin-800: #5b21b6;
-  --admin-900: #4c1d95;
+  /* ── Paleta base — apoio hospitalar (verde pastel) ──────────────────── */
+  --admin-50: #f3fbf8;
+  --admin-100: #e3f6ef;
+  --admin-200: #c8ecde;
+  --admin-500: #7fc9ae;
+  --admin-600: #63b899;
+  --admin-700: #4c9e80;
+  --admin-800: #3d8168;
+  --admin-900: #2f6753;
 
-  /* ── Paleta de status ─────────────────────────────────────────────────── */
-  --success-50:  #f0fdf4;
-  --success-500: #22c55e;
-  --success-600: #16a34a;
-  --warning-50:  #fffbeb;
-  --warning-500: #f59e0b;
-  --warning-600: #d97706;
-  --danger-50:   #fef2f2;
-  --danger-500:  #ef4444;
-  --danger-600:  #dc2626;
+  /* ── Paleta de status ────────────────────────────────────────────────── */
+  --success-50: #eefaf4;
+  --success-500: #6fcf97;
+  --success-600: #57b883;
 
-  /* ── Tons de cinza ───────────────────────────────────────────────────── */
-  --gray-50:  #f8fafc;
-  --gray-100: #f1f5f9;
-  --gray-200: #e2e8f0;
-  --gray-300: #cbd5e1;
-  --gray-400: #94a3b8;
-  --gray-500: #64748b;
-  --gray-600: #475569;
-  --gray-700: #334155;
-  --gray-800: #1e293b;
-  --gray-900: #0f172a;
+  --warning-50: #fff9eb;
+  --warning-500: #f2c66d;
+  --warning-600: #d6aa4f;
 
-  /* ── Tokens semânticos — Clinic theme ────────────────────────────────── */
-  --color-primary:          var(--brand-600);
-  --color-primary-hover:    var(--brand-700);
-  --color-primary-light:    var(--brand-50);
-  --color-primary-border:   var(--brand-200);
+  --danger-50: #fff1f1;
+  --danger-500: #e79a9a;
+  --danger-600: #cf7f7f;
 
-  --color-bg:               #ffffff;
-  --color-bg-subtle:        var(--gray-50);
-  --color-surface:          #ffffff;
-  --color-surface-raised:   #ffffff;
+  /* ── Tons neutros suaves ─────────────────────────────────────────────── */
+  --gray-50: #fbfdfe;
+  --gray-100: #f4f7f9;
+  --gray-200: #e7edf1;
+  --gray-300: #d5dee5;
+  --gray-400: #a8b7c2;
+  --gray-500: #7b8d99;
+  --gray-600: #5e6f7b;
+  --gray-700: #465661;
+  --gray-800: #32414b;
+  --gray-900: #22313a;
 
-  --color-border:           var(--gray-200);
-  --color-border-strong:    var(--gray-300);
+  /* ── Tokens semânticos — Clinic theme ───────────────────────────────── */
+  --color-primary: var(--brand-600);
+  --color-primary-hover: var(--brand-700);
+  --color-primary-light: var(--brand-50);
+  --color-primary-border: var(--brand-200);
 
-  --color-text:             var(--gray-900);
-  --color-text-secondary:   var(--gray-600);
-  --color-text-muted:       var(--gray-400);
-  --color-text-inverse:     #ffffff;
+  --color-bg: #fafdff;
+  --color-bg-subtle: #f4f9f8;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
 
-  --color-success:          var(--success-600);
-  --color-success-bg:       var(--success-50);
-  --color-warning:          var(--warning-600);
-  --color-warning-bg:       var(--warning-50);
-  --color-danger:           var(--danger-600);
-  --color-danger-bg:        var(--danger-50);
+  --color-border: var(--gray-200);
+  --color-border-strong: var(--gray-300);
 
-  /* ── Tokens semânticos — Super Admin theme ───────────────────────────── */
-  --admin-color-primary:        var(--admin-600);
-  --admin-color-primary-hover:  var(--admin-700);
-  --admin-color-primary-light:  var(--admin-50);
-  --admin-color-sidebar-bg:     var(--admin-900);
-  --admin-color-sidebar-text:   var(--admin-100);
-  --admin-color-sidebar-muted:  var(--admin-200);
-  --admin-color-sidebar-active: var(--admin-700);
-  --admin-color-sidebar-hover:  var(--admin-800);
+  --color-text: var(--gray-900);
+  --color-text-secondary: var(--gray-600);
+  --color-text-muted: var(--gray-400);
+  --color-text-inverse: #ffffff;
 
-  /* ── Tipografia ──────────────────────────────────────────────────────── */
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --color-success: var(--success-600);
+  --color-success-bg: var(--success-50);
+  --color-warning: var(--warning-600);
+  --color-warning-bg: var(--warning-50);
+  --color-danger: var(--danger-600);
+  --color-danger-bg: var(--danger-50);
 
-  /* ── Sombras ─────────────────────────────────────────────────────────── */
-  --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg:  0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  /* ── Tokens semânticos — Super Admin theme ──────────────────────────── */
+  --admin-color-primary: var(--admin-600);
+  --admin-color-primary-hover: var(--admin-700);
+  --admin-color-primary-light: var(--admin-50);
+  --admin-color-sidebar-bg: #eaf6f2;
+  --admin-color-sidebar-text: #2f6753;
+  --admin-color-sidebar-muted: #5d8b79;
+  --admin-color-sidebar-active: #d4eee4;
+  --admin-color-sidebar-hover: #def3eb;
 
-  /* ── Border radius ───────────────────────────────────────────────────── */
+  /* ── Tipografia ─────────────────────────────────────────────────────── */
+  --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ── Sombras suaves ─────────────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px 0 rgb(116 144 156 / 0.08);
+  --shadow-md: 0 4px 10px -2px rgb(116 144 156 / 0.12);
+  --shadow-lg: 0 10px 24px -6px rgb(116 144 156 / 0.14);
+
+  /* ── Border radius ──────────────────────────────────────────────────── */
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
@@ -105,7 +109,9 @@
 
 /* ─── Reset e base ───────────────────────────────────────────────────────── */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -117,12 +123,46 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Danger tokens completos ────────────────────────────────────────────── */
+:root {
+  --danger-200: #fecaca;
+  --danger-700: #b91c1c;
+  --danger-400: #f87171;
+}
+
+/* ─── Keyframe animations ────────────────────────────────────────────────── */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
 /* ─── Extensão do tema Tailwind ──────────────────────────────────────────── */
 
 @theme {
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: 'Outfit', system-ui, sans-serif;
 
-  --color-brand-50:  #eff6ff;
+  --color-brand-50: #eff6ff;
   --color-brand-100: #dbeafe;
   --color-brand-500: #3b82f6;
   --color-brand-600: #2563eb;
