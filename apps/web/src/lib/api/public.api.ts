@@ -82,7 +82,9 @@ export const publicApi = {
     const { data } = await publicClient.get(`/t/${slug}/public/slots`, {
       params: { professionalId, procedureId, date },
     })
-    return data.data as TimeSlot[]
+    // O backend retorna { success, data: { date, professional, procedure, slots: [...] } }
+    // Precisamos extrair o array slots do objeto, não o objeto inteiro
+    return (data.data?.slots ?? []) as TimeSlot[]
   },
 
   /** Cria o agendamento */

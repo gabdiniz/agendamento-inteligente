@@ -40,6 +40,10 @@ export const clinicAuthApi = {
     const { data } = await apiClient.get('/auth/me')
     return data.data as ClinicUser
   },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await apiClient.patch('/auth/password', { currentPassword, newPassword })
+  },
 }
 
 // ─── Professionals ────────────────────────────────────────────────────────────
@@ -72,7 +76,14 @@ export interface CreateProfessionalPayload {
 export const professionalsApi = {
   async list(params?: { page?: number; limit?: number }): Promise<PaginatedProfessionals> {
     const { data } = await apiClient.get('/professionals', { params })
-    return data as PaginatedProfessionals
+    // Backend retorna { success, data: [...], meta: {total, page, limit, totalPages} }
+    return {
+      data: data.data as Professional[],
+      total: (data.meta?.total ?? 0) as number,
+      page: (data.meta?.page ?? 1) as number,
+      limit: (data.meta?.limit ?? 20) as number,
+      totalPages: (data.meta?.totalPages ?? 1) as number,
+    }
   },
 
   async get(id: string): Promise<Professional> {
@@ -111,6 +122,7 @@ export interface Patient {
   birthDate: string | null
   gender: string | null
   city: string | null
+  notes: string | null
   isActive: boolean
   createdAt: string
 }
@@ -140,7 +152,14 @@ export const patientsApi = {
     search?: string
   }): Promise<PaginatedPatients> {
     const { data } = await apiClient.get('/patients', { params })
-    return data as PaginatedPatients
+    // Backend retorna { success, data: [...], meta: {total, page, limit, totalPages} }
+    return {
+      data: data.data as Patient[],
+      total: (data.meta?.total ?? 0) as number,
+      page: (data.meta?.page ?? 1) as number,
+      limit: (data.meta?.limit ?? 20) as number,
+      totalPages: (data.meta?.totalPages ?? 1) as number,
+    }
   },
 
   async get(id: string): Promise<Patient> {
@@ -181,15 +200,61 @@ export interface PaginatedAppointments {
   totalPages: number
 }
 
+export interface CreateAppointmentPayload {
+  patientId: string
+  professionalId: string
+  procedureId: string
+  scheduledDate: string
+  startTime: string
+  notes?: string
+}
+
+export interface UpdateAppointmentPayload {
+  scheduledDate?: string
+  startTime?: string
+  notes?: string
+}
+
 export const appointmentsApi = {
   async list(params?: {
     page?: number
     limit?: number
-    date?: string
+    scheduledDate?: string
     professionalId?: string
     status?: string
   }): Promise<PaginatedAppointments> {
     const { data } = await apiClient.get('/appointments', { params })
-    return data as PaginatedAppointments
+    return {
+      data: data.data as Appointment[],
+      total: (data.meta?.total ?? 0) as number,
+      page: (data.meta?.page ?? 1) as number,
+      limit: (data.meta?.limit ?? 20) as number,
+      totalPages: (data.meta?.totalPages ?? 1) as number,
+    }
+  },
+
+  async get(id: string): Promise<Appointment> {
+    const { data } = await apiClient.get(`/appointments/${id}`)
+    return data.data as Appointment
+  },
+
+  async create(payload: CreateAppointmentPayload): Promise<Appointment> {
+    const { data } = await apiClient.post('/appointments', payload)
+    return data.data as Appointment
+  },
+
+  async update(id: string, payload: UpdateAppointmentPayload): Promise<Appointment> {
+    const { data } = await apiClient.patch(`/appointments/${id}`, payload)
+    return data.data as Appointment
+  },
+
+  async updateStatus(id: string, status: string, notes?: string): Promise<Appointment> {
+    const { data } = await apiClient.patch(`/appointments/${id}/status`, { status, notes })
+    return data.data as Appointment
+  },
+
+  async cancel(id: string, reason?: string): Promise<Appointment> {
+    const { data } = await apiClient.post(`/appointments/${id}/cancel`, { reason })
+    return data.data as Appointment
   },
 }
