@@ -42,20 +42,13 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
   app.get('/professionals', async (request, reply) => {
     const prisma = request.tenantPrisma!
 
-    // ── Query única — filtra isActive de profissional e de procedimento ──
-    // Evita N+1: uma query com JOIN nested ao invés de 1 query por procedimento.
-    type ProfPublicRow = {
-      id: string
-      name: string
-      specialty: string | null
-      bio: string | null
-      avatarUrl: string | null
-      color: string | null
-      procedures: Array<{
-        procedure: { id: string; name: string; durationMinutes: number; color: string | null }
-      }>
-    }
-    const rows: ProfPublicRow[] = await prisma.professional.findMany({
+    // ── Query única — busca profissionais ativos com seus procedimentos ──
+    // ATENÇÃO: NÃO usar `where: { procedure: { isActive: true } }` dentro do
+    // select de procedures (relação explícita many-to-many via ProfessionalProcedure).
+    // O filtro aninhado em relações explícitas causa erro interno no Prisma:
+    // "Cannot read properties of undefined (reading 'professional')".
+    // Solução: buscar todos os procedimentos com isActive e filtrar em JS.
+    const rows = await prisma.professional.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
       select: {
@@ -66,10 +59,9 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
         avatarUrl: true,
         color: true,
         procedures: {
-          where: { procedure: { isActive: true } },
           select: {
             procedure: {
-              select: { id: true, name: true, durationMinutes: true, color: true },
+              select: { id: true, name: true, durationMinutes: true, color: true, isActive: true },
             },
           },
         },
@@ -84,7 +76,15 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
         bio: prof.bio,
         avatarUrl: prof.avatarUrl,
         color: prof.color,
-        procedures: prof.procedures.map((pp) => pp.procedure),
+        // Filtra em JS: só procedures ativas e com dados válidos
+        procedures: prof.procedures
+          .filter((pp) => pp.procedure != null && pp.procedure.isActive)
+          .map((pp) => ({
+            id: pp.procedure.id,
+            name: pp.procedure.name,
+            durationMinutes: pp.procedure.durationMinutes,
+            color: pp.procedure.color,
+          })),
       }))
       // Exclui profissionais sem procedimento ativo vinculado
       .filter((p) => p.procedures.length > 0)
