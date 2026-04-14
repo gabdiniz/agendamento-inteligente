@@ -30,6 +30,7 @@ interface CreateTenantInput {
   email: string
   phone?: string
   address?: string
+  planType?: string
   gestor: GestorInput
 }
 
@@ -60,11 +61,12 @@ export class CreateTenantUseCase {
 
     // 2. Cria o tenant no schema public
     const tenant = await this.tenantRepo.create({
-      name: input.name,
-      slug: input.slug,
-      email: input.email,
-      phone: input.phone,
-      address: input.address,
+      name:     input.name,
+      slug:     input.slug,
+      email:    input.email,
+      phone:    input.phone,
+      address:  input.address,
+      planType: input.planType,
     })
 
     // 3. Cria o schema PostgreSQL + aplica tabelas

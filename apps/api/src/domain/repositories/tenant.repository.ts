@@ -24,6 +24,7 @@ export interface CreateTenantData {
   email: string
   phone?: string
   address?: string
+  planType?: string
 }
 
 export interface UpdateTenantData {

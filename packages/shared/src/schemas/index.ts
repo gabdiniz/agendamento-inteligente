@@ -32,6 +32,7 @@ export const createTenantSchema = z.object({
   email: z.string().email(),
   phone: z.string().optional(),
   address: z.string().optional(),
+  planType: z.enum(['BASIC', 'PRO']).default('BASIC').optional(),
 })
 
 /** Schema para criação de tenant via Super Admin (inclui dados do Gestor inicial) */

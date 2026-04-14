@@ -28,6 +28,7 @@ const schema = z.object({
   email: z.string().email('E-mail inválido'),
   phone: z.string().optional(),
   address: z.string().optional(),
+  planType: z.enum(['BASIC', 'PRO']).default('BASIC'),
 
   // Gestor inicial
   gestorName: z.string().min(2, 'Nome do gestor obrigatório'),
@@ -98,16 +99,17 @@ export function NewTenantPage() {
     setServerError(null)
     try {
       await superAdminApi.createTenant({
-        name: values.name,
-        slug: values.slug,
-        email: values.email,
-        phone: values.phone || undefined,
-        address: values.address || undefined,
+        name:     values.name,
+        slug:     values.slug,
+        email:    values.email,
+        phone:    values.phone    || undefined,
+        address:  values.address  || undefined,
+        planType: values.planType,
         gestor: {
-          name: values.gestorName,
-          email: values.gestorEmail,
+          name:     values.gestorName,
+          email:    values.gestorEmail,
           password: values.gestorPassword,
-          phone: values.gestorPhone || undefined,
+          phone:    values.gestorPhone || undefined,
         },
       })
       void navigate({ to: '/super-admin/tenants' })
@@ -206,6 +208,34 @@ export function NewTenantPage() {
                 error={errors.phone?.message}
                 {...register('phone')}
               />
+
+              {/* Plano */}
+              <div>
+                <label style={{
+                  display: 'block', fontSize: '12px', fontWeight: 600,
+                  color: 'var(--gray-700)', marginBottom: '6px',
+                }}>
+                  Plano
+                </label>
+                <select
+                  {...register('planType')}
+                  style={{
+                    width: '100%', height: '42px', padding: '0 12px',
+                    border: '1.5px solid var(--gray-200)', borderRadius: '10px',
+                    fontSize: '13.5px', color: 'var(--gray-900)',
+                    background: '#fff', outline: 'none',
+                    fontFamily: 'var(--font-sans)', cursor: 'pointer',
+                  }}
+                >
+                  <option value="BASIC">BASIC</option>
+                  <option value="PRO">PRO</option>
+                </select>
+                {errors.planType && (
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>
+                    {errors.planType.message}
+                  </p>
+                )}
+              </div>
 
               {/* Endereço */}
               <div className="sm:col-span-2">

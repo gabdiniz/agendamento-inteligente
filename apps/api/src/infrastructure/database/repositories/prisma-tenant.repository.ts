@@ -25,6 +25,7 @@ export class PrismaTenantRepository implements ITenantRepository {
         email: data.email,
         phone: data.phone ?? null,
         address: data.address ?? null,
+        ...(data.planType ? { planType: data.planType as 'BASIC' | 'PRO' } : {}),
       },
     })
   }

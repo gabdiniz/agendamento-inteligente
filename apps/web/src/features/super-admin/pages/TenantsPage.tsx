@@ -140,7 +140,7 @@ function EditTenantModal({
     email:    tenant.email,
     phone:    tenant.phone ?? '',
     address:  tenant.address ?? '',
-    planType: tenant.planType,
+    planType: (tenant.planType as 'BASIC' | 'PRO') ?? 'BASIC',
   })
   const [error, setError] = useState<string | null>(null)
 
@@ -151,7 +151,7 @@ function EditTenantModal({
       email:    tenant.email,
       phone:    tenant.phone ?? '',
       address:  tenant.address ?? '',
-      planType: tenant.planType,
+      planType: (tenant.planType as 'BASIC' | 'PRO') ?? 'BASIC',
     })
     setError(null)
   }, [tenant.id])
@@ -281,13 +281,12 @@ function EditTenantModal({
             <div>
               <label style={fieldLabelStyle}>Plano</label>
               <select
-                value={form.planType ?? 'FREE'}
+                value={form.planType ?? 'BASIC'}
                 onChange={(e) => handleChange('planType', e.target.value)}
                 style={{ ...inputStyle, cursor: 'pointer' }}
               >
-                <option value="FREE">FREE</option>
+                <option value="BASIC">BASIC</option>
                 <option value="PRO">PRO</option>
-                <option value="ENTERPRISE">ENTERPRISE</option>
               </select>
             </div>
 

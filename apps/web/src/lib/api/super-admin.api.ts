@@ -40,6 +40,7 @@ export interface CreateTenantPayload {
   email: string
   phone?: string
   address?: string
+  planType?: 'BASIC' | 'PRO'
   gestor: {
     name: string
     email: string
@@ -53,7 +54,7 @@ export interface UpdateTenantPayload {
   email?: string
   phone?: string | null
   address?: string | null
-  planType?: string
+  planType?: 'BASIC' | 'PRO'
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
