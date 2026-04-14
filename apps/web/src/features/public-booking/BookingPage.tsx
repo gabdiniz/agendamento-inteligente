@@ -1,11 +1,7 @@
 // ─── Public Booking Page ──────────────────────────────────────────────────────
 //
 // Página pública de agendamento — acessível sem autenticação via /:slug
-// Fluxo em 4 etapas:
-//   1. Selecionar profissional e procedimento
-//   2. Selecionar data e horário
-//   3. Informar dados do paciente
-//   4. Confirmação / sucesso
+// Redesign: "Private Practice" — creme + grain + DM Serif + refinamento clínico
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect } from 'react'
@@ -19,10 +15,8 @@ import {
   type PublicProcedure,
   type TimeSlot,
 } from '@/lib/api/public.api'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 
-// ─── Types & constants ────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3 | 4
 
@@ -35,11 +29,6 @@ type PatientForm = z.infer<typeof patientSchema>
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function todayISO() {
-  return new Date().toISOString().split('T')[0]!
-}
-
-/** Retorna os próximos N dias no formato YYYY-MM-DD */
 function nextDays(n: number): string[] {
   return Array.from({ length: n }, (_, i) => {
     const d = new Date()
@@ -48,47 +37,193 @@ function nextDays(n: number): string[] {
   })
 }
 
-function formatDate(iso: string) {
+function formatDateShort(iso: string) {
+  const [y, m, d] = iso.split('-')
+  const date = new Date(Number(y), Number(m) - 1, Number(d))
+  return {
+    weekday: date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', ''),
+    day: date.getDate(),
+    month: date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+    isToday: iso === new Date().toISOString().split('T')[0],
+  }
+}
+
+function formatDateLong(iso: string) {
   const [y, m, d] = iso.split('-')
   return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString('pt-BR', {
-    weekday: 'short', day: 'numeric', month: 'short',
+    weekday: 'long', day: 'numeric', month: 'long',
   })
 }
 
-// ─── Step indicator ───────────────────────────────────────────────────────────
+// ─── Inline styles ────────────────────────────────────────────────────────────
+
+const styles = {
+  page: {
+    minHeight: '100vh',
+    background: '#faf8f5',
+    fontFamily: 'var(--font-sans)',
+    position: 'relative' as const,
+    overflow: 'hidden' as const,
+  } as React.CSSProperties,
+
+  grain: {
+    position: 'fixed' as const,
+    inset: 0,
+    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E")`,
+    pointerEvents: 'none' as const,
+    zIndex: 0,
+  } as React.CSSProperties,
+
+  container: {
+    position: 'relative' as const,
+    zIndex: 1,
+    maxWidth: '520px',
+    margin: '0 auto',
+    padding: '40px 20px 80px',
+  } as React.CSSProperties,
+
+  card: {
+    background: '#ffffff',
+    borderRadius: '20px',
+    border: '1px solid #ece9e4',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.07)',
+    overflow: 'hidden' as const,
+    animation: 'scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+  } as React.CSSProperties,
+
+  input: {
+    width: '100%',
+    padding: '12px 14px',
+    borderRadius: '10px',
+    fontSize: '14px',
+    outline: 'none',
+    transition: 'all 0.2s',
+    background: '#faf8f5',
+    border: '1.5px solid #e5e1db',
+    color: '#1a1614',
+    fontFamily: 'var(--font-sans)',
+  } as React.CSSProperties,
+
+  label: {
+    display: 'block',
+    fontSize: '12px',
+    fontWeight: 600,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase' as const,
+    color: '#8a7f75',
+    marginBottom: '6px',
+  } as React.CSSProperties,
+
+  btnPrimary: {
+    background: 'var(--color-primary)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '10px',
+    padding: '13px 20px',
+    fontSize: '14px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    fontFamily: 'var(--font-sans)',
+    letterSpacing: '0.01em',
+  } as React.CSSProperties,
+
+  btnSecondary: {
+    background: 'transparent',
+    color: '#8a7f75',
+    border: '1.5px solid #e5e1db',
+    borderRadius: '10px',
+    padding: '11px 18px',
+    fontSize: '14px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    fontFamily: 'var(--font-sans)',
+  } as React.CSSProperties,
+
+  btnGhost: {
+    background: 'transparent',
+    color: '#8a7f75',
+    border: 'none',
+    padding: '8px 0',
+    fontSize: '13px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'var(--font-sans)',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: '6px',
+  } as React.CSSProperties,
+}
+
+// ─── Step Bar ─────────────────────────────────────────────────────────────────
 
 function StepBar({ current }: { current: Step }) {
-  const steps = ['Serviço', 'Horário', 'Dados', 'Confirmação']
+  const steps = [
+    { n: 1, label: 'Serviço' },
+    { n: 2, label: 'Horário' },
+    { n: 3, label: 'Dados' },
+    { n: 4, label: 'Confirmação' },
+  ]
+
   return (
-    <div className="flex items-center gap-0 mb-8">
-      {steps.map((label, i) => {
-        const n = (i + 1) as Step
-        const done = n < current
-        const active = n === current
+    <div style={{
+      padding: '24px 28px 20px',
+      borderBottom: '1px solid #f0ece7',
+      display: 'flex',
+      alignItems: 'center',
+    }}>
+      {steps.map((s, i) => {
+        const done = s.n < current
+        const active = s.n === current
         return (
-          <div key={label} className="flex items-center flex-1 last:flex-none">
-            <div className="flex flex-col items-center">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors"
-                style={{
-                  background: done || active ? 'var(--color-primary)' : 'var(--gray-200)',
-                  color: done || active ? '#fff' : 'var(--gray-500)',
-                }}
-              >
+          <div key={s.n} style={{ display: 'flex', alignItems: 'center', flex: i < steps.length - 1 ? 1 : 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+              <div style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: 700,
+                transition: 'all 0.3s ease',
+                background: done || active
+                  ? 'var(--color-primary)'
+                  : '#f0ece7',
+                color: done || active ? '#fff' : '#b0a899',
+                boxShadow: active ? '0 0 0 4px color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'none',
+              }}>
                 {done ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
-                ) : n}
+                ) : s.n}
               </div>
-              <span className="text-xs mt-1 whitespace-nowrap hidden sm:block"
-                style={{ color: active ? 'var(--color-primary)' : 'var(--gray-400)', fontWeight: active ? 600 : 400 }}>
-                {label}
+              <span style={{
+                fontSize: '10px',
+                fontWeight: active ? 600 : 400,
+                letterSpacing: '0.04em',
+                color: active ? 'var(--color-primary)' : '#b0a899',
+                whiteSpace: 'nowrap',
+                textTransform: 'uppercase',
+              }}>
+                {s.label}
               </span>
             </div>
             {i < steps.length - 1 && (
-              <div className="flex-1 h-0.5 mx-2 mb-4 rounded"
-                style={{ background: done ? 'var(--color-primary)' : 'var(--gray-200)' }} />
+              <div style={{
+                flex: 1,
+                height: '2px',
+                margin: '0 8px',
+                marginBottom: '17px',
+                background: done
+                  ? 'var(--color-primary)'
+                  : '#ece8e3',
+                borderRadius: '2px',
+                transition: 'background 0.4s ease',
+              }} />
             )}
           </div>
         )
@@ -100,114 +235,188 @@ function StepBar({ current }: { current: Step }) {
 // ─── Step 1 — Profissional + Procedimento ─────────────────────────────────────
 
 function Step1({
-  professionals, loading,
+  professionals,
+  loading,
   onSelect,
 }: {
   professionals: PublicProfessional[]
   loading: boolean
   onSelect: (prof: PublicProfessional, proc: PublicProcedure) => void
 }) {
-  const [selectedProf, setSelectedProf] = useState<PublicProfessional | null>(null)
+  const [selectedProf, setSelectedProf] = useState<string | null>(null)
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-20" style={{ color: 'var(--color-text-muted)' }}>
-      <svg className="animate-spin w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-      </svg>
-      Carregando...
-    </div>
-  )
+  if (loading) {
+    return (
+      <div style={{ padding: '60px 28px', textAlign: 'center' as const }}>
+        <div style={{
+          display: 'inline-flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '14px',
+          color: '#b0a899',
+        }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            border: '2px solid #ece8e3',
+            borderTopColor: 'var(--color-primary)',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }} />
+          <span style={{ fontSize: '13px' }}>Carregando profissionais...</span>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
+    )
+  }
+
+  if (professionals.length === 0) {
+    return (
+      <div style={{ padding: '60px 28px', textAlign: 'center' as const, color: '#b0a899' }}>
+        <svg width="40" height="40" style={{ margin: '0 auto 12px', display: 'block' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <p style={{ fontSize: '14px' }}>Nenhum profissional disponível no momento.</p>
+      </div>
+    )
+  }
 
   return (
-    <div>
-      <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-text)' }}>
-        Com quem deseja ser atendido?
-      </h2>
-      <p className="text-sm mb-6" style={{ color: 'var(--color-text-muted)' }}>
-        Selecione o profissional e o serviço desejado.
+    <div style={{ padding: '28px' }}>
+      <p style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#b0a899', marginBottom: '16px' }}>
+        Selecione o profissional
       </p>
 
-      <div className="space-y-3">
-        {professionals.map((prof) => (
-          <div key={prof.id}>
-            {/* Card do profissional */}
-            <button
-              type="button"
-              onClick={() => setSelectedProf(selectedProf?.id === prof.id ? null : prof)}
-              className="w-full text-left rounded-xl px-5 py-4 transition-all"
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {professionals.map((prof, i) => {
+          const isOpen = selectedProf === prof.id
+          return (
+            <div
+              key={prof.id}
               style={{
-                border: `2px solid ${selectedProf?.id === prof.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                background: selectedProf?.id === prof.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                borderRadius: '12px',
+                border: `1.5px solid ${isOpen ? 'var(--color-primary)' : '#ece8e3'}`,
+                overflow: 'hidden',
+                transition: 'all 0.25s ease',
+                animation: `fadeUp 0.3s ease both`,
+                animationDelay: `${i * 60}ms`,
+                background: isOpen ? 'color-mix(in srgb, var(--color-primary) 4%, white)' : '#faf8f5',
               }}
             >
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0"
-                  style={{ background: 'var(--color-primary)' }}
-                >
+              {/* Cabeçalho do profissional */}
+              <button
+                type="button"
+                onClick={() => setSelectedProf(isOpen ? null : prof.id)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                  padding: '14px 16px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  background: `color-mix(in srgb, var(--color-primary) 15%, white)`,
+                  color: 'var(--color-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}>
                   {prof.name.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <p className="font-medium text-sm" style={{ color: 'var(--color-text)' }}>{prof.name}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '14px', fontWeight: 600, color: '#1a1614', margin: 0 }}>{prof.name}</p>
                   {prof.specialty && (
-                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{prof.specialty}</p>
+                    <p style={{ fontSize: '12px', color: '#8a7f75', margin: '2px 0 0' }}>{prof.specialty}</p>
                   )}
                 </div>
                 <svg
-                  className="w-5 h-5 ml-auto transition-transform"
+                  width="16" height="16"
+                  fill="none" stroke="#b0a899"
+                  viewBox="0 0 24 24"
                   style={{
-                    color: 'var(--color-text-muted)',
-                    transform: selectedProf?.id === prof.id ? 'rotate(180deg)' : 'rotate(0deg)',
+                    flexShrink: 0,
+                    transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.25s ease',
                   }}
-                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
-              </div>
-            </button>
+              </button>
 
-            {/* Procedimentos do profissional */}
-            {selectedProf?.id === prof.id && (
-              <div className="ml-4 mt-2 space-y-2">
-                {prof.procedures.map((proc) => (
-                  <button
-                    key={proc.id}
-                    type="button"
-                    onClick={() => onSelect(prof, proc)}
-                    className="w-full text-left rounded-lg px-4 py-3 transition-all"
-                    style={{
-                      border: '1px solid var(--color-border)',
-                      background: 'var(--color-surface)',
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-primary)'
-                      ;(e.currentTarget as HTMLElement).style.background = 'var(--color-primary-light)'
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border)'
-                      ;(e.currentTarget as HTMLElement).style.background = 'var(--color-surface)'
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {proc.color && (
-                          <span className="w-3 h-3 rounded-full shrink-0" style={{ background: proc.color }} />
-                        )}
-                        <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
-                          {proc.name}
+              {/* Procedimentos */}
+              {isOpen && (
+                <div style={{ borderTop: '1px solid #ece8e3', padding: '4px 12px 12px' }}>
+                  <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#b0a899', padding: '10px 4px 8px' }}>
+                    Escolha o serviço
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {prof.procedures.map((proc) => (
+                      <button
+                        key={proc.id}
+                        type="button"
+                        onClick={() => onSelect(prof, proc)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '12px 14px',
+                          borderRadius: '10px',
+                          border: '1.5px solid #ece8e3',
+                          background: '#fff',
+                          cursor: 'pointer',
+                          transition: 'all 0.18s ease',
+                          textAlign: 'left',
+                          fontFamily: 'var(--font-sans)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--color-primary)'
+                          e.currentTarget.style.background = 'color-mix(in srgb, var(--color-primary) 4%, white)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#ece8e3'
+                          e.currentTarget.style.background = '#fff'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {proc.color && (
+                            <span style={{
+                              width: '10px', height: '10px',
+                              borderRadius: '50%',
+                              background: proc.color,
+                              flexShrink: 0,
+                            }} />
+                          )}
+                          <span style={{ fontSize: '13px', fontWeight: 500, color: '#1a1614' }}>{proc.name}</span>
+                        </div>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          color: '#b0a899',
+                          background: '#f0ece7',
+                          padding: '3px 8px',
+                          borderRadius: '20px',
+                        }}>
+                          {proc.durationMinutes} min
                         </span>
-                      </div>
-                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                        {proc.durationMinutes} min
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -216,8 +425,11 @@ function Step1({
 // ─── Step 2 — Data + Horário ──────────────────────────────────────────────────
 
 function Step2({
-  slug, professionalId, procedureId,
-  onSelect, onBack,
+  slug,
+  professionalId,
+  procedureId,
+  onSelect,
+  onBack,
 }: {
   slug: string
   professionalId: string
@@ -239,76 +451,119 @@ function Step2({
   }, [slug, professionalId, procedureId, selectedDate])
 
   return (
-    <div>
-      <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-text)' }}>
-        Escolha data e horário
-      </h2>
-      <p className="text-sm mb-6" style={{ color: 'var(--color-text-muted)' }}>
-        Selecione o dia e o horário disponível para o atendimento.
-      </p>
-
+    <div style={{ padding: '28px', animation: 'slideRight 0.3s ease both' }}>
       {/* Seletor de dias */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
+      <p style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#b0a899', marginBottom: '14px' }}>
+        Escolha o dia
+      </p>
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        overflowX: 'auto',
+        paddingBottom: '4px',
+        marginBottom: '28px',
+        scrollbarWidth: 'none',
+      }}>
         {days.map((d) => {
+          const { weekday, day, month, isToday } = formatDateShort(d)
           const active = d === selectedDate
           return (
             <button
               key={d}
               type="button"
               onClick={() => setSelectedDate(d)}
-              className="shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
               style={{
-                background: active ? 'var(--color-primary)' : 'var(--color-surface)',
-                color: active ? '#fff' : 'var(--color-text)',
-                border: `1px solid ${active ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                flexShrink: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '3px',
+                padding: '10px 14px',
+                borderRadius: '12px',
+                border: `1.5px solid ${active ? 'var(--color-primary)' : '#ece8e3'}`,
+                background: active ? 'var(--color-primary)' : '#faf8f5',
+                color: active ? '#fff' : '#6b5f55',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                fontFamily: 'var(--font-sans)',
               }}
             >
-              {formatDate(d)}
+              <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', opacity: 0.8 }}>
+                {isToday ? 'Hoje' : weekday}
+              </span>
+              <span style={{ fontSize: '18px', fontWeight: 700, lineHeight: 1 }}>{day}</span>
+              <span style={{ fontSize: '10px', opacity: 0.7 }}>{month}</span>
             </button>
           )
         })}
       </div>
 
       {/* Horários */}
+      <p style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#b0a899', marginBottom: '14px' }}>
+        Horários disponíveis
+      </p>
+
       {loadingSlots ? (
-        <div className="flex items-center justify-center py-10" style={{ color: 'var(--color-text-muted)' }}>
-          <svg className="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-          </svg>
-          Buscando horários...
+        <div style={{ textAlign: 'center', padding: '32px 0', color: '#b0a899' }}>
+          <div style={{
+            width: '28px', height: '28px',
+            border: '2px solid #ece8e3',
+            borderTopColor: 'var(--color-primary)',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+            margin: '0 auto 10px',
+          }} />
+          <span style={{ fontSize: '12px' }}>Buscando horários...</span>
+          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
         </div>
       ) : slots.length === 0 ? (
-        <div className="text-center py-10" style={{ color: 'var(--color-text-muted)' }}>
-          <svg className="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <div style={{
+          textAlign: 'center',
+          padding: '32px',
+          background: '#faf8f5',
+          borderRadius: '12px',
+          border: '1.5px dashed #ece8e3',
+          color: '#b0a899',
+        }}>
+          <svg width="32" height="32" style={{ margin: '0 auto 10px', display: 'block' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <p className="text-sm">Sem horários disponíveis neste dia.</p>
-          <p className="text-xs mt-1">Tente outro dia ou entre na lista de espera.</p>
+          <p style={{ fontSize: '13px', fontWeight: 500 }}>Sem horários disponíveis</p>
+          <p style={{ fontSize: '12px', marginTop: '4px' }}>Tente outra data.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '8px',
+          animation: 'fadeIn 0.25s ease',
+        }}>
           {slots.map((slot) => (
             <button
               key={slot.startTime}
               type="button"
               onClick={() => onSelect(selectedDate, slot)}
-              className="py-2.5 rounded-xl text-sm font-medium transition-colors"
               style={{
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                color: 'var(--color-text)',
+                padding: '10px 6px',
+                borderRadius: '10px',
+                border: '1.5px solid #ece8e3',
+                background: '#faf8f5',
+                color: '#1a1614',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.18s ease',
+                fontFamily: 'var(--font-sans)',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'var(--color-primary)'
-                ;(e.currentTarget as HTMLElement).style.color = '#fff'
-                ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--color-primary)'
+                e.currentTarget.style.borderColor = 'var(--color-primary)'
+                e.currentTarget.style.background = 'var(--color-primary)'
+                e.currentTarget.style.color = '#fff'
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'var(--color-surface)'
-                ;(e.currentTarget as HTMLElement).style.color = 'var(--color-text)'
-                ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border)'
+                e.currentTarget.style.borderColor = '#ece8e3'
+                e.currentTarget.style.background = '#faf8f5'
+                e.currentTarget.style.color = '#1a1614'
               }}
             >
               {slot.startTime}
@@ -317,8 +572,13 @@ function Step2({
         </div>
       )}
 
-      <div className="mt-6">
-        <Button variant="ghost" size="sm" onClick={onBack}>← Voltar</Button>
+      <div style={{ marginTop: '28px' }}>
+        <button type="button" style={styles.btnGhost} onClick={onBack}>
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Voltar
+        </button>
       </div>
     </div>
   )
@@ -327,7 +587,9 @@ function Step2({
 // ─── Step 3 — Dados do paciente ───────────────────────────────────────────────
 
 function Step3({
-  onSubmit, onBack, loading,
+  onSubmit,
+  onBack,
+  loading,
 }: {
   onSubmit: (data: PatientForm) => void
   onBack: () => void
@@ -337,35 +599,122 @@ function Step3({
     resolver: zodResolver(patientSchema),
   })
 
+  const [focusedField, setFocusedField] = useState<string | null>(null)
+
   return (
-    <div>
-      <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-text)' }}>
+    <div style={{ padding: '28px', animation: 'slideRight 0.3s ease both' }}>
+      <p style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#b0a899', marginBottom: '20px' }}>
         Seus dados
-      </h2>
-      <p className="text-sm mb-6" style={{ color: 'var(--color-text-muted)' }}>
-        Informe seus dados para confirmar o agendamento.
       </p>
 
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-        <Input label="Nome completo" placeholder="João da Silva" error={errors.name?.message} {...register('name')} />
-        <Input label="Telefone / WhatsApp" type="tel" placeholder="(11) 9 9999-9999" error={errors.phone?.message} {...register('phone')} />
-        <Input label="E-mail (opcional)" type="email" placeholder="voce@email.com" error={errors.email?.message} {...register('email')} />
-
-        <div className="flex items-center gap-3 mt-6">
-          <Button type="button" variant="ghost" onClick={onBack}>← Voltar</Button>
-          <Button type="submit" variant="primary" loading={loading} className="flex-1">
-            {loading ? 'Confirmando...' : 'Confirmar agendamento'}
-          </Button>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Nome */}
+        <div>
+          <label style={styles.label}>Nome completo</label>
+          <input
+            type="text"
+            placeholder="João da Silva"
+            autoComplete="name"
+            {...register('name')}
+            style={{
+              ...styles.input,
+              borderColor: errors.name ? '#e57373' : focusedField === 'name' ? 'var(--color-primary)' : '#e5e1db',
+              boxShadow: focusedField === 'name' ? '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'none',
+            }}
+            onFocus={() => setFocusedField('name')}
+            onBlur={() => setFocusedField(null)}
+          />
+          {errors.name && <p style={{ fontSize: '12px', color: '#e57373', marginTop: '5px' }}>{errors.name.message}</p>}
         </div>
+
+        {/* Telefone */}
+        <div>
+          <label style={styles.label}>Telefone / WhatsApp</label>
+          <input
+            type="tel"
+            placeholder="(11) 9 9999-9999"
+            autoComplete="tel"
+            {...register('phone')}
+            style={{
+              ...styles.input,
+              borderColor: errors.phone ? '#e57373' : focusedField === 'phone' ? 'var(--color-primary)' : '#e5e1db',
+              boxShadow: focusedField === 'phone' ? '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'none',
+            }}
+            onFocus={() => setFocusedField('phone')}
+            onBlur={() => setFocusedField(null)}
+          />
+          {errors.phone && <p style={{ fontSize: '12px', color: '#e57373', marginTop: '5px' }}>{errors.phone.message}</p>}
+        </div>
+
+        {/* E-mail */}
+        <div>
+          <label style={styles.label}>
+            E-mail <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: '#c0b4aa' }}>(opcional)</span>
+          </label>
+          <input
+            type="email"
+            placeholder="voce@email.com"
+            autoComplete="email"
+            {...register('email')}
+            style={{
+              ...styles.input,
+              borderColor: errors.email ? '#e57373' : focusedField === 'email' ? 'var(--color-primary)' : '#e5e1db',
+              boxShadow: focusedField === 'email' ? '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'none',
+            }}
+            onFocus={() => setFocusedField('email')}
+            onBlur={() => setFocusedField(null)}
+          />
+          {errors.email && <p style={{ fontSize: '12px', color: '#e57373', marginTop: '5px' }}>{errors.email.message}</p>}
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+          <button type="button" style={styles.btnGhost} onClick={onBack}>
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Voltar
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              ...styles.btnPrimary,
+              flex: 1,
+              opacity: loading ? 0.7 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+          >
+            {loading ? (
+              <>
+                <div style={{
+                  width: '14px', height: '14px',
+                  border: '2px solid rgba(255,255,255,0.4)',
+                  borderTopColor: '#fff',
+                  borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                }} />
+                Confirmando...
+              </>
+            ) : 'Confirmar agendamento'}
+          </button>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </form>
     </div>
   )
 }
 
-// ─── Step 4 — Sucesso ────────────────────────────────────────────────────────
+// ─── Step 4 — Sucesso ─────────────────────────────────────────────────────────
 
 function Step4({
-  professional, procedure, date, slot, onNew,
+  professional,
+  procedure,
+  date,
+  slot,
+  onNew,
 }: {
   professional: PublicProfessional
   procedure: PublicProcedure
@@ -374,44 +723,119 @@ function Step4({
   onNew: () => void
 }) {
   return (
-    <div className="text-center py-4">
-      <div
-        className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-        style={{ background: 'var(--success-50)' }}
-      >
-        <svg className="w-8 h-8" style={{ color: 'var(--success-600)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+    <div style={{ padding: '40px 28px', textAlign: 'center', animation: 'scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+      {/* Ícone de sucesso */}
+      <div style={{
+        width: '64px', height: '64px',
+        borderRadius: '50%',
+        background: 'color-mix(in srgb, var(--color-primary) 12%, white)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        margin: '0 auto 20px',
+      }}>
+        <svg width="28" height="28" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
+
+      <h2 style={{
+        fontFamily: 'var(--font-display)',
+        fontSize: '24px',
+        fontStyle: 'italic',
+        color: '#1a1614',
+        marginBottom: '6px',
+        lineHeight: 1.2,
+      }}>
         Agendamento confirmado!
       </h2>
-      <p className="text-sm mb-6" style={{ color: 'var(--color-text-muted)' }}>
+      <p style={{ fontSize: '13px', color: '#8a7f75', marginBottom: '28px' }}>
         Você receberá uma confirmação em breve.
       </p>
 
-      <div
-        className="rounded-xl p-5 text-left mb-6"
-        style={{ background: 'var(--color-bg-subtle)', border: '1px solid var(--color-border)' }}
-      >
-        <dl className="space-y-3 text-sm">
-          {[
-            { label: 'Profissional', value: professional.name },
-            { label: 'Serviço', value: `${procedure.name} (${procedure.durationMinutes} min)` },
-            { label: 'Data', value: new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }) },
-            { label: 'Horário', value: slot.startTime },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex items-start justify-between gap-4">
-              <dt style={{ color: 'var(--color-text-muted)' }}>{label}</dt>
-              <dd className="font-medium text-right" style={{ color: 'var(--color-text)' }}>{value}</dd>
+      {/* Resumo */}
+      <div style={{
+        background: '#faf8f5',
+        borderRadius: '14px',
+        border: '1.5px solid #ece8e3',
+        overflow: 'hidden',
+        marginBottom: '24px',
+        textAlign: 'left',
+      }}>
+        {[
+          {
+            icon: (
+              <svg width="16" height="16" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            ),
+            label: 'Profissional',
+            value: professional.name,
+          },
+          {
+            icon: (
+              <svg width="16" height="16" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            ),
+            label: 'Serviço',
+            value: `${procedure.name} · ${procedure.durationMinutes} min`,
+          },
+          {
+            icon: (
+              <svg width="16" height="16" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            ),
+            label: 'Data',
+            value: formatDateLong(date),
+          },
+          {
+            icon: (
+              <svg width="16" height="16" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            ),
+            label: 'Horário',
+            value: slot.startTime,
+          },
+        ].map(({ icon, label, value }, i) => (
+          <div
+            key={label}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 16px',
+              borderBottom: i < 3 ? '1px solid #ece8e3' : 'none',
+            }}
+          >
+            <div style={{
+              width: '32px', height: '32px',
+              borderRadius: '8px',
+              background: 'color-mix(in srgb, var(--color-primary) 10%, white)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              {icon}
             </div>
-          ))}
-        </dl>
+            <div>
+              <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#b0a899', margin: 0 }}>{label}</p>
+              <p style={{ fontSize: '13px', fontWeight: 500, color: '#1a1614', margin: '2px 0 0', textTransform: 'capitalize' }}>{value}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <Button variant="secondary" onClick={onNew} className="w-full">
+      <button
+        type="button"
+        onClick={onNew}
+        style={{ ...styles.btnSecondary, width: '100%', textAlign: 'center' }}
+      >
         Fazer novo agendamento
-      </Button>
+      </button>
     </div>
   )
 }
@@ -428,7 +852,6 @@ export function BookingPage() {
   const [booking, setBooking] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Seleções do usuário
   const [selectedProf, setSelectedProf] = useState<PublicProfessional | null>(null)
   const [selectedProc, setSelectedProc] = useState<PublicProcedure | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>('')
@@ -438,7 +861,16 @@ export function BookingPage() {
     if (!tenantSlug) return
     publicApi.getProfessionals(tenantSlug)
       .then(setProfessionals)
-      .catch(() => setError('Clínica não encontrada ou inativa.'))
+      .catch((err: unknown) => {
+        const status = (err as { response?: { status?: number } })?.response?.status
+        if (status === 404) {
+          setError('Clínica não encontrada ou inativa.')
+        } else if (!status) {
+          setError('Não foi possível conectar ao servidor. Verifique sua conexão.')
+        } else {
+          setError(`Erro ao carregar dados da clínica (${status}). Tente novamente.`)
+        }
+      })
       .finally(() => setLoading(false))
   }, [tenantSlug])
 
@@ -486,51 +918,141 @@ export function BookingPage() {
   }
 
   return (
-    <div
-      className="min-h-screen py-10 px-4"
-      style={{ background: 'var(--color-bg-subtle)' }}
-    >
-      <div className="max-w-lg mx-auto">
+    <div style={styles.page}>
+      {/* Grain texture overlay */}
+      <div style={styles.grain} aria-hidden />
+
+      {/* Decoração de fundo — círculos suaves */}
+      <div aria-hidden style={{
+        position: 'fixed',
+        top: '-120px',
+        right: '-120px',
+        width: '400px',
+        height: '400px',
+        borderRadius: '50%',
+        background: 'color-mix(in srgb, var(--color-primary) 6%, transparent)',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
+      <div aria-hidden style={{
+        position: 'fixed',
+        bottom: '-80px',
+        left: '-80px',
+        width: '280px',
+        height: '280px',
+        borderRadius: '50%',
+        background: 'color-mix(in srgb, var(--color-primary) 4%, transparent)',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
+
+      <div style={styles.container}>
         {/* Header */}
-        <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-12 h-12 rounded-2xl text-white font-bold text-lg mb-3"
-            style={{ background: 'var(--color-primary)' }}
-          >
+        <div style={{ textAlign: 'center', marginBottom: '32px', animation: 'fadeUp 0.4s ease both' }}>
+          <div style={{
+            width: '52px', height: '52px',
+            borderRadius: '16px',
+            background: 'var(--color-primary)',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '20px',
+            fontWeight: 700,
+            margin: '0 auto 16px',
+            boxShadow: '0 8px 24px color-mix(in srgb, var(--color-primary) 35%, transparent)',
+          }}>
             M
           </div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '28px',
+            fontStyle: 'italic',
+            color: '#1a1614',
+            margin: '0 0 6px',
+            lineHeight: 1.2,
+          }}>
             Agendar consulta
           </h1>
           {tenantSlug && (
-            <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>/{tenantSlug}</p>
+            <p style={{ fontSize: '12px', color: '#b0a899', fontWeight: 500, letterSpacing: '0.04em' }}>
+              /{tenantSlug}
+            </p>
           )}
         </div>
 
         {/* Card principal */}
-        <div
-          className="rounded-2xl p-6 sm:p-8"
-          style={{
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            boxShadow: 'var(--shadow-md)',
-          }}
-        >
+        <div style={styles.card}>
           {step < 4 && <StepBar current={step} />}
 
+          {/* Resumo da seleção — steps 2 e 3 */}
+          {(step === 2 || step === 3) && selectedProf && selectedProc && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '12px 20px',
+              background: 'color-mix(in srgb, var(--color-primary) 6%, white)',
+              borderBottom: '1px solid color-mix(in srgb, var(--color-primary) 15%, white)',
+              animation: 'fadeIn 0.2s ease',
+            }}>
+              <div style={{
+                width: '30px', height: '30px',
+                borderRadius: '50%',
+                background: 'color-mix(in srgb, var(--color-primary) 18%, white)',
+                color: 'var(--color-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '13px',
+                fontWeight: 700,
+                flexShrink: 0,
+              }}>
+                {selectedProf.name.charAt(0)}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {selectedProf.name}
+                </p>
+                <p style={{ fontSize: '11px', color: 'color-mix(in srgb, var(--color-primary) 70%, #555)', margin: '1px 0 0' }}>
+                  {selectedProc.name}
+                  {step === 3 && selectedSlot && ` · ${selectedDate ? formatDateLong(selectedDate) : ''} às ${selectedSlot.startTime}`}
+                </p>
+              </div>
+              {step === 3 && (
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  style={{ fontSize: '11px', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font-sans)', padding: '2px 6px' }}
+                >
+                  Alterar
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Mensagem de erro */}
           {error && (
-            <div
-              className="mb-5 px-4 py-3 rounded-lg text-sm"
-              style={{
-                background: 'var(--danger-50)',
-                border: '1px solid var(--danger-200)',
-                color: 'var(--danger-700)',
-              }}
-            >
+            <div style={{
+              margin: '16px 20px 0',
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: '#fff5f5',
+              border: '1.5px solid #fecaca',
+              fontSize: '13px',
+              color: '#b91c1c',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '8px',
+            }}>
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ flexShrink: 0, marginTop: '1px' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               {error}
             </div>
           )}
 
+          {/* Steps */}
           {step === 1 && (
             <Step1
               professionals={professionals}
@@ -538,67 +1060,18 @@ export function BookingPage() {
               onSelect={handleSelectService}
             />
           )}
-
           {step === 2 && selectedProf && selectedProc && (
-            <>
-              {/* Resumo do que foi selecionado */}
-              <div
-                className="flex items-center gap-3 px-4 py-3 rounded-xl mb-6"
-                style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary-border)' }}
-              >
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                  style={{ background: 'var(--color-primary)' }}
-                >
-                  {selectedProf.name.charAt(0)}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
-                    {selectedProf.name}
-                  </p>
-                  <p className="text-xs" style={{ color: 'var(--color-primary)' }}>
-                    {selectedProc.name} · {selectedProc.durationMinutes} min
-                  </p>
-                </div>
-              </div>
-              <Step2
-                slug={tenantSlug}
-                professionalId={selectedProf.id}
-                procedureId={selectedProc.id}
-                onSelect={handleSelectSlot}
-                onBack={() => setStep(1)}
-              />
-            </>
+            <Step2
+              slug={tenantSlug}
+              professionalId={selectedProf.id}
+              procedureId={selectedProc.id}
+              onSelect={handleSelectSlot}
+              onBack={() => setStep(1)}
+            />
           )}
-
           {step === 3 && selectedProf && selectedProc && selectedSlot && (
-            <>
-              {/* Resumo */}
-              <div
-                className="flex items-center gap-3 px-4 py-3 rounded-xl mb-6"
-                style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary-border)' }}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
-                    {selectedProf.name} · {selectedProc.name}
-                  </p>
-                  <p className="text-xs" style={{ color: 'var(--color-primary)' }}>
-                    {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} às {selectedSlot.startTime}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="text-xs underline shrink-0"
-                  style={{ color: 'var(--color-primary)' }}
-                  onClick={() => setStep(2)}
-                >
-                  Alterar
-                </button>
-              </div>
-              <Step3 onSubmit={handleConfirm} onBack={() => setStep(2)} loading={booking} />
-            </>
+            <Step3 onSubmit={handleConfirm} onBack={() => setStep(2)} loading={booking} />
           )}
-
           {step === 4 && selectedProf && selectedProc && selectedSlot && (
             <Step4
               professional={selectedProf}
@@ -609,6 +1082,11 @@ export function BookingPage() {
             />
           )}
         </div>
+
+        {/* Footer */}
+        <p style={{ textAlign: 'center', fontSize: '11px', color: '#c0b4aa', marginTop: '24px', letterSpacing: '0.03em' }}>
+          Powered by <strong style={{ color: '#8a7f75' }}>MyAgendix</strong>
+        </p>
       </div>
     </div>
   )

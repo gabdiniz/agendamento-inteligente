@@ -1,7 +1,8 @@
-import { Outlet, Link, useNavigate, useLocation } from '@tanstack/react-router'
-import { useSuperAdminAuthStore } from '@/stores/super-admin-auth.store'
-import { superAdminApi } from '@/lib/api/super-admin.api'
+import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
+
 import { saTokens } from '@/lib/api/super-admin-client'
+import { superAdminApi } from '@/lib/api/super-admin.api'
+import { useSuperAdminAuthStore } from '@/stores/super-admin-auth.store'
 
 const navItems = [
   {
@@ -69,10 +70,10 @@ export function SuperAdminLayout() {
               <Link
                 key={item.path}
                 to={item.path}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-[--radius-md] text-sm font-medium transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-[--radius-md] text-sm font-medium transition-colors black"
                 style={{
                   background: active ? 'var(--admin-color-sidebar-active)' : 'transparent',
-                  color: active ? '#ffffff' : 'var(--admin-color-sidebar-text)',
+                  color: active ? '#252525' : 'var(--admin-color-sidebar-text)',
                 }}
                 onMouseEnter={(e) => {
                   if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--admin-color-sidebar-hover)'
@@ -115,11 +116,11 @@ export function SuperAdminLayout() {
             style={{ color: 'var(--admin-color-sidebar-muted)' }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLElement).style.background = 'var(--admin-color-sidebar-hover)'
-              ;(e.currentTarget as HTMLElement).style.color = 'white'
+                ; (e.currentTarget as HTMLElement).style.color = 'white'
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLElement).style.background = 'transparent'
-              ;(e.currentTarget as HTMLElement).style.color = 'var(--admin-color-sidebar-muted)'
+                ; (e.currentTarget as HTMLElement).style.color = 'var(--admin-color-sidebar-muted)'
             }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

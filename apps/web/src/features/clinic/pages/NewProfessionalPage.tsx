@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams, Link } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
+import { useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { professionalsApi } from '@/lib/api/clinic.api'
@@ -27,6 +28,7 @@ type FormData = z.infer<typeof schema>
 
 export function NewProfessionalPage() {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const params = useParams({ strict: false }) as { slug?: string }
   const slug = params.slug ?? clinicTokens.getSlug() ?? ''
   const [serverError, setServerError] = useState<string | null>(null)
@@ -46,6 +48,7 @@ export function NewProfessionalPage() {
         bio: values.bio || undefined,
         color: selectedColor,
       })
+      await qc.invalidateQueries({ queryKey: ['professionals'] })
       void navigate({ to: '/app/$slug/$section', params: { slug, section: 'professionals' } })
     } catch {
       setServerError('Erro ao cadastrar profissional. Tente novamente.')

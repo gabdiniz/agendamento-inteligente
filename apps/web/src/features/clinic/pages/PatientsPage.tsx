@@ -5,7 +5,6 @@ import { Link, useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { patientsApi, type Patient } from '@/lib/api/clinic.api'
 import { clinicTokens } from '@/lib/api/client'
-import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 
 function PatientRow({ patient, slug }: { patient: Patient; slug: string }) {
@@ -15,18 +14,13 @@ function PatientRow({ patient, slug }: { patient: Patient; slug: string }) {
 
   return (
     <tr
-      className="cursor-pointer transition-colors"
       style={{ borderBottom: '1px solid var(--color-border)' }}
-      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = 'var(--color-bg-subtle)')}
-      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
     >
       <td className="px-6 py-4">
-        <Link to="/app/$slug/patients/$id" params={{ slug, id: patient.id }} className="block">
-          <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{patient.name}</p>
-          {age !== null && (
-            <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{age} anos</p>
-          )}
-        </Link>
+        <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>{patient.name}</p>
+        {age !== null && (
+          <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{age} anos</p>
+        )}
       </td>
       <td className="px-6 py-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
         {patient.phone}
@@ -41,9 +35,14 @@ function PatientRow({ patient, slug }: { patient: Patient; slug: string }) {
         {new Date(patient.createdAt).toLocaleDateString('pt-BR')}
       </td>
       <td className="px-6 py-4 text-right">
-        <Link to="/app/$slug/patients/$id" params={{ slug, id: patient.id }}>
-          <Button variant="secondary" size="sm">Ver ficha</Button>
-        </Link>
+        <div className="flex items-center justify-end gap-2">
+          <Link to="/app/$slug/patients/$id" params={{ slug, id: patient.id }}>
+            <Button variant="secondary" size="sm">Ver ficha</Button>
+          </Link>
+          <Link to="/app/$slug/patients/$id/edit" params={{ slug, id: patient.id }}>
+            <Button variant="secondary" size="sm">Editar</Button>
+          </Link>
+        </div>
       </td>
     </tr>
   )

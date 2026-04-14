@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams, Link } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
+import { useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { patientsApi } from '@/lib/api/clinic.api'
@@ -33,6 +34,7 @@ const genderOptions = [
 
 export function NewPatientPage() {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const params = useParams({ strict: false }) as { slug?: string }
   const slug = params.slug ?? clinicTokens.getSlug() ?? ''
   const [serverError, setServerError] = useState<string | null>(null)
@@ -53,6 +55,7 @@ export function NewPatientPage() {
         city: values.city || undefined,
         notes: values.notes || undefined,
       })
+      await qc.invalidateQueries({ queryKey: ['patients'] })
       void navigate({ to: '/app/$slug/$section', params: { slug, section: 'patients' } })
     } catch {
       setServerError('Erro ao cadastrar paciente. Tente novamente.')
