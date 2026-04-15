@@ -1,42 +1,59 @@
 // ─── New Patient Page ─────────────────────────────────────────────────────────
 
 import { useState } from 'react'
-import { useNavigate, useParams, Link } from '@tanstack/react-router'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { patientsApi } from '@/lib/api/clinic.api'
 import { clinicTokens } from '@/lib/api/client'
-import { Input } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
-import { Card, CardHeader, CardBody } from '@/components/ui/Card'
+
+// ─── Schema ───────────────────────────────────────────────────────────────────
 
 const schema = z.object({
-  name: z.string().min(2, 'Nome obrigatório'),
-  phone: z.string().min(10, 'Telefone inválido'),
-  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  name:      z.string().min(2, 'Nome obrigatório'),
+  phone:     z.string().min(10, 'Telefone inválido'),
+  email:     z.string().email('E-mail inválido').optional().or(z.literal('')),
   birthDate: z.string().optional(),
-  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
-  city: z.string().optional(),
-  notes: z.string().optional(),
+  gender:    z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
+  city:      z.string().optional(),
+  notes:     z.string().optional(),
 })
 
 type FormData = z.infer<typeof schema>
 
 const genderOptions = [
-  { value: '', label: 'Não informado' },
-  { value: 'MALE', label: 'Masculino' },
-  { value: 'FEMALE', label: 'Feminino' },
-  { value: 'OTHER', label: 'Outro' },
-  { value: 'PREFER_NOT_TO_SAY', label: 'Prefiro não informar' },
+  { value: '',                   label: 'Não informado' },
+  { value: 'MALE',               label: 'Masculino' },
+  { value: 'FEMALE',             label: 'Feminino' },
+  { value: 'OTHER',              label: 'Outro' },
+  { value: 'PREFER_NOT_TO_SAY',  label: 'Prefiro não informar' },
 ]
+
+// ─── Shared styles ────────────────────────────────────────────────────────────
+
+const labelStyle: React.CSSProperties = {
+  display: 'block', fontSize: '12px', fontWeight: 700,
+  color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em',
+  marginBottom: '6px',
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box', height: '42px', padding: '0 14px',
+  border: '1.5px solid #e2e8f0', borderRadius: '10px',
+  fontSize: '14px', color: '#1a2530',
+  background: '#fff', outline: 'none', fontFamily: 'var(--font-sans)',
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function NewPatientPage() {
   const navigate = useNavigate()
-  const qc = useQueryClient()
-  const params = useParams({ strict: false }) as { slug?: string }
-  const slug = params.slug ?? clinicTokens.getSlug() ?? ''
+  const qc       = useQueryClient()
+  const params   = useParams({ strict: false }) as { slug?: string }
+  const slug     = params.slug ?? clinicTokens.getSlug() ?? ''
+
   const [serverError, setServerError] = useState<string | null>(null)
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -47,109 +64,196 @@ export function NewPatientPage() {
     setServerError(null)
     try {
       await patientsApi.create({
-        name: values.name,
-        phone: values.phone,
-        email: values.email || undefined,
+        name:      values.name,
+        phone:     values.phone,
+        email:     values.email     || undefined,
         birthDate: values.birthDate || undefined,
-        gender: values.gender || undefined,
-        city: values.city || undefined,
-        notes: values.notes || undefined,
+        gender:    values.gender    || undefined,
+        city:      values.city      || undefined,
+        notes:     values.notes     || undefined,
       })
       await qc.invalidateQueries({ queryKey: ['patients'] })
-      void navigate({ to: '/app/$slug/$section', params: { slug, section: 'patients' } })
+      void navigate({ to: '/app/$slug/patients', params: { slug } })
     } catch {
       setServerError('Erro ao cadastrar paciente. Tente novamente.')
     }
   }
 
-  const selectStyle = {
-    background: 'var(--color-surface)',
-    border: '1px solid var(--color-border)',
-    color: 'var(--color-text)',
-    borderRadius: 'var(--radius-md)',
-    padding: '0.625rem 0.75rem',
-    fontSize: '0.875rem',
-    width: '100%',
-    outline: 'none',
-  } as React.CSSProperties
-
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <div className="flex items-center gap-3 mb-8">
-        <Link
-          to="/app/$slug/$section"
-          params={{ slug, section: 'patients' }}
-          className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
-          style={{ border: '1px solid var(--color-border)' }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-bg-subtle)')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+    <div style={{ padding: '32px', maxWidth: '680px', fontFamily: 'var(--font-sans)' }}>
+
+      {/* ── Header ────────────────────────────────────────────────────── */}
+      <div style={{ marginBottom: '28px' }}>
+        <button
+          onClick={() => void navigate({ to: '/app/$slug/patients', params: { slug } })}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: '13px', color: '#64748b', padding: 0, marginBottom: '12px',
+            fontFamily: 'var(--font-sans)',
+          }}
         >
-          <svg className="w-4 h-4" style={{ color: 'var(--color-text-secondary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>Novo Paciente</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Cadastre os dados do paciente</p>
-        </div>
+          Voltar para pacientes
+        </button>
+        <h1 style={{
+          margin: 0, fontSize: '26px', fontWeight: 400,
+          fontFamily: 'var(--font-display)', fontStyle: 'italic',
+          color: '#1a2530', letterSpacing: '-0.02em',
+        }}>
+          Novo paciente
+        </h1>
+        <p style={{ margin: '4px 0 0', fontSize: '13.5px', color: '#64748b' }}>
+          Preencha os dados do paciente
+        </p>
       </div>
 
-      {serverError && (
-        <div className="mb-6 px-4 py-3 rounded-lg text-sm"
-          style={{ background: 'var(--danger-50)', border: '1px solid var(--danger-200)', color: 'var(--danger-700)' }}>
-          {serverError}
-        </div>
-      )}
-
+      {/* ── Card ──────────────────────────────────────────────────────── */}
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <Card className="mb-6">
-          <CardHeader>
-            <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
-              Dados pessoais
-            </h3>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Input label="Nome completo" placeholder="João da Silva" error={errors.name?.message} {...register('name')} />
-              </div>
-              <Input label="Telefone" type="tel" placeholder="(11) 9 9999-9999" error={errors.phone?.message} {...register('phone')} />
-              <Input label="E-mail (opcional)" type="email" placeholder="joao@email.com" error={errors.email?.message} {...register('email')} />
-              <Input label="Data de nascimento (opcional)" type="date" error={errors.birthDate?.message} {...register('birthDate')} />
-              <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text)' }}>Gênero (opcional)</label>
-                <select {...register('gender')} style={selectStyle}>
-                  {genderOptions.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="sm:col-span-2">
-                <Input label="Cidade (opcional)" placeholder="São Paulo" error={errors.city?.message} {...register('city')} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text)' }}>Observações (opcional)</label>
-                <textarea
-                  rows={3}
-                  placeholder="Alergias, condições especiais, preferências..."
-                  {...register('notes')}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-colors resize-none"
-                  style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--color-primary-light)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none' }}
-                />
-              </div>
-            </div>
-          </CardBody>
-        </Card>
+        <div style={{
+          background: '#fff', borderRadius: '16px',
+          border: '1px solid #f0f2f5',
+          boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
+          padding: '28px',
+          display: 'flex', flexDirection: 'column', gap: '22px',
+        }}>
 
-        <div className="flex items-center justify-end gap-3">
-          <Link to="/app/$slug/$section" params={{ slug, section: 'patients' }}>
-            <Button type="button" variant="secondary">Cancelar</Button>
-          </Link>
-          <Button type="submit" variant="primary" loading={isSubmitting}>
-            {isSubmitting ? 'Cadastrando...' : 'Cadastrar Paciente'}
-          </Button>
+          {serverError && (
+            <div style={{
+              padding: '12px 16px', borderRadius: '10px',
+              background: '#fef2f2', border: '1px solid #fecaca',
+              color: '#b91c1c', fontSize: '13.5px',
+            }}>
+              {serverError}
+            </div>
+          )}
+
+          {/* Nome */}
+          <div>
+            <label style={labelStyle}>Nome completo *</label>
+            <input
+              placeholder="João da Silva"
+              {...register('name')}
+              style={inputStyle}
+            />
+            {errors.name && (
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>
+                {errors.name.message}
+              </p>
+            )}
+          </div>
+
+          {/* Telefone + E-mail */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div>
+              <label style={labelStyle}>Telefone *</label>
+              <input
+                type="tel"
+                placeholder="(11) 9 9999-9999"
+                {...register('phone')}
+                style={inputStyle}
+              />
+              {errors.phone && (
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>
+                  {errors.phone.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label style={labelStyle}>E-mail (opcional)</label>
+              <input
+                type="email"
+                placeholder="joao@email.com"
+                {...register('email')}
+                style={inputStyle}
+              />
+              {errors.email && (
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>
+                  {errors.email.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Nascimento + Gênero */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div>
+              <label style={labelStyle}>Data de nascimento (opcional)</label>
+              <input
+                type="date"
+                {...register('birthDate')}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Gênero (opcional)</label>
+              <select
+                {...register('gender')}
+                style={{ ...inputStyle, cursor: 'pointer' }}
+              >
+                {genderOptions.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Cidade */}
+          <div>
+            <label style={labelStyle}>Cidade (opcional)</label>
+            <input
+              placeholder="São Paulo"
+              {...register('city')}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Observações */}
+          <div>
+            <label style={labelStyle}>Observações (opcional)</label>
+            <textarea
+              rows={3}
+              placeholder="Alergias, condições especiais, preferências..."
+              {...register('notes')}
+              style={{
+                ...inputStyle, height: 'auto',
+                padding: '12px 14px', resize: 'vertical',
+              }}
+            />
+          </div>
+
+          {/* Botões */}
+          <div style={{ display: 'flex', gap: '10px', paddingTop: '4px' }}>
+            <button
+              type="button"
+              onClick={() => void navigate({ to: '/app/$slug/patients', params: { slug } })}
+              style={{
+                flex: 1, height: '44px', border: '1.5px solid #e2e8f0',
+                borderRadius: '10px', background: '#fff', color: '#4a5568',
+                fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'var(--font-sans)',
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                flex: 2, height: '44px', border: 'none',
+                borderRadius: '10px', background: 'var(--color-primary)', color: '#fff',
+                fontSize: '14px', fontWeight: 600,
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                opacity: isSubmitting ? 0.7 : 1,
+                fontFamily: 'var(--font-sans)',
+                boxShadow: '0 4px 14px color-mix(in srgb, var(--color-primary) 30%, transparent)',
+              }}
+            >
+              {isSubmitting ? 'Cadastrando...' : 'Cadastrar paciente'}
+            </button>
+          </div>
         </div>
       </form>
     </div>

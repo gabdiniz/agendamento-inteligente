@@ -5,43 +5,34 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState } from 'react'
-import { useNavigate, Link } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { superAdminApi } from '@/lib/api/super-admin.api'
-import { Input } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
-import { Card, CardHeader, CardBody } from '@/components/ui/Card'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
 const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 const schema = z.object({
-  // Clínica
-  name: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
-  slug: z
-    .string()
-    .min(2, 'Slug deve ter ao menos 2 caracteres')
-    .regex(slugRegex, 'Slug inválido — use apenas letras minúsculas, números e hífens'),
-  email: z.string().email('E-mail inválido'),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  planType: z.enum(['BASIC', 'PRO']).default('BASIC'),
-
-  // Gestor inicial
-  gestorName: z.string().min(2, 'Nome do gestor obrigatório'),
-  gestorEmail: z.string().email('E-mail do gestor inválido'),
+  name:           z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
+  slug:           z.string().min(2, 'Slug deve ter ao menos 2 caracteres')
+                    .regex(slugRegex, 'Use apenas letras minúsculas, números e hífens'),
+  email:          z.string().email('E-mail inválido'),
+  phone:          z.string().optional(),
+  address:        z.string().optional(),
+  planType:       z.enum(['BASIC', 'PRO']).default('BASIC'),
+  gestorName:     z.string().min(2, 'Nome do gestor obrigatório'),
+  gestorEmail:    z.string().email('E-mail do gestor inválido'),
   gestorPassword: z.string().min(6, 'Senha deve ter ao menos 6 caracteres'),
-  gestorPhone: z.string().optional(),
+  gestorPhone:    z.string().optional(),
 })
 
 type FormData = z.infer<typeof schema>
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Gera slug automático a partir do nome */
 function toSlug(value: string) {
   return value
     .toLowerCase()
@@ -53,42 +44,39 @@ function toSlug(value: string) {
     .replace(/-+/g, '-')
 }
 
-// ─── Section divider ─────────────────────────────────────────────────────────
+// ─── Shared styles ────────────────────────────────────────────────────────────
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="flex items-center gap-3 mb-5"
-      style={{ borderBottom: '1px solid var(--gray-100)', paddingBottom: '0.75rem' }}
-    >
-      <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--gray-500)' }}>
-        {children}
-      </h3>
-    </div>
-  )
+const labelStyle: React.CSSProperties = {
+  display: 'block', fontSize: '12px', fontWeight: 700,
+  color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em',
+  marginBottom: '6px',
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box', height: '42px', padding: '0 14px',
+  border: '1.5px solid #e2e8f0', borderRadius: '10px',
+  fontSize: '14px', color: '#1a2530',
+  background: '#fff', outline: 'none', fontFamily: 'var(--font-sans)',
+}
+
+const sectionDividerStyle: React.CSSProperties = {
+  fontSize: '11px', fontWeight: 700, color: '#94a3b8',
+  textTransform: 'uppercase', letterSpacing: '0.08em',
+  paddingBottom: '12px', borderBottom: '1px solid #f0f2f5',
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function NewTenantPage() {
   const navigate = useNavigate()
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
+  const [serverError,         setServerError]         = useState<string | null>(null)
+  const [slugManuallyEdited,  setSlugManuallyEdited]  = useState(false)
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<FormData>({
+  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      slug: '',
-    },
+    defaultValues: { slug: '', planType: 'BASIC' },
   })
 
-  /** Auto-preenche o slug enquanto o usuário não editou manualmente */
   function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!slugManuallyEdited) {
       setValue('slug', toSlug(e.target.value), { shouldValidate: true })
@@ -114,211 +102,246 @@ export function NewTenantPage() {
       })
       void navigate({ to: '/super-admin/tenants' })
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : 'Erro ao cadastrar clínica. Tente novamente.'
+      const msg = err instanceof Error ? err.message : 'Erro ao cadastrar clínica. Tente novamente.'
       setServerError(msg)
     }
   }
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
-      {/* ── Cabeçalho ─────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-8">
-        <Link
-          to="/super-admin/tenants"
-          className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
-          style={{ border: '1px solid var(--gray-200)' }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--gray-50)')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-        >
-          <svg className="w-4 h-4" style={{ color: 'var(--gray-600)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--gray-900)' }}>
-            Nova Clínica
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--gray-500)' }}>
-            Cadastre uma clínica e o seu primeiro gestor
-          </p>
-        </div>
-      </div>
+    <div style={{ padding: '32px', maxWidth: '680px', fontFamily: 'var(--font-sans)' }}>
 
-      {serverError && (
-        <div
-          className="mb-6 px-4 py-3 rounded-lg text-sm"
+      {/* ── Header ────────────────────────────────────────────────────── */}
+      <div style={{ marginBottom: '28px' }}>
+        <button
+          onClick={() => void navigate({ to: '/super-admin/tenants' })}
           style={{
-            background: 'var(--danger-50)',
-            border: '1px solid var(--danger-200)',
-            color: 'var(--danger-700)',
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: '13px', color: '#64748b', padding: 0, marginBottom: '12px',
+            fontFamily: 'var(--font-sans)',
           }}
         >
-          {serverError}
-        </div>
-      )}
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Voltar para clínicas
+        </button>
+        <h1 style={{
+          margin: 0, fontSize: '26px', fontWeight: 400,
+          fontFamily: 'var(--font-display)', fontStyle: 'italic',
+          color: '#1a2530', letterSpacing: '-0.02em',
+        }}>
+          Nova clínica
+        </h1>
+        <p style={{ margin: '4px 0 0', fontSize: '13.5px', color: '#64748b' }}>
+          Cadastre uma clínica e o seu primeiro gestor
+        </p>
+      </div>
 
+      {/* ── Card ──────────────────────────────────────────────────────── */}
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        {/* ── Dados da Clínica ─────────────────────────────── */}
-        <Card className="mb-6">
-          <CardHeader>
-            <SectionTitle>Dados da Clínica</SectionTitle>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              {/* Nome */}
-              <div className="sm:col-span-2">
-                <Input
-                  label="Nome da clínica"
-                  placeholder="Clínica São Lucas"
-                  error={errors.name?.message}
-                  {...register('name', {
-                    onChange: handleNameChange,
-                  })}
-                />
-              </div>
+        <div style={{
+          background: '#fff', borderRadius: '16px',
+          border: '1px solid #f0f2f5',
+          boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
+          padding: '28px',
+          display: 'flex', flexDirection: 'column', gap: '22px',
+        }}>
 
-              {/* Slug */}
-              <div className="sm:col-span-2">
-                <Input
-                  label="Slug (URL pública)"
-                  placeholder="clinica-sao-lucas"
-                  hint="Usado na URL de agendamento público: /clinica-sao-lucas"
-                  error={errors.slug?.message}
-                  {...register('slug', {
-                    onChange: () => setSlugManuallyEdited(true),
-                  })}
-                />
-              </div>
+          {serverError && (
+            <div style={{
+              padding: '12px 16px', borderRadius: '10px',
+              background: '#fef2f2', border: '1px solid #fecaca',
+              color: '#b91c1c', fontSize: '13.5px',
+            }}>
+              {serverError}
+            </div>
+          )}
 
-              {/* E-mail */}
-              <Input
-                label="E-mail da clínica"
+          {/* ── Seção: Dados da Clínica ──────────────────────────────── */}
+          <p style={sectionDividerStyle}>Dados da Clínica</p>
+
+          {/* Nome */}
+          <div>
+            <label style={labelStyle}>Nome da clínica *</label>
+            <input
+              placeholder="Clínica São Lucas"
+              {...register('name', { onChange: handleNameChange })}
+              style={inputStyle}
+            />
+            {errors.name && (
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>
+                {errors.name.message}
+              </p>
+            )}
+          </div>
+
+          {/* Slug */}
+          <div>
+            <label style={labelStyle}>Slug (URL pública) *</label>
+            <input
+              placeholder="clinica-sao-lucas"
+              {...register('slug', { onChange: () => setSlugManuallyEdited(true) })}
+              style={inputStyle}
+            />
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>
+              URL de agendamento público: /clinica-sao-lucas
+            </p>
+            {errors.slug && (
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>
+                {errors.slug.message}
+              </p>
+            )}
+          </div>
+
+          {/* E-mail + Telefone */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div>
+              <label style={labelStyle}>E-mail da clínica *</label>
+              <input
                 type="email"
                 placeholder="contato@clinica.com"
-                error={errors.email?.message}
                 {...register('email')}
+                style={inputStyle}
               />
-
-              {/* Telefone */}
-              <Input
-                label="Telefone (opcional)"
+              {errors.email && (
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>
+                  {errors.email.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label style={labelStyle}>Telefone (opcional)</label>
+              <input
                 type="tel"
                 placeholder="(11) 9 9999-9999"
-                error={errors.phone?.message}
                 {...register('phone')}
+                style={inputStyle}
               />
-
-              {/* Plano */}
-              <div>
-                <label style={{
-                  display: 'block', fontSize: '12px', fontWeight: 600,
-                  color: 'var(--gray-700)', marginBottom: '6px',
-                }}>
-                  Plano
-                </label>
-                <select
-                  {...register('planType')}
-                  style={{
-                    width: '100%', height: '42px', padding: '0 12px',
-                    border: '1.5px solid var(--gray-200)', borderRadius: '10px',
-                    fontSize: '13.5px', color: 'var(--gray-900)',
-                    background: '#fff', outline: 'none',
-                    fontFamily: 'var(--font-sans)', cursor: 'pointer',
-                  }}
-                >
-                  <option value="BASIC">BASIC</option>
-                  <option value="PRO">PRO</option>
-                </select>
-                {errors.planType && (
-                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>
-                    {errors.planType.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Endereço */}
-              <div className="sm:col-span-2">
-                <Input
-                  label="Endereço (opcional)"
-                  placeholder="Av. Paulista, 1000 — São Paulo, SP"
-                  error={errors.address?.message}
-                  {...register('address')}
-                />
-              </div>
             </div>
-          </CardBody>
-        </Card>
+          </div>
 
-        {/* ── Gestor inicial ───────────────────────────────── */}
-        <Card className="mb-8">
-          <CardHeader>
-            <SectionTitle>Gestor Inicial</SectionTitle>
-          </CardHeader>
-          <CardBody>
-            <p className="text-sm mb-5" style={{ color: 'var(--gray-500)' }}>
-              Esse usuário terá acesso total ao painel da clínica como <strong>Gestor</strong>.
-            </p>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              {/* Nome do gestor */}
-              <div className="sm:col-span-2">
-                <Input
-                  label="Nome completo"
-                  placeholder="Dr. Carlos Almeida"
-                  error={errors.gestorName?.message}
-                  {...register('gestorName')}
-                />
-              </div>
+          {/* Plano + Endereço */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
+            <div>
+              <label style={labelStyle}>Plano</label>
+              <select
+                {...register('planType')}
+                style={{ ...inputStyle, cursor: 'pointer' }}
+              >
+                <option value="BASIC">BASIC</option>
+                <option value="PRO">PRO</option>
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Endereço (opcional)</label>
+              <input
+                placeholder="Av. Paulista, 1000 — São Paulo, SP"
+                {...register('address')}
+                style={inputStyle}
+              />
+            </div>
+          </div>
 
-              {/* E-mail do gestor */}
-              <Input
-                label="E-mail"
+          {/* ── Seção: Gestor Inicial ────────────────────────────────── */}
+          <p style={{ ...sectionDividerStyle, marginTop: '6px' }}>Gestor Inicial</p>
+
+          <p style={{ margin: '-10px 0 0', fontSize: '13px', color: '#64748b' }}>
+            Este usuário terá acesso total ao painel como <strong>Gestor</strong>.
+          </p>
+
+          {/* Nome do gestor */}
+          <div>
+            <label style={labelStyle}>Nome completo *</label>
+            <input
+              placeholder="Dr. Carlos Almeida"
+              {...register('gestorName')}
+              style={inputStyle}
+            />
+            {errors.gestorName && (
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>
+                {errors.gestorName.message}
+              </p>
+            )}
+          </div>
+
+          {/* E-mail gestor + Telefone gestor */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div>
+              <label style={labelStyle}>E-mail *</label>
+              <input
                 type="email"
                 placeholder="gestor@clinica.com"
-                error={errors.gestorEmail?.message}
                 {...register('gestorEmail')}
+                style={inputStyle}
               />
-
-              {/* Telefone do gestor */}
-              <Input
-                label="Telefone (opcional)"
+              {errors.gestorEmail && (
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>
+                  {errors.gestorEmail.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <label style={labelStyle}>Telefone (opcional)</label>
+              <input
                 type="tel"
                 placeholder="(11) 9 9999-9999"
-                error={errors.gestorPhone?.message}
                 {...register('gestorPhone')}
+                style={inputStyle}
               />
-
-              {/* Senha */}
-              <div className="sm:col-span-2">
-                <Input
-                  label="Senha de acesso"
-                  type="password"
-                  placeholder="••••••••"
-                  hint="Mínimo 6 caracteres. O gestor poderá alterar após o primeiro acesso."
-                  error={errors.gestorPassword?.message}
-                  {...register('gestorPassword')}
-                />
-              </div>
             </div>
-          </CardBody>
-        </Card>
+          </div>
 
-        {/* ── Ações ────────────────────────────────────────── */}
-        <div className="flex items-center justify-end gap-3">
-          <Link to="/super-admin/tenants">
-            <Button type="button" variant="secondary" size="md">
+          {/* Senha */}
+          <div>
+            <label style={labelStyle}>Senha de acesso *</label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              {...register('gestorPassword')}
+              style={inputStyle}
+            />
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>
+              Mínimo 6 caracteres. O gestor poderá alterar após o primeiro acesso.
+            </p>
+            {errors.gestorPassword && (
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>
+                {errors.gestorPassword.message}
+              </p>
+            )}
+          </div>
+
+          {/* Botões */}
+          <div style={{ display: 'flex', gap: '10px', paddingTop: '4px' }}>
+            <button
+              type="button"
+              onClick={() => void navigate({ to: '/super-admin/tenants' })}
+              style={{
+                flex: 1, height: '44px', border: '1.5px solid #e2e8f0',
+                borderRadius: '10px', background: '#fff', color: '#4a5568',
+                fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'var(--font-sans)',
+              }}
+            >
               Cancelar
-            </Button>
-          </Link>
-          <Button
-            type="submit"
-            variant="primary"
-            size="md"
-            loading={isSubmitting}
-            style={{ background: 'var(--admin-color-primary)' }}
-          >
-            {isSubmitting ? 'Cadastrando...' : 'Cadastrar Clínica'}
-          </Button>
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                flex: 2, height: '44px', border: 'none',
+                borderRadius: '10px',
+                background: 'var(--admin-color-primary)', color: '#fff',
+                fontSize: '14px', fontWeight: 600,
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                opacity: isSubmitting ? 0.7 : 1,
+                fontFamily: 'var(--font-sans)',
+                boxShadow: '0 4px 14px rgba(99,184,153,0.35)',
+              }}
+            >
+              {isSubmitting ? 'Cadastrando...' : 'Cadastrar clínica'}
+            </button>
+          </div>
         </div>
       </form>
     </div>
