@@ -368,7 +368,7 @@ export function AppointmentsPage() {
   }
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1200px', fontFamily: 'var(--font-sans)' }}>
+    <div className="r-page" style={{ maxWidth: '1200px', fontFamily: 'var(--font-sans)' }}>
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px' }}>
@@ -404,13 +404,7 @@ export function AppointmentsPage() {
       </div>
 
       {/* ── Filtros ──────────────────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex', gap: '10px', flexWrap: 'wrap',
-        padding: '16px', marginBottom: '20px',
-        background: '#fff', borderRadius: '14px',
-        border: '1px solid #f0f2f5',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-      }}>
+      <div className="r-filters">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <label style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             Data
@@ -502,7 +496,8 @@ export function AppointmentsPage() {
             </p>
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="r-table-wrap">
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #f0f2f5', background: '#fafbfc' }}>
                 {['Horário', 'Paciente', 'Profissional', 'Procedimento', 'Status', 'Ações'].map((h) => (
@@ -529,6 +524,7 @@ export function AppointmentsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
 
         {/* Paginação */}

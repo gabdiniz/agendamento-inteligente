@@ -73,7 +73,7 @@ export function PatientProfilePage() {
   const appointments = aptsData?.data ?? []
 
   return (
-    <div style={{ padding: '32px', maxWidth: '860px', fontFamily: 'var(--font-sans)' }}>
+    <div className="r-page" style={{ maxWidth: '860px', fontFamily: 'var(--font-sans)' }}>
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px' }}>

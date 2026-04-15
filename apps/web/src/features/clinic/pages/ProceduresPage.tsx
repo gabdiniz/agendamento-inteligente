@@ -224,7 +224,7 @@ export function ProceduresPage() {
   const totalPages = data?.totalPages ?? 1
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1100px', fontFamily: 'var(--font-sans)' }}>
+    <div className="r-page" style={{ maxWidth: '1100px', fontFamily: 'var(--font-sans)' }}>
 
       {/* Header */}
       <div style={{

@@ -86,7 +86,7 @@ export function EditAppointmentPage() {
   }
 
   return (
-    <div style={{ padding: '32px', maxWidth: '640px', fontFamily: 'var(--font-sans)' }}>
+    <div className="r-page" style={{ maxWidth: '640px', fontFamily: 'var(--font-sans)' }}>
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: '28px' }}>

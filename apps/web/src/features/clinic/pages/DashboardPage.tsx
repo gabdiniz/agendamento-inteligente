@@ -206,15 +206,15 @@ export function DashboardPage() {
   })
 
   return (
-    <div style={{ padding: '32px', minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
+    <div className="r-page" style={{ minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
 
       {/* ── Cabeçalho ─────────────────────────────────────────── */}
       <div style={{ marginBottom: '28px', animation: 'fadeUp 0.35s ease both' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
           <div>
             <h1 style={{
               fontFamily: 'var(--font-display)',
-              fontSize: '26px',
+              fontSize: 'clamp(20px, 4vw, 26px)',
               fontStyle: 'italic',
               color: '#1a2530',
               margin: '0 0 4px',
@@ -240,6 +240,7 @@ export function DashboardPage() {
             alignItems: 'center',
             gap: '6px',
             boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            flexShrink: 0,
           }}>
             <svg width="14" height="14" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -253,8 +254,8 @@ export function DashboardPage() {
       {/* ── Stat cards ────────────────────────────────────────── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-        gap: '16px',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+        gap: '14px',
         marginBottom: '28px',
       }}>
         <StatCard
@@ -371,8 +372,8 @@ export function DashboardPage() {
             <p style={{ fontSize: '13px', margin: 0 }}>Nenhum agendamento para hoje.</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="r-table-wrap">
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '560px' }}>
               <thead>
                 <tr style={{ background: '#fafbfc', borderBottom: '1px solid #f0f2f5' }}>
                   {['Horário', 'Paciente', 'Profissional', 'Procedimento', 'Status'].map((h) => (

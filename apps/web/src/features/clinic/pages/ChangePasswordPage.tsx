@@ -53,7 +53,7 @@ export function ChangePasswordPage() {
   }
 
   return (
-    <div style={{ padding: '32px', maxWidth: '480px', fontFamily: 'var(--font-sans)' }}>
+    <div className="r-page" style={{ maxWidth: '480px', fontFamily: 'var(--font-sans)' }}>
 
       <div style={{ marginBottom: '28px' }}>
         <button

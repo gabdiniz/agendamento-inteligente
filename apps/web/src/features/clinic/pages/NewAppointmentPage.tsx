@@ -121,7 +121,7 @@ export function NewAppointmentPage() {
   const showPatientList = patientSearch.length >= 2 && !selectedPatient
 
   return (
-    <div style={{ padding: '32px', maxWidth: '680px', fontFamily: 'var(--font-sans)' }}>
+    <div className="r-page" style={{ maxWidth: '680px', fontFamily: 'var(--font-sans)' }}>
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: '28px' }}>

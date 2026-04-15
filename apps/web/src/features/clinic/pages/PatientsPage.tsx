@@ -90,7 +90,7 @@ export function PatientsPage() {
   const totalPages = data?.totalPages ?? 1
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1200px', fontFamily: 'var(--font-sans)' }}>
+    <div className="r-page" style={{ maxWidth: '1200px', fontFamily: 'var(--font-sans)' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', animation: 'fadeUp 0.35s ease both' }}>
         <div>
           <h1 style={{
@@ -214,7 +214,8 @@ export function PatientsPage() {
           </div>
         ) : (
           <>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="r-table-wrap">
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
               <thead>
                 <tr style={{ background: '#fafbfc', borderBottom: '1px solid #f0f2f5' }}>
                   {['Paciente', 'Telefone', 'E-mail', 'Cidade', 'Cadastrado em', ''].map((h) => (
@@ -234,6 +235,7 @@ export function PatientsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
             {totalPages > 1 && (
               <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',

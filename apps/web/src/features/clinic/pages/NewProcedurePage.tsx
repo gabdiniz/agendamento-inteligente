@@ -76,7 +76,7 @@ export function NewProcedurePage() {
   }
 
   return (
-    <div style={{ padding: '32px', maxWidth: '680px', fontFamily: 'var(--font-sans)' }}>
+    <div className="r-page" style={{ maxWidth: '680px', fontFamily: 'var(--font-sans)' }}>
 
       <div style={{ marginBottom: '28px' }}>
         <button

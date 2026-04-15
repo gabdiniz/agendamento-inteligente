@@ -21,7 +21,7 @@ export function ProfilePage() {
     ?.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase() ?? 'U'
 
   return (
-    <div style={{ padding: '32px', maxWidth: '560px', fontFamily: 'var(--font-sans)' }}>
+    <div className="r-page" style={{ maxWidth: '560px', fontFamily: 'var(--font-sans)' }}>
 
       <div style={{ marginBottom: '28px', animation: 'fadeUp 0.35s ease both' }}>
         <button

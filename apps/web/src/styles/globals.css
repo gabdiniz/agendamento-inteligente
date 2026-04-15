@@ -157,6 +157,168 @@ body {
   50%       { opacity: 0.5; }
 }
 
+/* ─── Responsividade — Breakpoints e tokens adaptativos ─────────────────────
+   sm  = 480px  → smartphones
+   md  = 768px  → tablets
+   lg  = 1024px → notebooks pequenos
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Padding de página — muda por breakpoint */
+  --page-px: 32px;
+  --page-py: 32px;
+
+  /* Sidebar */
+  --sidebar-w: 232px;
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --page-px: 24px;
+    --page-py: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --page-px: 16px;
+    --page-py: 20px;
+    --sidebar-w: 260px; /* full-width overlay no mobile */
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --page-px: 14px;
+    --page-py: 16px;
+  }
+}
+
+/* ─── Utilitários responsivos ────────────────────────────────────────────────
+   Usados diretamente com className nos componentes.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Padding de página padronizado */
+.r-page {
+  padding: var(--page-py) var(--page-px);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Grids responsivos */
+.r-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.r-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.r-grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .r-grid-2,
+  .r-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .r-grid-auto {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+}
+
+/* Show / hide por breakpoint */
+.r-hide-mobile  { display: initial; }
+.r-show-mobile  { display: none; }
+
+@media (max-width: 768px) {
+  .r-hide-mobile { display: none !important; }
+  .r-show-mobile { display: initial !important; }
+}
+
+/* Tabelas responsivas — wrapper que permite scroll horizontal */
+.r-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Overflow scroll suave em contêineres */
+.r-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+
+/* Cabeçalho de página padrão (título + ação) */
+.r-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .r-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .r-page-header > a,
+  .r-page-header > button {
+    align-self: flex-start;
+  }
+}
+
+/* Filtros em linha → empilhado no mobile */
+.r-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: 16px;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #f0f2f5;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .r-filters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+}
+
+/* Botões de ação em linha → full-width no mobile */
+.r-btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .r-btn-row {
+    flex-direction: column;
+  }
+
+  .r-btn-row > * {
+    width: 100%;
+  }
+}
+
 /* ─── Extensão do tema Tailwind ──────────────────────────────────────────── */
 
 @theme {
