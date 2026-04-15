@@ -577,7 +577,7 @@ export function TenantsPage() {
   const totalPages = meta?.totalPages ?? 1
 
   return (
-    <div style={{ padding: '32px', fontFamily: 'var(--font-sans)' }}>
+    <div className="r-page" style={{ fontFamily: 'var(--font-sans)' }}>
 
       {/* ── Cabeçalho ───────────────────────────────────────────── */}
       <div style={{
@@ -704,7 +704,7 @@ export function TenantsPage() {
           </div>
         ) : (
           <>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="r-table-wrap"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
               <thead>
                 <tr style={{ background: '#fafbfc', borderBottom: '1px solid #f0f2f5' }}>
                   {['Nome', 'Contato', 'Plano', 'Status', 'Criada em', ''].map((h) => (
@@ -730,7 +730,7 @@ export function TenantsPage() {
                   />
                 ))}
               </tbody>
-            </table>
+            </table></div>
             <Pagination page={meta?.page ?? 1} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}

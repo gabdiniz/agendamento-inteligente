@@ -76,7 +76,7 @@ export function PatientProfilePage() {
     <div className="r-page" style={{ maxWidth: '860px', fontFamily: 'var(--font-sans)' }}>
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px', flexWrap: 'wrap' }}>
         <Link
           to="/app/$slug/$section"
           params={{ slug, section: 'patients' }}
@@ -171,7 +171,8 @@ export function PatientProfilePage() {
             Nenhum agendamento encontrado.
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="r-table-wrap">
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '520px' }}>
             <thead>
               <tr style={{ background: '#fafbfc' }}>
                 {['Data', 'Horário', 'Profissional', 'Procedimento', 'Status'].map((h) => (
@@ -212,6 +213,7 @@ export function PatientProfilePage() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

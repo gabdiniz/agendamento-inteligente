@@ -181,7 +181,7 @@ export function EditProcedurePage() {
           </div>
 
           {/* Duração + Preço */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="r-grid-2">
             <div>
               <label style={labelStyle}>Duração (minutos) *</label>
               <input type="number" min={5} max={480} step={5} {...register('durationMinutes')} style={inputStyle} />

@@ -195,7 +195,7 @@ export function NewTenantPage() {
           </div>
 
           {/* E-mail + Telefone */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="r-grid-2">
             <div>
               <label style={labelStyle}>E-mail da clínica *</label>
               <input
@@ -222,7 +222,7 @@ export function NewTenantPage() {
           </div>
 
           {/* Plano + Endereço */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
+          <div className="r-grid-2">
             <div>
               <label style={labelStyle}>Plano</label>
               <select
@@ -266,7 +266,7 @@ export function NewTenantPage() {
           </div>
 
           {/* E-mail gestor + Telefone gestor */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="r-grid-2">
             <div>
               <label style={labelStyle}>E-mail *</label>
               <input

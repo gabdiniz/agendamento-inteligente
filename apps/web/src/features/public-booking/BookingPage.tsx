@@ -79,7 +79,7 @@ const styles = {
     zIndex: 1,
     maxWidth: '520px',
     margin: '0 auto',
-    padding: '40px 20px 80px',
+    padding: 'clamp(16px, 5vw, 40px) clamp(12px, 4vw, 20px) clamp(40px, 8vw, 80px)',
   } as React.CSSProperties,
 
   card: {
@@ -282,7 +282,7 @@ function Step1({
   }
 
   return (
-    <div style={{ padding: '28px' }}>
+    <div style={{ padding: 'clamp(16px, 5vw, 28px)' }}>
       <p style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#b0a899', marginBottom: '16px' }}>
         Selecione o profissional
       </p>
@@ -451,7 +451,7 @@ function Step2({
   }, [slug, professionalId, procedureId, selectedDate])
 
   return (
-    <div style={{ padding: '28px', animation: 'slideRight 0.3s ease both' }}>
+    <div style={{ padding: 'clamp(16px, 5vw, 28px)', animation: 'slideRight 0.3s ease both' }}>
       {/* Seletor de dias */}
       <p style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#b0a899', marginBottom: '14px' }}>
         Escolha o dia
@@ -534,7 +534,7 @@ function Step2({
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))',
           gap: '8px',
           animation: 'fadeIn 0.25s ease',
         }}>
@@ -602,7 +602,7 @@ function Step3({
   const [focusedField, setFocusedField] = useState<string | null>(null)
 
   return (
-    <div style={{ padding: '28px', animation: 'slideRight 0.3s ease both' }}>
+    <div style={{ padding: 'clamp(16px, 5vw, 28px)', animation: 'slideRight 0.3s ease both' }}>
       <p style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#b0a899', marginBottom: '20px' }}>
         Seus dados
       </p>

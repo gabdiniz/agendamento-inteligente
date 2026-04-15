@@ -146,7 +146,7 @@ export function NewPatientPage() {
           </div>
 
           {/* Telefone + E-mail */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="r-grid-2">
             <div>
               <label style={labelStyle}>Telefone *</label>
               <input
@@ -178,7 +178,7 @@ export function NewPatientPage() {
           </div>
 
           {/* Nascimento + Gênero */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="r-grid-2">
             <div>
               <label style={labelStyle}>Data de nascimento (opcional)</label>
               <input

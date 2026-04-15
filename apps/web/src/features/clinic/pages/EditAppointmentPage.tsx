@@ -109,7 +109,7 @@ export function EditAppointmentPage() {
         {/* Resumo atual */}
         <div style={{ padding: '16px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #f0f2f5' }}>
           <p style={{ margin: '0 0 10px', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Agendamento atual</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <div className="r-grid-2" style={{ gap: '8px' }}>
             {[
               ['Paciente',     apt.patient.name],
               ['Profissional', apt.professional.name],
