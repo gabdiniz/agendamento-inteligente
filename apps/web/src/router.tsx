@@ -47,6 +47,9 @@ import { PatientProfilePage } from '@/features/clinic/pages/PatientProfilePage'
 import { EditPatientPage } from '@/features/clinic/pages/EditPatientPage'
 import { ProfilePage } from '@/features/clinic/pages/ProfilePage'
 import { ChangePasswordPage } from '@/features/clinic/pages/ChangePasswordPage'
+import { ProceduresPage } from '@/features/clinic/pages/ProceduresPage'
+import { NewProcedurePage } from '@/features/clinic/pages/NewProcedurePage'
+import { EditProcedurePage } from '@/features/clinic/pages/EditProcedurePage'
 
 // ─── Dispatcher de seção ─────────────────────────────────────────────────────
 // Rota /$section serve dashboard | professionals | patients sem criar N rotas.
@@ -182,6 +185,26 @@ const changePasswordRoute = createRoute({
   component: ChangePasswordPage,
 })
 
+// ── Configurações: Procedimentos ─────────────────────────────────────────────
+
+const proceduresRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/configuracoes/procedimentos',
+  component: ProceduresPage,
+})
+
+const newProcedureRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/configuracoes/procedimentos/new',
+  component: NewProcedurePage,
+})
+
+const editProcedureRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/configuracoes/procedimentos/$id/edit',
+  component: EditProcedurePage,
+})
+
 // ─── Público — Booking ────────────────────────────────────────────────────────
 
 const publicRoute = createRoute({
@@ -212,6 +235,9 @@ const routeTree = rootRoute.addChildren([
     editAppointmentRoute,
     profileRoute,
     changePasswordRoute,
+    proceduresRoute,
+    newProcedureRoute,
+    editProcedureRoute,
   ]),
   publicRoute,
 ])

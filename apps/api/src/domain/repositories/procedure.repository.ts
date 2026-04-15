@@ -8,6 +8,7 @@ export interface ProcedureRecord {
   name: string
   description: string | null
   durationMinutes: number
+  priceCents: number | null  // preço em centavos; null = não informado
   color: string | null
   isActive: boolean
   createdAt: Date
@@ -18,6 +19,7 @@ export interface CreateProcedureData {
   name: string
   description?: string
   durationMinutes: number
+  priceCents?: number
   color?: string
 }
 
@@ -25,6 +27,7 @@ export interface UpdateProcedureData {
   name?: string
   description?: string | null
   durationMinutes?: number
+  priceCents?: number | null
   color?: string | null
 }
 
@@ -41,4 +44,5 @@ export interface IProcedureRepository {
   list(params: ListProceduresParams): Promise<{ data: ProcedureRecord[]; total: number; page: number; limit: number; totalPages: number }>
   update(id: string, data: UpdateProcedureData): Promise<ProcedureRecord>
   setActive(id: string, isActive: boolean): Promise<ProcedureRecord>
+  delete(id: string): Promise<void>
 }

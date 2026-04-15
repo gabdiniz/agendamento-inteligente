@@ -137,7 +137,7 @@ export function ClinicLayout() {
         </div>
 
         {/* Nav items */}
-        <nav style={{ flex: 1, padding: '0 12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <nav style={{ flex: 1, padding: '0 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {navItems.map((item) => {
             const fullPath = `/app/${slug}/${item.path}`
             const active = location.pathname === fullPath || location.pathname.startsWith(fullPath + '/')
@@ -192,6 +192,62 @@ export function ClinicLayout() {
               </Link>
             )
           })}
+        </nav>
+
+          {/* ── Configurações ─────────────────────────────────── */}
+          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f0f2f5' }}>
+            <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#b0bbc6', margin: '0 0 6px 12px' }}>
+              Configurações
+            </p>
+            {(() => {
+              const configPath = `/app/${slug}/configuracoes/procedimentos`
+              const configActive = location.pathname.startsWith(configPath)
+              return (
+                <Link
+                  to="/app/$slug/configuracoes/procedimentos"
+                  params={{ slug }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '9px 12px', borderRadius: '10px',
+                    fontSize: '13.5px',
+                    fontWeight: configActive ? 600 : 500,
+                    color: configActive ? 'var(--color-primary)' : '#4a5568',
+                    background: configActive ? 'color-mix(in srgb, var(--color-primary) 10%, white)' : 'transparent',
+                    textDecoration: 'none',
+                    transition: 'all 0.15s ease',
+                    position: 'relative',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!configActive) {
+                      (e.currentTarget as HTMLElement).style.background = '#f5f7fa'
+                      ;(e.currentTarget as HTMLElement).style.color = '#2d3748'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!configActive) {
+                      (e.currentTarget as HTMLElement).style.background = 'transparent'
+                      ;(e.currentTarget as HTMLElement).style.color = '#4a5568'
+                    }
+                  }}
+                >
+                  {configActive && (
+                    <span style={{
+                      position: 'absolute', left: 0, top: '6px', bottom: '6px',
+                      width: '3px', borderRadius: '0 3px 3px 0',
+                      background: 'var(--color-primary)',
+                    }} />
+                  )}
+                  <span style={{ color: configActive ? 'var(--color-primary)' : 'inherit', display: 'flex' }}>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </span>
+                  Procedimentos
+                </Link>
+              )
+            })()}
+          </div>
         </nav>
 
         {/* Footer — usuário com dropdown */}

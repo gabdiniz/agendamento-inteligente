@@ -14,10 +14,11 @@ export class PrismaProcedureRepository implements IProcedureRepository {
   async create(data: CreateProcedureData): Promise<ProcedureRecord> {
     return this.prisma.procedure.create({
       data: {
-        name: data.name,
-        description: data.description ?? null,
+        name:            data.name,
+        description:     data.description  ?? null,
         durationMinutes: data.durationMinutes,
-        color: data.color ?? null,
+        priceCents:      data.priceCents   ?? null,
+        color:           data.color        ?? null,
       },
     })
   }
@@ -49,15 +50,20 @@ export class PrismaProcedureRepository implements IProcedureRepository {
 
   async update(id: string, data: UpdateProcedureData): Promise<ProcedureRecord> {
     const updateData: Record<string, unknown> = {}
-    if (data.name !== undefined) updateData['name'] = data.name
-    if (data.description !== undefined) updateData['description'] = data.description
+    if (data.name            !== undefined) updateData['name']            = data.name
+    if (data.description     !== undefined) updateData['description']     = data.description
     if (data.durationMinutes !== undefined) updateData['durationMinutes'] = data.durationMinutes
-    if (data.color !== undefined) updateData['color'] = data.color
+    if (data.priceCents      !== undefined) updateData['priceCents']      = data.priceCents
+    if (data.color           !== undefined) updateData['color']           = data.color
 
     return this.prisma.procedure.update({ where: { id }, data: updateData })
   }
 
   async setActive(id: string, isActive: boolean): Promise<ProcedureRecord> {
     return this.prisma.procedure.update({ where: { id }, data: { isActive } })
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.prisma.procedure.delete({ where: { id } })
   }
 }

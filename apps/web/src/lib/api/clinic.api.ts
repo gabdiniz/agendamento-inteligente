@@ -46,6 +46,85 @@ export const clinicAuthApi = {
   },
 }
 
+// ─── Procedures ───────────────────────────────────────────────────────────────
+
+export interface Procedure {
+  id: string
+  name: string
+  description: string | null
+  durationMinutes: number
+  priceCents: number | null  // em centavos; null = não informado
+  color: string | null
+  isActive: boolean
+  createdAt: string
+}
+
+export interface PaginatedProcedures {
+  data: Procedure[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export interface CreateProcedurePayload {
+  name: string
+  description?: string
+  durationMinutes: number
+  priceCents?: number
+  color?: string
+}
+
+export interface UpdateProcedurePayload {
+  name?: string
+  description?: string | null
+  durationMinutes?: number
+  priceCents?: number | null
+  color?: string | null
+}
+
+export const proceduresApi = {
+  async list(params?: { page?: number; limit?: number; search?: string; isActive?: boolean }): Promise<PaginatedProcedures> {
+    const { data } = await apiClient.get('/procedures', { params })
+    return {
+      data:       data.data            as Procedure[],
+      total:      (data.meta?.total      ?? 0)  as number,
+      page:       (data.meta?.page       ?? 1)  as number,
+      limit:      (data.meta?.limit      ?? 20) as number,
+      totalPages: (data.meta?.totalPages ?? 1)  as number,
+    }
+  },
+
+  async get(id: string): Promise<Procedure> {
+    const { data } = await apiClient.get(`/procedures/${id}`)
+    return data.data as Procedure
+  },
+
+  async create(payload: CreateProcedurePayload): Promise<Procedure> {
+    const { data } = await apiClient.post('/procedures', payload)
+    return data.data as Procedure
+  },
+
+  async update(id: string, payload: UpdateProcedurePayload): Promise<Procedure> {
+    const { data } = await apiClient.patch(`/procedures/${id}`, payload)
+    return data.data as Procedure
+  },
+
+  async activate(id: string): Promise<Procedure> {
+    const { data } = await apiClient.patch(`/procedures/${id}/activate`)
+    return data.data as Procedure
+  },
+
+  async deactivate(id: string): Promise<Procedure> {
+    const { data } = await apiClient.patch(`/procedures/${id}/deactivate`)
+    return data.data as Procedure
+  },
+
+  async delete(id: string): Promise<void> {
+    await apiClient.delete(`/procedures/${id}`)
+  },
+}
+
 // ─── Professionals ────────────────────────────────────────────────────────────
 
 export interface Professional {
@@ -56,6 +135,7 @@ export interface Professional {
   color: string | null
   isActive: boolean
   userId: string | null
+  procedures: Pick<Procedure, 'id' | 'name' | 'durationMinutes' | 'priceCents' | 'color'>[]
 }
 
 export interface PaginatedProfessionals {
@@ -109,6 +189,11 @@ export const professionalsApi = {
   async deactivate(id: string): Promise<Professional> {
     const { data } = await apiClient.patch(`/professionals/${id}/deactivate`)
     return data.data as Professional
+  },
+
+  /** Substitui todos os procedimentos vinculados ao profissional de uma vez */
+  async linkProcedures(id: string, procedureIds: string[]): Promise<void> {
+    await apiClient.post(`/professionals/${id}/procedures`, { procedureIds })
   },
 }
 

@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { professionalsApi } from '@/lib/api/clinic.api'
+import { professionalsApi, proceduresApi } from '@/lib/api/clinic.api'
 import { clinicTokens } from '@/lib/api/client'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -47,22 +47,38 @@ export function NewProfessionalPage() {
   const params   = useParams({ strict: false }) as { slug?: string }
   const slug     = params.slug ?? clinicTokens.getSlug() ?? ''
 
-  const [serverError,   setServerError]   = useState<string | null>(null)
-  const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0]!)
+  const [serverError,      setServerError]      = useState<string | null>(null)
+  const [selectedColor,    setSelectedColor]    = useState(PRESET_COLORS[0]!)
+  const [selectedProcIds,  setSelectedProcIds]  = useState<string[]>([])
+
+  const { data: allProcedures } = useQuery({
+    queryKey: ['procedures-active'],
+    queryFn:  () => proceduresApi.list({ limit: 100, isActive: true }),
+  })
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
 
+  function toggleProc(id: string) {
+    setSelectedProcIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
+
   async function onSubmit(values: FormData) {
     setServerError(null)
     try {
-      await professionalsApi.create({
+      const prof = await professionalsApi.create({
         name:      values.name,
         specialty: values.specialty || undefined,
         bio:       values.bio       || undefined,
         color:     selectedColor,
       })
+      // Vincula procedimentos selecionados (se houver)
+      if (selectedProcIds.length > 0) {
+        await professionalsApi.linkProcedures(prof.id, selectedProcIds)
+      }
       await qc.invalidateQueries({ queryKey: ['professionals'] })
       void navigate({ to: '/app/$slug/professionals', params: { slug } })
     } catch {
@@ -158,6 +174,80 @@ export function NewProfessionalPage() {
                 padding: '12px 14px', resize: 'vertical',
               }}
             />
+          </div>
+
+          {/* Divisor */}
+          <div style={{ borderTop: '1px solid #f0f2f5', paddingTop: '4px' }} />
+
+          {/* Procedimentos vinculados */}
+          <div>
+            <label style={labelStyle}>Procedimentos realizados</label>
+            <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#64748b' }}>
+              Selecione os procedimentos que este profissional realiza.
+            </p>
+            {!allProcedures || allProcedures.data.length === 0 ? (
+              <p style={{ fontSize: '13px', color: '#94a3b8', fontStyle: 'italic' }}>
+                Nenhum procedimento cadastrado ainda.{' '}
+                <a
+                  href={`/app/${slug}/configuracoes/procedimentos/new`}
+                  style={{ color: 'var(--color-primary)', textDecoration: 'none', fontStyle: 'normal' }}
+                >
+                  Cadastrar procedimento →
+                </a>
+              </p>
+            ) : (
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                gap: '8px',
+              }}>
+                {allProcedures.data.map((proc) => {
+                  const checked = selectedProcIds.includes(proc.id)
+                  return (
+                    <label
+                      key={proc.id}
+                      onClick={() => toggleProc(proc.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        padding: '10px 12px', borderRadius: '10px', cursor: 'pointer',
+                        border: checked ? '1.5px solid var(--color-primary)' : '1.5px solid #e2e8f0',
+                        background: checked ? 'color-mix(in srgb, var(--color-primary) 6%, white)' : '#fff',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{
+                        width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+                        border: checked ? 'none' : '1.5px solid #d1d5db',
+                        background: checked ? 'var(--color-primary)' : '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {checked && (
+                          <svg width="10" height="10" fill="none" stroke="#fff" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {proc.color && (
+                            <span style={{
+                              width: '8px', height: '8px', borderRadius: '50%',
+                              background: proc.color, flexShrink: 0,
+                            }} />
+                          )}
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: '#1a2530', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {proc.name}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                          {proc.durationMinutes} min
+                          {proc.priceCents != null && ` · ${(proc.priceCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`}
+                        </span>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Divisor */}

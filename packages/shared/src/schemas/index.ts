@@ -71,16 +71,20 @@ export const updateProfessionalSchema = createProfessionalSchema.partial()
 // ─── Procedure ─────────────────────────────────────────────────────────────
 
 export const createProcedureSchema = z.object({
-  name: z.string().min(2).max(255),
-  description: z.string().optional(),
+  name:            z.string().min(2).max(255),
+  description:     z.string().optional(),
   durationMinutes: z.number().int().min(5).max(480),
-  color: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/)
-    .optional(),
+  priceCents:      z.number().int().min(0).optional(),  // centavos; ex: 15000 = R$150
+  color:           z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
 })
 
-export const updateProcedureSchema = createProcedureSchema.partial()
+export const updateProcedureSchema = z.object({
+  name:            z.string().min(2).max(255).optional(),
+  description:     z.string().optional().nullable(),
+  durationMinutes: z.number().int().min(5).max(480).optional(),
+  priceCents:      z.number().int().min(0).optional().nullable(),
+  color:           z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().nullable(),
+})
 
 // ─── Work Schedule ─────────────────────────────────────────────────────────
 

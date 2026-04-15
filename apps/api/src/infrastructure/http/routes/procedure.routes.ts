@@ -17,12 +17,13 @@ const listQuerySchema = paginationSchema.extend({
 
 // ─── Procedure Routes ─────────────────────────────────────────────────────────
 //
-// GET    /t/:slug/procedures              → todos (requireAuth)
-// GET    /t/:slug/procedures/:id          → um (requireAuth)
-// POST   /t/:slug/procedures              → criar (GESTOR)
-// PATCH  /t/:slug/procedures/:id          → editar (GESTOR)
-// PATCH  /t/:slug/procedures/:id/activate   → ativar (GESTOR)
-// PATCH  /t/:slug/procedures/:id/deactivate → desativar (GESTOR)
+// GET    /t/:slug/procedures                   → todos (requireAuth)
+// GET    /t/:slug/procedures/:id               → um (requireAuth)
+// POST   /t/:slug/procedures                   → criar (GESTOR)
+// PATCH  /t/:slug/procedures/:id               → editar (GESTOR)
+// PATCH  /t/:slug/procedures/:id/activate      → ativar (GESTOR)
+// PATCH  /t/:slug/procedures/:id/deactivate    → desativar (GESTOR)
+// DELETE /t/:slug/procedures/:id               → excluir (GESTOR)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const procedureRoutes: FastifyPluginAsync = async (app) => {
@@ -75,5 +76,15 @@ export const procedureRoutes: FastifyPluginAsync = async (app) => {
     const repo = new PrismaProcedureRepository(request.tenantPrisma!)
     const procedure = await new ToggleProcedureActiveUseCase(repo).execute(id, false)
     return reply.status(200).send({ success: true, data: procedure })
+  })
+
+  app.delete('/:id', { preHandler: [requireAuth, requireRoles('GESTOR')] }, async (request, reply) => {
+    const params = request.params as Record<string, string>
+    const id = uuidSchema.parse(params['id'])
+    const repo = new PrismaProcedureRepository(request.tenantPrisma!)
+    const procedure = await repo.findById(id)
+    if (!procedure) return reply.status(404).send({ success: false, error: 'Procedimento não encontrado' })
+    await repo.delete(id)
+    return reply.status(204).send()
   })
 }

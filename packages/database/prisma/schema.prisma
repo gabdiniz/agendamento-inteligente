@@ -358,6 +358,7 @@ model Procedure {
   name            String   @db.VarChar(255)
   description     String?
   durationMinutes Int
+  priceCents      Int?     // preço em centavos (opcional); ex: 15000 = R$ 150,00
   color           String?  @db.VarChar(7)
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now()) @db.Timestamptz
