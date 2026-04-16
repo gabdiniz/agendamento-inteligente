@@ -13,10 +13,12 @@ RUN npm install -g pnpm@9.15.0 --quiet
 
 # Copiar manifests do workspace para cache de layers
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
-COPY packages/config/package.json       ./packages/config/
-COPY packages/shared/package.json       ./packages/shared/
-COPY packages/database/package.json     ./packages/database/
-COPY apps/api/package.json              ./apps/api/
+COPY packages/config/eslint/package.json      ./packages/config/eslint/
+COPY packages/config/tailwind/package.json    ./packages/config/tailwind/
+COPY packages/config/typescript/package.json  ./packages/config/typescript/
+COPY packages/shared/package.json             ./packages/shared/
+COPY packages/database/package.json           ./packages/database/
+COPY apps/api/package.json                    ./apps/api/
 
 RUN pnpm install --frozen-lockfile
 
@@ -25,10 +27,12 @@ FROM deps AS builder
 WORKDIR /app
 
 # Copiar código-fonte
-COPY packages/config    ./packages/config
-COPY packages/shared    ./packages/shared
-COPY packages/database  ./packages/database
-COPY apps/api           ./apps/api
+COPY packages/config/eslint      ./packages/config/eslint
+COPY packages/config/tailwind    ./packages/config/tailwind
+COPY packages/config/typescript  ./packages/config/typescript
+COPY packages/shared             ./packages/shared
+COPY packages/database           ./packages/database
+COPY apps/api                    ./apps/api
 
 # Gerar Prisma client
 RUN pnpm --filter @myagendix/database exec prisma generate

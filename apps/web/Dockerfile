@@ -21,17 +21,21 @@ RUN npm install -g pnpm@9.15.0 --quiet
 
 # Manifests do workspace
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
-COPY packages/config/package.json   ./packages/config/
-COPY packages/shared/package.json   ./packages/shared/
-COPY packages/database/package.json ./packages/database/
-COPY apps/web/package.json          ./apps/web/
+COPY packages/config/eslint/package.json      ./packages/config/eslint/
+COPY packages/config/tailwind/package.json    ./packages/config/tailwind/
+COPY packages/config/typescript/package.json  ./packages/config/typescript/
+COPY packages/shared/package.json             ./packages/shared/
+COPY packages/database/package.json           ./packages/database/
+COPY apps/web/package.json                    ./apps/web/
 
 RUN pnpm install --frozen-lockfile
 
 # Código-fonte
-COPY packages/config  ./packages/config
-COPY packages/shared  ./packages/shared
-COPY apps/web         ./apps/web
+COPY packages/config/eslint      ./packages/config/eslint
+COPY packages/config/tailwind    ./packages/config/tailwind
+COPY packages/config/typescript  ./packages/config/typescript
+COPY packages/shared             ./packages/shared
+COPY apps/web                    ./apps/web
 
 # Build
 RUN pnpm --filter @myagendix/web run build
