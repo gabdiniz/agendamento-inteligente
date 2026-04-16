@@ -1,0 +1,40 @@
+# ─── .dockerignore ───────────────────────────────────────────────────────────
+# Exclui do contexto de build tudo que não é necessário.
+# Essencial no Windows: node_modules contém symlinks (pnpm) que causam
+# "archive/tar: unknown file mode" no Docker for Windows.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Dependências — recriadas dentro do container
+node_modules
+**/node_modules
+**/.pnpm-store
+
+# Builds anteriores
+dist
+**/dist
+.turbo
+**/.turbo
+
+# Git
+.git
+.gitignore
+
+# Deploy e docs (não necessários no container)
+deploy/
+*.md
+*.docx
+
+# Arquivos de ambiente (nunca incluir no contexto)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Editor e OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
