@@ -35,6 +35,8 @@ const listQuerySchema = paginationSchema.extend({
   professionalId: uuidSchema.optional(),
   patientId: uuidSchema.optional(),
   scheduledDate: z.string().date().optional(),
+  startDate: z.string().date().optional(),   // início do intervalo (para visão de calendário)
+  endDate: z.string().date().optional(),     // fim do intervalo
   status: z
     .enum(['SCHEDULED', 'PATIENT_PRESENT', 'IN_PROGRESS', 'COMPLETED', 'CANCELED'])
     .optional(),

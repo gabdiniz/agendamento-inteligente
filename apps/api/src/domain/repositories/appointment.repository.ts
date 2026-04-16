@@ -76,7 +76,9 @@ export interface ListAppointmentsParams {
   limit: number
   professionalId?: string
   patientId?: string
-  scheduledDate?: string   // "YYYY-MM-DD" — filtra exato
+  scheduledDate?: string   // "YYYY-MM-DD" — filtra dia exato (exclusivo com startDate/endDate)
+  startDate?: string       // "YYYY-MM-DD" — início do intervalo (inclusivo)
+  endDate?: string         // "YYYY-MM-DD" — fim do intervalo (inclusivo)
   status?: string
 }
 

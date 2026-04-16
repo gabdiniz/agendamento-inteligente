@@ -304,7 +304,9 @@ export const appointmentsApi = {
   async list(params?: {
     page?: number
     limit?: number
-    scheduledDate?: string
+    scheduledDate?: string    // dia exato — exclusivo com startDate/endDate
+    startDate?: string        // início do intervalo "YYYY-MM-DD" (para calendário)
+    endDate?: string          // fim do intervalo "YYYY-MM-DD"
     professionalId?: string
     patientId?: string
     status?: string

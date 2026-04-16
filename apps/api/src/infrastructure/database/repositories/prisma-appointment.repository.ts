@@ -131,14 +131,23 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
   }
 
   async list(params: ListAppointmentsParams): Promise<PaginatedAppointments> {
-    const { page, limit, professionalId, patientId, scheduledDate, status } = params
+    const { page, limit, professionalId, patientId, scheduledDate, startDate, endDate, status } = params
     const skip = (page - 1) * limit
 
     const where: Record<string, unknown> = {}
     if (professionalId) where['professionalId'] = professionalId
     if (patientId) where['patientId'] = patientId
     if (status) where['status'] = status
-    if (scheduledDate) where['scheduledDate'] = dateStringToDate(scheduledDate)
+
+    // Filtro por dia exato — tem precedência sobre startDate/endDate
+    if (scheduledDate) {
+      where['scheduledDate'] = dateStringToDate(scheduledDate)
+    } else if (startDate || endDate) {
+      const range: Record<string, Date> = {}
+      if (startDate) range['gte'] = dateStringToDate(startDate)
+      if (endDate)   range['lte'] = dateStringToDate(endDate)
+      where['scheduledDate'] = range
+    }
 
     const [rows, total] = await Promise.all([
       this.prisma.appointment.findMany({
