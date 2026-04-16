@@ -20,13 +20,17 @@ set -e  # Para na primeira falha
 # Detecta path correto da chave SSH no Windows (Git Bash) ou Linux/WSL
 # Pode sobrescrever: SSH_KEY=/caminho/da/chave bash deploy/deploy-dev.sh
 if [ -z "$SSH_KEY" ]; then
-  # Git Bash no Windows: USERPROFILE aponta para C:\Users\<user>
-  if [ -n "$USERPROFILE" ]; then
-    WIN_HOME=$(echo "$USERPROFILE" | sed 's|\\|/|g' | sed 's|C:|/c|')
-    SSH_KEY="${WIN_HOME}/.ssh/gabriel"
-  else
-    SSH_KEY="${HOME}/.ssh/gabriel"
-  fi
+  # Tenta os caminhos mais comuns, na ordem
+  for candidate in \
+    "/c/Users/gabri/.ssh/gabriel" \
+    "/c/Users/gabriel/.ssh/gabriel" \
+    "/c/Users/${USERNAME:-gabri}/.ssh/gabriel" \
+    "${HOME}/.ssh/gabriel"; do
+    if [ -f "$candidate" ]; then
+      SSH_KEY="$candidate"
+      break
+    fi
+  done
 fi
 
 REMOTE_USER="newronix"
@@ -60,7 +64,14 @@ done
 # ── Verificações iniciais ─────────────────────────────────────────────────────
 step "Verificações pré-deploy"
 
-[ -f "$SSH_KEY" ] || error "Chave SSH não encontrada: $SSH_KEY"
+[ -f "$SSH_KEY" ] || {
+  echo -e "${RED}[ERR]${NC}  Chave SSH não encontrada: $SSH_KEY"
+  echo ""
+  echo "  Rode passando o caminho explicitamente:"
+  echo -e "  ${BOLD}SSH_KEY=\"/c/Users/gabri/.ssh/gabriel\" bash deploy/deploy-dev.sh${NC}"
+  echo ""
+  exit 1
+}
 command -v docker &>/dev/null || error "Docker não encontrado. Instale o Docker Desktop."
 
 # Confirmar que está na raiz do projeto
