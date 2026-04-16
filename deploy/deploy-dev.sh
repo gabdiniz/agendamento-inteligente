@@ -34,7 +34,7 @@ if [ -z "$SSH_KEY" ]; then
 fi
 
 REMOTE_USER="newronix"
-REMOTE_HOST="192.168.15.232"
+REMOTE_HOST="${DEPLOY_HOST:-177.197.222.116}"   # IP público (dinâmico — ajuste se mudar)
 REMOTE_DIR="/opt/apps/myagendix/dev"
 
 API_IMAGE="myagendix-api:dev"
