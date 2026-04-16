@@ -37,6 +37,9 @@ REMOTE_USER="newronix"
 REMOTE_HOST="${DEPLOY_HOST:-177.197.222.116}"   # IP público (dinâmico — ajuste se mudar)
 REMOTE_DIR="/opt/apps/myagendix/dev"
 
+# Opções SSH: aceita novo host automaticamente mas rejeita chave alterada
+SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
+
 API_IMAGE="myagendix-api:dev"
 WEB_IMAGE="myagendix-web:dev"
 
@@ -94,7 +97,7 @@ success "Checks OK"
 # ── Conectividade SSH ─────────────────────────────────────────────────────────
 step "Testando conexão SSH com o servidor"
 
-ssh -i "$SSH_KEY" -o ConnectTimeout=10 -o BatchMode=yes \
+ssh -i "$SSH_KEY" $SSH_OPTS -o BatchMode=yes \
     "$REMOTE_USER@$REMOTE_HOST" "echo 'SSH OK'" \
   || error "Falha na conexão SSH. Verifique se o servidor está acessível."
 
@@ -138,7 +141,7 @@ success "Web exportada: /tmp/myagendix-web-dev.tar.gz ($(du -sh /tmp/myagendix-w
 # ── Preparar estrutura no servidor ────────────────────────────────────────────
 step "Preparando estrutura de diretórios no servidor"
 
-ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" "
+ssh -i "$SSH_KEY" $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
   mkdir -p $REMOTE_DIR
   mkdir -p /opt/apps/myagendix/{shared,docs}
   mkdir -p /opt/apps/_infra/logs
@@ -150,20 +153,20 @@ success "Estrutura criada"
 step "Enviando imagens para o servidor (pode demorar...)"
 
 info "Enviando imagem da API..."
-scp -i "$SSH_KEY" /tmp/myagendix-api-dev.tar.gz "$REMOTE_USER@$REMOTE_HOST:/tmp/"
+scp -i "$SSH_KEY" $SSH_OPTS /tmp/myagendix-api-dev.tar.gz "$REMOTE_USER@$REMOTE_HOST:/tmp/"
 
 info "Enviando imagem do Web..."
-scp -i "$SSH_KEY" /tmp/myagendix-web-dev.tar.gz "$REMOTE_USER@$REMOTE_HOST:/tmp/"
+scp -i "$SSH_KEY" $SSH_OPTS /tmp/myagendix-web-dev.tar.gz "$REMOTE_USER@$REMOTE_HOST:/tmp/"
 
 success "Imagens enviadas"
 
 # ── Enviar arquivos de configuração ──────────────────────────────────────────
 step "Enviando arquivos de configuração"
 
-scp -i "$SSH_KEY" deploy/dev/docker-compose.yml \
+scp -i "$SSH_KEY" $SSH_OPTS deploy/dev/docker-compose.yml \
     "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/docker-compose.yml"
 
-scp -i "$SSH_KEY" deploy/dev/.env \
+scp -i "$SSH_KEY" $SSH_OPTS deploy/dev/.env \
     "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/.env"
 
 success "Configs enviados"
@@ -171,10 +174,10 @@ success "Configs enviados"
 # ── Enviar nginx config ───────────────────────────────────────────────────────
 step "Instalando config do nginx"
 
-scp -i "$SSH_KEY" deploy/dev/nginx-site.conf \
+scp -i "$SSH_KEY" $SSH_OPTS deploy/dev/nginx-site.conf \
     "$REMOTE_USER@$REMOTE_HOST:/tmp/myagendix-dev.conf"
 
-ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" "
+ssh -i "$SSH_KEY" $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
   cp /tmp/myagendix-dev.conf /opt/apps/_infra/nginx/sites-available/myagendix-dev.conf
 
   # Ativar o site se ainda não estiver ativo
@@ -191,7 +194,7 @@ success "Nginx config instalado"
 # ── Carregar imagens no servidor ─────────────────────────────────────────────
 step "Carregando imagens Docker no servidor"
 
-ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" "
+ssh -i "$SSH_KEY" $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
   echo 'Carregando API...'
   docker load < /tmp/myagendix-api-dev.tar.gz
 
@@ -206,7 +209,7 @@ success "Imagens carregadas"
 # ── Subir containers ──────────────────────────────────────────────────────────
 step "Subindo containers"
 
-ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" "
+ssh -i "$SSH_KEY" $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
   cd $REMOTE_DIR
   sudo docker compose down --remove-orphans 2>/dev/null || true
   sudo docker compose up -d
@@ -217,7 +220,7 @@ success "Containers rodando"
 # ── Rodar migrations ──────────────────────────────────────────────────────────
 step "Rodando migrations do banco de dados"
 
-ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" "
+ssh -i "$SSH_KEY" $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
   cd $REMOTE_DIR
   # Aguarda API ficar healthy (até 60s)
   echo 'Aguardando API subir...'
@@ -239,14 +242,14 @@ ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" "
 # ── Validar nginx e recarregar ────────────────────────────────────────────────
 step "Testando e recarregando nginx"
 
-ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" "
+ssh -i "$SSH_KEY" $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
   sudo nginx -t && sudo systemctl reload nginx && echo 'Nginx recarregado OK'
 " || warn "Nginx: verifique a configuração manualmente"
 
 # ── Registro no catálogo ──────────────────────────────────────────────────────
 step "Registrando projeto no catálogo"
 
-ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" "
+ssh -i "$SSH_KEY" $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
   REGISTRY=/opt/apps/_registry/projetos.json
   mkdir -p /opt/apps/_registry
 
