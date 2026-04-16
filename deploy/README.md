@@ -14,9 +14,12 @@ Guia rápido para subir o projeto no servidor Newronix.
 cp deploy/dev/.env.example deploy/dev/.env
 ```
 
-Edite `deploy/dev/.env` com:
-- Senhas do banco de dados
-- Secrets JWT (gere com `openssl rand -hex 64`)
+Edite `deploy/dev/.env` com as senhas e secrets JWT.
+
+**Gerar secrets JWT** (rode 3x no PowerShell ou terminal):
+```powershell
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
 
 ## 2. Rodar o deploy
 

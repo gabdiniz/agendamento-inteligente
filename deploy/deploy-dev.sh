@@ -16,7 +16,19 @@
 set -e  # Para na primeira falha
 
 # ── Configurações ─────────────────────────────────────────────────────────────
-SSH_KEY="${HOME}/.ssh/gabriel"
+
+# Detecta path correto da chave SSH no Windows (Git Bash) ou Linux/WSL
+# Pode sobrescrever: SSH_KEY=/caminho/da/chave bash deploy/deploy-dev.sh
+if [ -z "$SSH_KEY" ]; then
+  # Git Bash no Windows: USERPROFILE aponta para C:\Users\<user>
+  if [ -n "$USERPROFILE" ]; then
+    WIN_HOME=$(echo "$USERPROFILE" | sed 's|\\|/|g' | sed 's|C:|/c|')
+    SSH_KEY="${WIN_HOME}/.ssh/gabriel"
+  else
+    SSH_KEY="${HOME}/.ssh/gabriel"
+  fi
+fi
+
 REMOTE_USER="newronix"
 REMOTE_HOST="192.168.15.232"
 REMOTE_DIR="/opt/apps/myagendix/dev"
