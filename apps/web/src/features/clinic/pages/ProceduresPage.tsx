@@ -266,7 +266,7 @@ export function ProceduresPage() {
         background: '#fff', borderRadius: '16px',
         border: '1px solid #f0f2f5',
         boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
-        overflow: 'hidden',
+        overflow: 'hidden',   /* mantém border-radius no header da tabela */
       }}>
         {isLoading ? (
           <div style={{ padding: '60px 32px', textAlign: 'center', color: '#94a3b8' }}>
@@ -294,6 +294,7 @@ export function ProceduresPage() {
           </div>
         ) : (
           <>
+            <div className="r-table-wrap">
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#fafbfc', borderBottom: '1px solid #f0f2f5' }}>
@@ -321,6 +322,7 @@ export function ProceduresPage() {
                 ))}
               </tbody>
             </table>
+            </div>
             {totalPages > 1 && (
               <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',

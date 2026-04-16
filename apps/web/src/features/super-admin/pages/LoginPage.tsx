@@ -138,7 +138,7 @@ export function LoginPage() {
           background: '#161b22',
           borderRadius: '16px',
           border: '1px solid #21262d',
-          padding: '28px',
+          padding: 'clamp(18px, 5vw, 28px)',
           boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.02)',
         }}>
           {serverError && (

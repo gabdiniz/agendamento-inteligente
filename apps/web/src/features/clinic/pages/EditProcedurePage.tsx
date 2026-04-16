@@ -144,13 +144,7 @@ export function EditProcedurePage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div style={{
-          background: '#fff', borderRadius: '16px',
-          border: '1px solid #f0f2f5',
-          boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
-          padding: '28px',
-          display: 'flex', flexDirection: 'column', gap: '22px',
-        }}>
+        <div className="r-card" style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
 
           {serverError && (
             <div style={{
@@ -241,7 +235,7 @@ export function EditProcedurePage() {
           </div>
 
           {/* Botões */}
-          <div style={{ display: 'flex', gap: '10px', paddingTop: '4px' }}>
+          <div className="r-btn-row" style={{ paddingTop: '4px' }}>
             <button type="button"
               onClick={() => void navigate({ to: '/app/$slug/configuracoes/procedimentos', params: { slug } })}
               style={{

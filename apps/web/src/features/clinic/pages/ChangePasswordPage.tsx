@@ -70,7 +70,7 @@ export function ChangePasswordPage() {
         </h1>
       </div>
 
-      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #f0f2f5', boxShadow: '0 1px 6px rgba(0,0,0,0.04)', padding: '28px' }}>
+      <div className="r-card">
 
         {success ? (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>

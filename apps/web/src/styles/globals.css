@@ -240,6 +240,12 @@ body {
 .r-hide-mobile  { display: initial; }
 .r-show-mobile  { display: none; }
 
+/* .lg-flex: exibe como flex apenas em telas >= 1024px (sidebar decorativa no login) */
+.lg-flex { display: none; }
+@media (min-width: 1024px) {
+  .lg-flex { display: flex !important; }
+}
+
 @media (max-width: 768px) {
   .r-hide-mobile { display: none !important; }
   .r-show-mobile { display: initial !important; }
@@ -301,6 +307,23 @@ body {
     align-items: stretch;
     gap: 12px;
   }
+}
+
+/* Card padrão — padding responsivo para formulários e perfil */
+.r-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #f0f2f5;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  padding: 32px;
+}
+
+@media (max-width: 768px) {
+  .r-card { padding: 24px; }
+}
+
+@media (max-width: 480px) {
+  .r-card { padding: 18px; }
 }
 
 /* Botões de ação em linha → full-width no mobile */

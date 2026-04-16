@@ -25,7 +25,7 @@ export function ProfilePage() {
 
       <div style={{ marginBottom: '28px', animation: 'fadeUp 0.35s ease both' }}>
         <button
-          onClick={() => void navigate({ to: '/app/$slug/dashboard', params: { slug } })}
+          onClick={() => void navigate({ to: '/app/$slug', params: { slug } })}
           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#64748b', padding: 0, marginBottom: '12px', fontFamily: 'var(--font-sans)' }}
         >
           <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,7 +38,7 @@ export function ProfilePage() {
         </h1>
       </div>
 
-      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #f0f2f5', boxShadow: '0 1px 6px rgba(0,0,0,0.04)', padding: '32px' }}>
+      <div className="r-card">
         {/* Avatar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '28px', paddingBottom: '28px', borderBottom: '1px solid #f0f2f5' }}>
           <div style={{

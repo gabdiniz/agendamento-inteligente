@@ -68,7 +68,7 @@ export function EditAppointmentPage() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['appointments'] })
       void qc.invalidateQueries({ queryKey: ['appointment', id] })
-      void navigate({ to: '/app/$slug/appointments', params: { slug } })
+      void navigate({ to: '/app/$slug/$section', params: { slug, section: 'appointments' } })
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -91,7 +91,7 @@ export function EditAppointmentPage() {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: '28px' }}>
         <button
-          onClick={() => void navigate({ to: '/app/$slug/appointments', params: { slug } })}
+          onClick={() => void navigate({ to: '/app/$slug/$section', params: { slug, section: 'appointments' } })}
           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#64748b', padding: 0, marginBottom: '12px', fontFamily: 'var(--font-sans)' }}
         >
           <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,7 +104,7 @@ export function EditAppointmentPage() {
         </h1>
       </div>
 
-      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #f0f2f5', boxShadow: '0 1px 6px rgba(0,0,0,0.04)', padding: '28px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
+      <div className="r-card" style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
 
         {/* Resumo atual */}
         <div style={{ padding: '16px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #f0f2f5' }}>
@@ -216,9 +216,9 @@ export function EditAppointmentPage() {
         )}
 
         {/* Botões */}
-        <div style={{ display: 'flex', gap: '10px', paddingTop: '4px' }}>
+        <div className="r-btn-row" style={{ paddingTop: '4px' }}>
           <button
-            onClick={() => void navigate({ to: '/app/$slug/appointments', params: { slug } })}
+            onClick={() => void navigate({ to: '/app/$slug/$section', params: { slug, section: 'appointments' } })}
             style={{ flex: 1, height: '44px', border: '1.5px solid #e2e8f0', borderRadius: '10px', background: '#fff', color: '#4a5568', fontSize: '14px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
           >
             Cancelar

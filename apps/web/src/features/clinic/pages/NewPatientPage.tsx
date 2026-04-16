@@ -73,7 +73,7 @@ export function NewPatientPage() {
         notes:     values.notes     || undefined,
       })
       await qc.invalidateQueries({ queryKey: ['patients'] })
-      void navigate({ to: '/app/$slug/patients', params: { slug } })
+      void navigate({ to: '/app/$slug/$section', params: { slug, section: 'patients' } })
     } catch {
       setServerError('Erro ao cadastrar paciente. Tente novamente.')
     }
@@ -85,7 +85,7 @@ export function NewPatientPage() {
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: '28px' }}>
         <button
-          onClick={() => void navigate({ to: '/app/$slug/patients', params: { slug } })}
+          onClick={() => void navigate({ to: '/app/$slug/$section', params: { slug, section: 'patients' } })}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             background: 'none', border: 'none', cursor: 'pointer',
@@ -112,13 +112,7 @@ export function NewPatientPage() {
 
       {/* ── Card ──────────────────────────────────────────────────────── */}
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div style={{
-          background: '#fff', borderRadius: '16px',
-          border: '1px solid #f0f2f5',
-          boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
-          padding: '28px',
-          display: 'flex', flexDirection: 'column', gap: '22px',
-        }}>
+        <div className="r-card" style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
 
           {serverError && (
             <div style={{
@@ -225,10 +219,10 @@ export function NewPatientPage() {
           </div>
 
           {/* Botões */}
-          <div style={{ display: 'flex', gap: '10px', paddingTop: '4px' }}>
+          <div className="r-btn-row" style={{ paddingTop: '4px' }}>
             <button
               type="button"
-              onClick={() => void navigate({ to: '/app/$slug/patients', params: { slug } })}
+              onClick={() => void navigate({ to: '/app/$slug/$section', params: { slug, section: 'patients' } })}
               style={{
                 flex: 1, height: '44px', border: '1.5px solid #e2e8f0',
                 borderRadius: '10px', background: '#fff', color: '#4a5568',
