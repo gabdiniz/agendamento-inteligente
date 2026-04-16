@@ -29,6 +29,7 @@ import { NewTenantPage } from '@/features/super-admin/pages/NewTenantPage'
 
 // ── Public Booking ───────────────────────────────────────────────────────────
 import { BookingPage } from '@/features/public-booking/BookingPage'
+import { WorkSchedulePage } from '@/features/clinic/pages/WorkSchedulePage'
 
 // ── Clinic ───────────────────────────────────────────────────────────────────
 import { ClinicLayout } from '@/features/clinic/ClinicLayout'
@@ -205,6 +206,14 @@ const editProcedureRoute = createRoute({
   component: EditProcedurePage,
 })
 
+// ── Horários de trabalho do profissional ─────────────────────────────────────
+
+const workScheduleRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/professionals/$id/schedule',
+  component: WorkSchedulePage,
+})
+
 // ─── Público — Booking ────────────────────────────────────────────────────────
 
 const publicRoute = createRoute({
@@ -238,6 +247,7 @@ const routeTree = rootRoute.addChildren([
     proceduresRoute,
     newProcedureRoute,
     editProcedureRoute,
+    workScheduleRoute,
   ]),
   publicRoute,
 ])

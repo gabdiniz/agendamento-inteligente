@@ -154,7 +154,7 @@ export interface CreateProfessionalPayload {
 }
 
 export const professionalsApi = {
-  async list(params?: { page?: number; limit?: number }): Promise<PaginatedProfessionals> {
+  async list(params?: { page?: number; limit?: number; isActive?: boolean }): Promise<PaginatedProfessionals> {
     const { data } = await apiClient.get('/professionals', { params })
     // Backend retorna { success, data: [...], meta: {total, page, limit, totalPages} }
     return {
@@ -306,6 +306,7 @@ export const appointmentsApi = {
     limit?: number
     scheduledDate?: string
     professionalId?: string
+    patientId?: string
     status?: string
   }): Promise<PaginatedAppointments> {
     const { data } = await apiClient.get('/appointments', { params })
@@ -341,5 +342,59 @@ export const appointmentsApi = {
   async cancel(id: string, reason?: string): Promise<Appointment> {
     const { data } = await apiClient.post(`/appointments/${id}/cancel`, { reason })
     return data.data as Appointment
+  },
+}
+
+// ─── Work Schedule ─────────────────────────────────────────────────────────────
+// Horários de trabalho dos profissionais.
+// dayOfWeek: 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface WorkScheduleRecord {
+  id: string
+  professionalId: string
+  dayOfWeek: number
+  startTime: string         // "HH:MM"
+  endTime: string           // "HH:MM"
+  slotIntervalMinutes: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface UpsertSchedulePayload {
+  startTime: string         // "HH:MM"
+  endTime: string           // "HH:MM"
+  slotIntervalMinutes?: number
+}
+
+export const workScheduleApi = {
+  /** Lista todos os dias cadastrados para um profissional */
+  async list(professionalId: string): Promise<WorkScheduleRecord[]> {
+    const { data } = await apiClient.get(`/professionals/${professionalId}/schedule`)
+    return data.data as WorkScheduleRecord[]
+  },
+
+  /** Cria ou atualiza o horário de um dia específico */
+  async upsert(professionalId: string, dayOfWeek: number, payload: UpsertSchedulePayload): Promise<WorkScheduleRecord> {
+    const { data } = await apiClient.put(`/professionals/${professionalId}/schedule/${dayOfWeek}`, payload)
+    return data.data as WorkScheduleRecord
+  },
+
+  /** Remove um dia do horário */
+  async remove(professionalId: string, dayOfWeek: number): Promise<void> {
+    await apiClient.delete(`/professionals/${professionalId}/schedule/${dayOfWeek}`)
+  },
+
+  /** Ativa um dia sem alterar os horários */
+  async activate(professionalId: string, dayOfWeek: number): Promise<WorkScheduleRecord> {
+    const { data } = await apiClient.patch(`/professionals/${professionalId}/schedule/${dayOfWeek}/activate`)
+    return data.data as WorkScheduleRecord
+  },
+
+  /** Desativa um dia sem remover os horários */
+  async deactivate(professionalId: string, dayOfWeek: number): Promise<WorkScheduleRecord> {
+    const { data } = await apiClient.patch(`/professionals/${professionalId}/schedule/${dayOfWeek}/deactivate`)
+    return data.data as WorkScheduleRecord
   },
 }

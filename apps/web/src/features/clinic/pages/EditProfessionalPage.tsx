@@ -133,16 +133,43 @@ export function EditProfessionalPage() {
           </svg>
           Voltar para profissionais
         </button>
-        <h1 style={{
-          margin: 0, fontSize: '26px', fontWeight: 400,
-          fontFamily: 'var(--font-display)', fontStyle: 'italic',
-          color: '#1a2530', letterSpacing: '-0.02em',
-        }}>
-          Editar profissional
-        </h1>
-        <p style={{ margin: '4px 0 0', fontSize: '13.5px', color: '#64748b' }}>
-          {prof?.name}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h1 style={{
+              margin: 0, fontSize: '26px', fontWeight: 400,
+              fontFamily: 'var(--font-display)', fontStyle: 'italic',
+              color: '#1a2530', letterSpacing: '-0.02em',
+            }}>
+              Editar profissional
+            </h1>
+            <p style={{ margin: '4px 0 0', fontSize: '13.5px', color: '#64748b' }}>
+              {prof?.name}
+            </p>
+          </div>
+
+          {/* Botão de acesso à agenda do profissional */}
+          <a
+            href={`/app/${slug}/professionals/${id}/schedule`}
+            onClick={(e) => {
+              e.preventDefault()
+              void navigate({ to: '/app/$slug/professionals/$id/schedule', params: { slug, id } })
+            }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '7px',
+              padding: '9px 16px', borderRadius: '10px',
+              border: '1.5px solid #e2e8f0', background: '#fff',
+              color: '#374151', fontSize: '13px', fontWeight: 600,
+              textDecoration: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font-sans)',
+            }}
+          >
+            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Horários de trabalho
+          </a>
+        </div>
       </div>
 
       {/* ── Card ──────────────────────────────────────────────────────── */}

@@ -52,6 +52,24 @@ function ProfessionalRow({
       </td>
       <td style={{ padding: '14px 16px', textAlign: 'right' }}>
         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+          {/* Horários de trabalho */}
+          <Link
+            to="/app/$slug/professionals/$id/schedule"
+            params={{ slug, id: prof.id }}
+            title="Horários de trabalho"
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: '30px', height: '30px', borderRadius: '8px',
+              background: '#f0f4ff', color: '#3b5bdb',
+              border: '1px solid #c5d0f5',
+              textDecoration: 'none',
+            }}
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </Link>
           <Link
             to="/app/$slug/professionals/$id/edit"
             params={{ slug, id: prof.id }}
