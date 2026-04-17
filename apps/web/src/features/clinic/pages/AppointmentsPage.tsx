@@ -11,7 +11,7 @@ import FullCalendar from '@fullcalendar/react'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import type { DateSelectArg, EventClickArg, DatesSetArg, EventContentArg } from '@fullcalendar/core'
+import type { DateSelectArg, EventClickArg, DatesSetArg, EventContentArg, EventDropArg } from '@fullcalendar/core'
 import ptBrLocale from '@fullcalendar/core/locales/pt-br'
 
 import { appointmentsApi, professionalsApi, type Appointment } from '@/lib/api/clinic.api'
@@ -492,6 +492,9 @@ export function AppointmentsPage() {
   // ── Loading ────────────────────────────────────────────────────────────────
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
+  // ── Drag-to-reschedule ───────────────────────────────────────────────────
+  const [dragError, setDragError] = useState<string | null>(null)
+
   // ── Queries ───────────────────────────────────────────────────────────────
   const { data: profsData } = useQuery({
     queryKey: ['professionals', slug],
@@ -584,7 +587,32 @@ export function AppointmentsPage() {
     })
   }, [navigate, slug])
 
+  const handleEventDrop = useCallback(async (info: EventDropArg) => {
+    const apt = info.event.extendedProps['appointment'] as Appointment | undefined
+    if (!apt) { info.revert(); return }
+
+    const newStart = info.event.start
+    if (!newStart) { info.revert(); return }
+
+    // FullCalendar trata strings sem timezone como horário local
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const newDate = `${newStart.getFullYear()}-${pad(newStart.getMonth() + 1)}-${pad(newStart.getDate())}`
+    const newTime = `${pad(newStart.getHours())}:${pad(newStart.getMinutes())}`
+
+    try {
+      await appointmentsApi.update(apt.id, { scheduledDate: newDate, startTime: newTime })
+      void qc.invalidateQueries({ queryKey: ['appointments-cal', slug] })
+      void qc.invalidateQueries({ queryKey: ['appointments-list', slug] })
+    } catch {
+      info.revert()
+      setDragError('Não foi possível reagendar. Verifique conflitos de agenda.')
+      setTimeout(() => setDragError(null), 5000)
+    }
+  }, [qc, slug])
+
   // ── FullCalendar events ────────────────────────────────────────────────────
+
+  const DRAGGABLE_STATUSES = ['SCHEDULED', 'PATIENT_PRESENT']
 
   const calendarEvents = (calData?.data ?? []).map((apt) => ({
     id: apt.id,
@@ -595,6 +623,7 @@ export function AppointmentsPage() {
     borderColor: apt.procedure.color ?? 'var(--color-primary)',
     textColor: '#fff',
     classNames: apt.status === 'CANCELED' ? ['fc-event-canceled'] : [],
+    editable: DRAGGABLE_STATUSES.includes(apt.status),  // drag só em statuses ativos
     extendedProps: { appointment: apt },
   }))
 
@@ -683,7 +712,10 @@ export function AppointmentsPage() {
         .fc .fc-scrollgrid td, .fc .fc-scrollgrid th { border-color: #f0f2f5 !important; }
         .fc .fc-event { border-radius: 6px !important; border-width: 0 !important; box-shadow: 0 1px 4px rgba(0,0,0,0.12); cursor: pointer; }
         .fc .fc-event:hover { opacity: 0.9; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-        .fc-event-canceled { opacity: 0.4 !important; }
+        .fc .fc-event[draggable="true"] { cursor: grab; }
+        .fc .fc-event[draggable="true"]:active { cursor: grabbing; }
+        .fc .fc-event.fc-event-dragging { opacity: 0.75 !important; box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important; transform: scale(1.02); }
+        .fc-event-canceled { opacity: 0.4 !important; cursor: default !important; }
         .fc .fc-now-indicator-line { border-color: var(--color-primary); }
         .fc .fc-now-indicator-arrow { border-top-color: var(--color-primary); }
         .fc .fc-highlight { background: color-mix(in srgb, var(--color-primary) 12%, white) !important; }
@@ -922,6 +954,28 @@ export function AppointmentsPage() {
           padding: '20px',
           position: 'relative',
         }}>
+          {/* Banner de erro do drag */}
+          {dragError && (
+            <div style={{
+              position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)',
+              zIndex: 20, display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '10px 16px', borderRadius: '10px',
+              background: '#fef2f2', border: '1px solid #fecaca',
+              boxShadow: '0 4px 16px rgba(220,38,38,0.15)',
+              animation: 'fadeUp 0.2s ease',
+              whiteSpace: 'nowrap',
+            }}>
+              <svg width="14" height="14" fill="none" stroke="#dc2626" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <span style={{ fontSize: '13px', color: '#b91c1c', fontWeight: 600 }}>{dragError}</span>
+              <button
+                onClick={() => setDragError(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: '0 0 0 4px', lineHeight: 1 }}
+              >✕</button>
+            </div>
+          )}
+
           {calLoading && (
             <div style={{
               position: 'absolute', top: '16px', right: '16px', zIndex: 10,
@@ -953,6 +1007,8 @@ export function AppointmentsPage() {
             events={calendarEvents}
             eventContent={(eventInfo) => <CalendarEventContent eventInfo={eventInfo} />}
             eventClick={handleEventClick}
+            editable={true}
+            eventDrop={handleEventDrop}
             selectable={true}
             select={handleDateSelect}
             datesSet={handleDatesSet}
