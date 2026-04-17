@@ -50,6 +50,7 @@ export async function createTenantSchema(tenantSlug: string): Promise<string> {
         env: { ...process.env, DATABASE_URL: tenantUrl.toString() },
         stdio: 'pipe', // captura output para não poluir o seed
         cwd: resolve(__dirname, '..'),
+        shell: true,  // necessário no Windows: .cmd/.bat precisam de shell para executar
       },
     )
   } catch (err: unknown) {
