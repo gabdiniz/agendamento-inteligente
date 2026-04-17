@@ -31,6 +31,7 @@ interface CreateTenantInput {
   phone?: string
   address?: string
   planType?: string
+  logoUrl?: string | null
   gestor: GestorInput
 }
 
@@ -67,6 +68,7 @@ export class CreateTenantUseCase {
       phone:    input.phone,
       address:  input.address,
       planType: input.planType,
+      logoUrl:  input.logoUrl,
     })
 
     // 3. Cria o schema PostgreSQL + aplica tabelas

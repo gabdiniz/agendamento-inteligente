@@ -25,6 +25,7 @@ export interface CreateTenantData {
   phone?: string
   address?: string
   planType?: string
+  logoUrl?: string | null
 }
 
 export interface UpdateTenantData {
@@ -33,6 +34,7 @@ export interface UpdateTenantData {
   phone?: string | null
   address?: string | null
   planType?: string
+  logoUrl?: string | null
 }
 
 export interface ListTenantsParams {

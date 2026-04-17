@@ -24,6 +24,7 @@ export interface Tenant {
   email: string
   phone: string | null
   address: string | null
+  logoUrl: string | null
   isActive: boolean
   planType: string
   createdAt: string
@@ -41,6 +42,7 @@ export interface CreateTenantPayload {
   phone?: string
   address?: string
   planType?: 'BASIC' | 'PRO'
+  logoUrl?: string | null
   gestor: {
     name: string
     email: string
@@ -55,6 +57,11 @@ export interface UpdateTenantPayload {
   phone?: string | null
   address?: string | null
   planType?: 'BASIC' | 'PRO'
+  logoUrl?: string | null
+}
+
+export interface UploadLogoResult {
+  url: string
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -113,5 +120,16 @@ export const superAdminApi = {
 
   async deleteTenant(id: string): Promise<void> {
     await saClient.delete(`/super-admin/tenants/${id}`)
+  },
+
+  // ─── Upload ───────────────────────────────────────────────────────────────
+
+  async uploadLogo(file: File): Promise<UploadLogoResult> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await saClient.post('/super-admin/upload/logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data.data as UploadLogoResult
   },
 }

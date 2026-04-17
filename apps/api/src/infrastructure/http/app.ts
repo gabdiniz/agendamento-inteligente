@@ -2,12 +2,16 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
+import multipart from '@fastify/multipart'
+import { createReadStream } from 'node:fs'
+import { join, extname } from 'node:path'
 
 import tenantPlugin from './middlewares/tenant.middleware.js'
 import { errorHandler } from './middlewares/error.middleware.js'
 import { authRoutes } from './routes/auth.routes.js'
 import { superAdminAuthRoutes } from './routes/super-admin-auth.routes.js'
 import { tenantManagementRoutes } from './routes/tenant-management.routes.js'
+import { uploadRoutes } from './routes/upload.routes.js'
 import { professionalRoutes } from './routes/professional.routes.js'
 import { procedureRoutes } from './routes/procedure.routes.js'
 import { workScheduleRoutes } from './routes/work-schedule.routes.js'
@@ -34,12 +38,50 @@ export async function buildApp() {
     max: 100,
     timeWindow: '1 minute',
   })
+  await app.register(multipart, {
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 }, // 5 MB max
+  })
 
   // ─── Health check (sem tenant, sem auth) ─────────────────────
   app.get('/health', async () => ({
     status: 'ok',
     timestamp: new Date().toISOString(),
   }))
+
+  // ─── Serving de logos de clínicas (público) ───────────────────
+  //
+  // Serve arquivos de /uploads/logos/:filename
+  // Não requer autenticação — logos são públicos (usados na booking page)
+  //
+  app.get('/uploads/logos/:filename', async (request, reply) => {
+    const { filename } = request.params as { filename: string }
+
+    // Segurança: permite apenas nomes de arquivo simples (sem path traversal)
+    if (!/^[\w-]+\.(png|jpg|jpeg|webp|svg|gif)$/i.test(filename)) {
+      return reply.status(400).send({ error: 'Nome de arquivo inválido.' })
+    }
+
+    const filepath = join(process.cwd(), 'uploads', 'logos', filename)
+    const ext = extname(filename).toLowerCase()
+    const contentTypeMap: Record<string, string> = {
+      '.png':  'image/png',
+      '.jpg':  'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.webp': 'image/webp',
+      '.svg':  'image/svg+xml',
+      '.gif':  'image/gif',
+    }
+    const contentType = contentTypeMap[ext] ?? 'application/octet-stream'
+
+    try {
+      const stream = createReadStream(filepath)
+      reply.header('Content-Type', contentType)
+      reply.header('Cache-Control', 'public, max-age=31536000, immutable')
+      return reply.send(stream)
+    } catch {
+      return reply.status(404).send({ error: 'Logo não encontrada.' })
+    }
+  })
 
   // ─── Tenant-scoped routes (/t/:slug/*) ───────────────────────
   //
@@ -73,6 +115,7 @@ export async function buildApp() {
     async (adminScope) => {
       await adminScope.register(superAdminAuthRoutes, { prefix: '/auth' })
       await adminScope.register(tenantManagementRoutes, { prefix: '/tenants' })
+      await adminScope.register(uploadRoutes, { prefix: '/upload' })
 
       adminScope.get('/health', async () => ({
         status: 'ok',

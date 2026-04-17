@@ -4,7 +4,7 @@
 // Usa React Hook Form + Zod para validação.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -72,6 +72,13 @@ export function NewTenantPage() {
   const [serverError,         setServerError]         = useState<string | null>(null)
   const [slugManuallyEdited,  setSlugManuallyEdited]  = useState(false)
 
+  // ── Logo upload ────────────────────────────────────────────────
+  const [logoPreview,   setLogoPreview]   = useState<string | null>(null)
+  const [logoUrl,       setLogoUrl]       = useState<string | null>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [logoError,     setLogoError]     = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { slug: '', planType: 'BASIC' },
@@ -81,6 +88,45 @@ export function NewTenantPage() {
     if (!slugManuallyEdited) {
       setValue('slug', toSlug(e.target.value), { shouldValidate: true })
     }
+  }
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validação no cliente
+    if (file.size > 5 * 1024 * 1024) {
+      setLogoError('Arquivo muito grande. Máximo 5 MB.')
+      return
+    }
+    const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/gif']
+    if (!allowed.includes(file.type)) {
+      setLogoError('Formato não suportado. Use PNG, JPG, WebP, SVG ou GIF.')
+      return
+    }
+
+    setLogoError(null)
+    // Preview local imediato
+    setLogoPreview(URL.createObjectURL(file))
+
+    // Upload imediato ao backend
+    setLogoUploading(true)
+    try {
+      const result = await superAdminApi.uploadLogo(file)
+      setLogoUrl(result.url)
+    } catch {
+      setLogoError('Falha no upload. Tente novamente.')
+      setLogoPreview(null)
+    } finally {
+      setLogoUploading(false)
+    }
+  }
+
+  function handleRemoveLogo() {
+    setLogoPreview(null)
+    setLogoUrl(null)
+    setLogoError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   async function onSubmit(values: FormData) {
@@ -93,6 +139,7 @@ export function NewTenantPage() {
         phone:    values.phone    || undefined,
         address:  values.address  || undefined,
         planType: values.planType,
+        logoUrl:  logoUrl || undefined,
         gestor: {
           name:     values.gestorName,
           email:    values.gestorEmail,
@@ -109,6 +156,7 @@ export function NewTenantPage() {
 
   return (
     <div style={{ padding: '32px', maxWidth: '680px', fontFamily: 'var(--font-sans)' }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
 
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: '28px' }}>
@@ -241,6 +289,101 @@ export function NewTenantPage() {
                 style={inputStyle}
               />
             </div>
+          </div>
+
+          {/* ── Logo da Clínica ───────────────────────────────────── */}
+          <div>
+            <label style={labelStyle}>Logo da clínica (opcional)</label>
+
+            {logoPreview ? (
+              // Preview com opção de remover
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{
+                  width: '80px', height: '80px', borderRadius: '12px',
+                  border: '1.5px solid #e2e8f0', overflow: 'hidden',
+                  background: '#f8fafc', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <img
+                    src={logoPreview}
+                    alt="Preview da logo"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  {logoUploading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#64748b' }}>
+                      <div style={{ width: '14px', height: '14px', border: '2px solid #e2e8f0', borderTopColor: 'var(--admin-color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                      Enviando...
+                    </div>
+                  ) : logoUrl ? (
+                    <p style={{ margin: '0 0 6px', fontSize: '12.5px', color: '#16a34a', fontWeight: 600 }}>
+                      ✓ Upload concluído
+                    </p>
+                  ) : null}
+                  {logoError && (
+                    <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#dc2626' }}>{logoError}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRemoveLogo}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: '12px', color: '#94a3b8', padding: 0,
+                      fontFamily: 'var(--font-sans)',
+                    }}
+                  >
+                    ✕ Remover logo
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Área de drop / botão de upload
+              <label
+                htmlFor="logo-upload"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: '10px', height: '80px',
+                  border: '1.5px dashed #cbd5e1', borderRadius: '12px',
+                  background: '#f8fafc', cursor: 'pointer',
+                  transition: 'border-color 0.15s, background 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--admin-color-primary)'
+                  ;(e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--admin-color-primary) 5%, white)'
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = '#cbd5e1'
+                  ;(e.currentTarget as HTMLElement).style.background = '#f8fafc'
+                }}
+              >
+                <svg width="20" height="20" fill="none" stroke="#94a3b8" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <div>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#64748b' }}>
+                    Clique para fazer upload
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#94a3b8' }}>
+                    PNG, JPG, WebP, SVG ou GIF · máx. 5 MB
+                  </p>
+                </div>
+              </label>
+            )}
+
+            <input
+              ref={fileInputRef}
+              id="logo-upload"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+              onChange={handleLogoChange}
+              style={{ display: 'none' }}
+            />
+
+            {logoError && !logoPreview && (
+              <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#dc2626' }}>{logoError}</p>
+            )}
           </div>
 
           {/* ── Seção: Gestor Inicial ────────────────────────────────── */}

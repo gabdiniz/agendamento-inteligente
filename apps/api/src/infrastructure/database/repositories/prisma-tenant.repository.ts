@@ -25,6 +25,7 @@ export class PrismaTenantRepository implements ITenantRepository {
         email: data.email,
         phone: data.phone ?? null,
         address: data.address ?? null,
+        logoUrl: data.logoUrl ?? null,
         ...(data.planType ? { planType: data.planType as 'BASIC' | 'PRO' } : {}),
       },
     })
@@ -85,6 +86,7 @@ export class PrismaTenantRepository implements ITenantRepository {
     if (data.phone !== undefined) updateData['phone'] = data.phone
     if (data.address !== undefined) updateData['address'] = data.address
     if (data.planType !== undefined) updateData['planType'] = data.planType
+    if (data.logoUrl !== undefined) updateData['logoUrl'] = data.logoUrl
 
     return this.prisma.tenant.update({
       where: { id },
