@@ -51,6 +51,7 @@ import { ChangePasswordPage } from '@/features/clinic/pages/ChangePasswordPage'
 import { ProceduresPage } from '@/features/clinic/pages/ProceduresPage'
 import { NewProcedurePage } from '@/features/clinic/pages/NewProcedurePage'
 import { EditProcedurePage } from '@/features/clinic/pages/EditProcedurePage'
+import { WaitlistPage } from '@/features/clinic/pages/WaitlistPage'
 
 // ─── Dispatcher de seção ─────────────────────────────────────────────────────
 // Rota /$section serve dashboard | professionals | patients sem criar N rotas.
@@ -61,6 +62,7 @@ function SectionDispatcher() {
     case 'appointments':  return <AppointmentsPage />
     case 'professionals': return <ProfessionalsPage />
     case 'patients':      return <PatientsPage />
+    case 'waitlist':      return <WaitlistPage />
     default:              return <DashboardPage />
   }
 }

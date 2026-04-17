@@ -273,8 +273,8 @@ export interface Appointment {
   status: string
   notes: string | null
   patient: { id: string; name: string; phone: string }
-  professional: { id: string; name: string; color: string | null }
-  procedure: { id: string; name: string; durationMinutes: number }
+  professional: { id: string; name: string; color: string | null; specialty: string | null }
+  procedure: { id: string; name: string; durationMinutes: number; color: string | null }
 }
 
 export interface PaginatedAppointments {
@@ -398,5 +398,107 @@ export const workScheduleApi = {
   async deactivate(professionalId: string, dayOfWeek: number): Promise<WorkScheduleRecord> {
     const { data } = await apiClient.patch(`/professionals/${professionalId}/schedule/${dayOfWeek}/deactivate`)
     return data.data as WorkScheduleRecord
+  },
+}
+
+// ─── Waitlist ─────────────────────────────────────────────────────────────────
+// Status: WAITING → NOTIFIED → CONFIRMED | EXPIRED | REMOVED
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface WaitlistEntry {
+  id: string
+  patientId: string
+  professionalId: string | null
+  procedureId: string
+  preferredDateFrom: string | null   // "YYYY-MM-DD"
+  preferredDateTo: string | null     // "YYYY-MM-DD"
+  minAdvanceMinutes: number
+  status: 'WAITING' | 'NOTIFIED' | 'CONFIRMED' | 'EXPIRED' | 'REMOVED'
+  notifiedAt: string | null
+  confirmedAt: string | null
+  expiresAt: string | null
+  appointmentId: string | null
+  createdAt: string
+  updatedAt: string
+  patient: { id: string; name: string; phone: string; email: string | null; preferredContactChannel: string | null }
+  professional: { id: string; name: string } | null
+  procedure: { id: string; name: string; durationMinutes: number }
+}
+
+export interface PaginatedWaitlist {
+  data: WaitlistEntry[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export interface CreateWaitlistPayload {
+  patientPhone: string
+  patientName: string
+  patientEmail?: string
+  procedureId: string
+  professionalId?: string
+  preferredDateFrom?: string
+  preferredDateTo?: string
+  minAdvanceMinutes?: number
+}
+
+export const waitlistApi = {
+  async list(params?: {
+    page?: number
+    limit?: number
+    status?: string
+    procedureId?: string
+    professionalId?: string
+    patientId?: string
+  }): Promise<PaginatedWaitlist> {
+    const { data } = await apiClient.get('/waitlist', { params })
+    return {
+      data:       data.data                  as WaitlistEntry[],
+      total:      (data.meta?.total      ?? 0)  as number,
+      page:       (data.meta?.page       ?? 1)  as number,
+      limit:      (data.meta?.limit      ?? 20) as number,
+      totalPages: (data.meta?.totalPages ?? 1)  as number,
+    }
+  },
+
+  async get(id: string): Promise<WaitlistEntry> {
+    const { data } = await apiClient.get(`/waitlist/${id}`)
+    return data.data as WaitlistEntry
+  },
+
+  async create(payload: CreateWaitlistPayload): Promise<WaitlistEntry> {
+    const { data } = await apiClient.post('/waitlist', payload)
+    return data.data as WaitlistEntry
+  },
+
+  /** Confirma a entrada e opcionalmente vincula a um agendamento */
+  async confirm(id: string, appointmentId?: string): Promise<WaitlistEntry> {
+    const { data } = await apiClient.patch(`/waitlist/${id}/confirm`, { appointmentId })
+    return data.data as WaitlistEntry
+  },
+
+  /** Marca como expirada (paciente não respondeu à notificação) */
+  async expire(id: string): Promise<WaitlistEntry> {
+    const { data } = await apiClient.patch(`/waitlist/${id}/expire`)
+    return data.data as WaitlistEntry
+  },
+
+  /** Remove da lista (desistência ou decisão da staff) */
+  async remove(id: string): Promise<WaitlistEntry> {
+    const { data } = await apiClient.patch(`/waitlist/${id}/remove`)
+    return data.data as WaitlistEntry
+  },
+
+  /** Busca candidatos para uma vaga e dispara notificações */
+  async checkVacancies(params: {
+    procedureId: string
+    professionalId?: string
+    vacancyDate: string
+    vacancyStartTime: string
+  }): Promise<WaitlistEntry[]> {
+    const { data } = await apiClient.post('/waitlist/check-vacancies', params)
+    return data.data as WaitlistEntry[]
   },
 }
