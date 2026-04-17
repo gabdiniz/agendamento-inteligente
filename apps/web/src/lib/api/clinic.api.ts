@@ -502,3 +502,91 @@ export const waitlistApi = {
     return data.data as WaitlistEntry[]
   },
 }
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+// Status:  PENDING → SENT | FAILED → (retry) → SENT | READ
+// Canais:  WHATSAPP | SMS | EMAIL
+// Tipos:   APPOINTMENT_CONFIRMATION | APPOINTMENT_REMINDER | WAITLIST_VACANCY |
+//          CAMPAIGN | RETENTION_SUGGESTION | CUSTOM
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type NotificationStatus   = 'PENDING' | 'SENT' | 'FAILED' | 'READ'
+export type NotificationChannel  = 'WHATSAPP' | 'SMS' | 'EMAIL'
+export type NotificationType     =
+  | 'APPOINTMENT_CONFIRMATION'
+  | 'APPOINTMENT_REMINDER'
+  | 'WAITLIST_VACANCY'
+  | 'CAMPAIGN'
+  | 'RETENTION_SUGGESTION'
+  | 'CUSTOM'
+
+export interface NotificationRecord {
+  id: string
+  patientId: string | null
+  userId: string | null
+  type: NotificationType
+  channel: NotificationChannel
+  recipient: string
+  content: string
+  status: NotificationStatus
+  appointmentId: string | null
+  externalId: string | null
+  sentAt: string | null
+  failedReason: string | null
+  createdAt: string
+}
+
+export interface PaginatedNotifications {
+  data: NotificationRecord[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export interface SendNotificationPayload {
+  type: NotificationType
+  channel: NotificationChannel
+  recipient: string
+  content: string
+  subject?: string       // somente EMAIL
+  htmlContent?: string   // somente EMAIL
+  patientId?: string
+  appointmentId?: string
+}
+
+export const notificationsApi = {
+  async list(params?: {
+    page?: number
+    limit?: number
+    status?: NotificationStatus
+    type?: NotificationType
+    channel?: NotificationChannel
+    patientId?: string
+    appointmentId?: string
+  }): Promise<PaginatedNotifications> {
+    const { data } = await apiClient.get('/notifications', { params })
+    return {
+      data:       data.data                  as NotificationRecord[],
+      total:      (data.meta?.total      ?? 0)  as number,
+      page:       (data.meta?.page       ?? 1)  as number,
+      limit:      (data.meta?.limit      ?? 20) as number,
+      totalPages: (data.meta?.totalPages ?? 1)  as number,
+    }
+  },
+
+  async send(payload: SendNotificationPayload): Promise<NotificationRecord> {
+    const { data } = await apiClient.post('/notifications', payload)
+    return data.data as NotificationRecord
+  },
+
+  async retry(id: string): Promise<NotificationRecord> {
+    const { data } = await apiClient.post(`/notifications/${id}/retry`)
+    return data.data as NotificationRecord
+  },
+
+  async markRead(id: string): Promise<NotificationRecord> {
+    const { data } = await apiClient.patch(`/notifications/${id}/read`)
+    return data.data as NotificationRecord
+  },
+}
