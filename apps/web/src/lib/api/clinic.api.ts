@@ -57,6 +57,7 @@ export interface Procedure {
   color: string | null
   isActive: boolean
   createdAt: string
+  professionalsCount?: number  // quantos profissionais executam este procedimento
 }
 
 export interface PaginatedProcedures {
@@ -291,6 +292,7 @@ export interface CreateAppointmentPayload {
   procedureId: string
   scheduledDate: string
   startTime: string
+  durationMinutes?: number  // sobrescreve a duração padrão do procedimento
   notes?: string
 }
 

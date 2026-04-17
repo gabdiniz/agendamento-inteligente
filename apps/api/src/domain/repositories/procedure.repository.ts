@@ -13,6 +13,7 @@ export interface ProcedureRecord {
   isActive: boolean
   createdAt: Date
   updatedAt: Date
+  professionalsCount?: number  // quantos profissionais executam este procedimento
 }
 
 export interface CreateProcedureData {

@@ -40,10 +40,21 @@ export class PrismaProcedureRepository implements IProcedureRepository {
       ]
     }
 
-    const [data, total] = await Promise.all([
-      this.prisma.procedure.findMany({ where, skip, take: limit, orderBy: { name: 'asc' } }),
+    const [rows, total] = await Promise.all([
+      this.prisma.procedure.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { name: 'asc' },
+        include: { _count: { select: { professionals: true } } },
+      }),
       this.prisma.procedure.count({ where }),
     ])
+
+    const data: ProcedureRecord[] = rows.map(({ _count, ...proc }) => ({
+      ...proc,
+      professionalsCount: _count.professionals,
+    }))
 
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) }
   }

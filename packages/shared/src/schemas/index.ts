@@ -134,6 +134,9 @@ export const createAppointmentSchema = z.object({
   scheduledDate: z.string().date(),
   startTime: z.string().regex(/^([0-1]\d|2[0-3]):[0-5]\d$/),
   notes: z.string().optional(),
+  // Sobrescreve a duração padrão do procedimento para este agendamento específico.
+  // Se omitido, usa procedure.durationMinutes.
+  durationMinutes: z.number().int().min(5).max(480).optional(),
 })
 
 export const cancelAppointmentSchema = z.object({

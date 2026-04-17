@@ -35,6 +35,8 @@ interface CreateAppointmentInput {
   startTime: string       // "HH:MM"
   notes?: string
   createdByUserId?: string
+  /** Duração em minutos — sobrescreve procedure.durationMinutes para este agendamento */
+  durationMinutes?: number
 }
 
 export class CreateAppointmentUseCase {
@@ -66,9 +68,10 @@ export class CreateAppointmentUseCase {
     if (!procedure) throw new NotFoundError('Procedimento')
     if (!procedure.isActive) throw new ValidationError('Procedimento está inativo')
 
-    // ── 2. Calcular endTime a partir da duração do procedimento ───────────
+    // ── 2. Calcular endTime — usa override se fornecido, senão padrão do procedimento ───
 
-    const endTime = addMinutes(startTime, procedure.durationMinutes)
+    const duration = input.durationMinutes ?? procedure.durationMinutes
+    const endTime  = addMinutes(startTime, duration)
 
     // Sanity check: endTime não pode passar da meia-noite
     if (toMinutes(endTime) <= toMinutes(startTime)) {

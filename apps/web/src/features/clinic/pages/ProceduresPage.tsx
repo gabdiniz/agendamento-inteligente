@@ -125,6 +125,25 @@ function ProcedureRow({
         {procedure.durationMinutes} min
       </td>
 
+      {/* Profissionais */}
+      <td style={{ padding: '14px 16px' }}>
+        {procedure.professionalsCount !== undefined ? (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '5px',
+            fontSize: '12.5px', color: procedure.professionalsCount > 0 ? '#2563eb' : '#94a3b8',
+            fontWeight: 600,
+          }}>
+            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {procedure.professionalsCount}
+          </span>
+        ) : (
+          <span style={{ color: '#cbd5e1', fontSize: '13px' }}>—</span>
+        )}
+      </td>
+
       {/* Preço */}
       <td style={{ padding: '14px 16px', fontSize: '13px', color: '#374151' }}>
         {formatPrice(procedure.priceCents)}
@@ -298,7 +317,7 @@ export function ProceduresPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#fafbfc', borderBottom: '1px solid #f0f2f5' }}>
-                  {['Procedimento', 'Duração', 'Preço', 'Status', ''].map((h) => (
+                  {['Procedimento', 'Duração', 'Profissionais', 'Preço', 'Status', ''].map((h) => (
                     <th key={h} style={{
                       padding: '11px 16px', textAlign: 'left',
                       fontSize: '11px', fontWeight: 700,

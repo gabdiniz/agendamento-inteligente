@@ -61,6 +61,7 @@ export function NewAppointmentPage() {
   const [selectedProcId, setSelectedProcId] = useState('')
   const [selectedDate, setSelectedDate]     = useState(todayISO())
   const [selectedSlot, setSelectedSlot]     = useState<TimeSlot | null>(null)
+  const [durationOverride, setDurationOverride] = useState<number | undefined>(undefined)
   const [notes, setNotes]                   = useState('')
   const [errorMsg, setErrorMsg]             = useState('')
 
@@ -78,7 +79,8 @@ export function NewAppointmentPage() {
   })
 
   // ── Busca slots disponíveis ──────────────────────────────────────────────
-  const selectedProc = selectedProf?.procedures.find((p) => p.id === selectedProcId)
+  const selectedProc    = selectedProf?.procedures.find((p) => p.id === selectedProcId)
+  const effectiveDuration = durationOverride ?? selectedProc?.durationMinutes
 
   const {
     data: slots,
@@ -97,6 +99,9 @@ export function NewAppointmentPage() {
   // Reset procedimento quando muda profissional
   useEffect(() => { setSelectedProcId(''); setSelectedSlot(null) }, [selectedProf?.id])
 
+  // Reset duração quando muda procedimento (volta ao padrão)
+  useEffect(() => { setDurationOverride(undefined) }, [selectedProcId])
+
   // ── Mutation ─────────────────────────────────────────────────────────────
   const createMutation = useMutation({
     mutationFn: () => appointmentsApi.create({
@@ -105,6 +110,10 @@ export function NewAppointmentPage() {
       procedureId: selectedProcId,
       scheduledDate: selectedDate,
       startTime: selectedSlot!.startTime,
+      // Envia durationMinutes só se o usuário alterou o padrão
+      durationMinutes: durationOverride !== undefined && durationOverride !== selectedProc?.durationMinutes
+        ? durationOverride
+        : undefined,
       notes: notes || undefined,
     }),
     onSuccess: () => {
@@ -273,6 +282,50 @@ export function NewAppointmentPage() {
           </div>
         )}
 
+        {/* ── Duração (editável) ────────────────────────────────────────── */}
+        {selectedProc && (
+          <div>
+            <label style={labelStyle}>
+              Duração da consulta
+              {durationOverride !== undefined && durationOverride !== selectedProc.durationMinutes && (
+                <span style={{ marginLeft: '8px', fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: '#f59e0b' }}>
+                  (padrão: {selectedProc.durationMinutes} min)
+                </span>
+              )}
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <input
+                type="number"
+                min={5}
+                max={480}
+                step={5}
+                value={durationOverride ?? selectedProc.durationMinutes}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10)
+                  setDurationOverride(isNaN(v) ? undefined : Math.max(5, Math.min(480, v)))
+                }}
+                style={{ ...inputStyle, width: '110px' }}
+              />
+              <span style={{ fontSize: '13px', color: '#64748b' }}>minutos</span>
+              {durationOverride !== undefined && durationOverride !== selectedProc.durationMinutes && (
+                <button
+                  onClick={() => setDurationOverride(undefined)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '12px', color: '#94a3b8', padding: '4px 8px',
+                    borderRadius: '6px', fontFamily: 'var(--font-sans)',
+                  }}
+                >
+                  ↺ Restaurar padrão
+                </button>
+              )}
+            </div>
+            <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#94a3b8' }}>
+              Altere aqui se esta consulta específica tiver duração diferente do padrão.
+            </p>
+          </div>
+        )}
+
         {/* ── Data ──────────────────────────────────────────────────────── */}
         {selectedProcId && (
           <div>
@@ -292,9 +345,9 @@ export function NewAppointmentPage() {
           <div>
             <label style={labelStyle}>
               Horário disponível
-              {selectedProc && (
+              {effectiveDuration && (
                 <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: '#94a3b8', marginLeft: '8px' }}>
-                  duração: {selectedProc.durationMinutes} min
+                  duração: {effectiveDuration} min
                 </span>
               )}
             </label>
@@ -378,7 +431,11 @@ export function NewAppointmentPage() {
               <strong>{selectedPatient!.name}</strong> com <strong>{selectedProf!.name}</strong>
             </p>
             <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
-              {selectedProc?.name} · {selectedDate.split('-').reverse().join('/')} às {selectedSlot!.startTime}
+              {selectedProc?.name}
+              {effectiveDuration && effectiveDuration !== selectedProc?.durationMinutes && (
+                <span style={{ color: '#f59e0b' }}> · {effectiveDuration} min</span>
+              )}
+              {' · '}{selectedDate.split('-').reverse().join('/')} às {selectedSlot!.startTime}
             </p>
           </div>
         )}
