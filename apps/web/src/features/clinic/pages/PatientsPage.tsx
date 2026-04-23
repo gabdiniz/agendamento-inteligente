@@ -2,25 +2,38 @@
 
 import { useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { patientsApi, type Patient } from '@/lib/api/clinic.api'
 import { clinicTokens } from '@/lib/api/client'
-import { Button } from '@/components/ui/Button'
 
-function PatientRow({ patient, slug }: { patient: Patient; slug: string }) {
+function PatientRow({
+  patient,
+  slug,
+  onToggle,
+  isToggling,
+}: {
+  patient: Patient
+  slug: string
+  onToggle: (p: Patient) => void
+  isToggling: boolean
+}) {
   const age = patient.birthDate
     ? Math.floor((Date.now() - new Date(patient.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
     : null
 
   return (
-    <tr style={{ borderBottom: '1px solid #f0f2f5' }}>
+    <tr style={{ borderBottom: '1px solid #f0f2f5', opacity: patient.isActive ? 1 : 0.6 }}>
       <td style={{ padding: '14px 16px' }}>
-        <p style={{ margin: '0 0 3px', fontSize: '13px', fontWeight: 600, color: '#1a2530' }}>
-          {patient.name}
-        </p>
-        {age !== null && (
-          <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>{age} anos</p>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div>
+            <p style={{ margin: '0 0 3px', fontSize: '13px', fontWeight: 600, color: '#1a2530' }}>
+              {patient.name}
+            </p>
+            {age !== null && (
+              <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>{age} anos</p>
+            )}
+          </div>
+        </div>
       </td>
       <td style={{ padding: '14px 16px', fontSize: '13px', color: '#4a5568' }}>
         {patient.phone}
@@ -30,6 +43,16 @@ function PatientRow({ patient, slug }: { patient: Patient; slug: string }) {
       </td>
       <td style={{ padding: '14px 16px', fontSize: '13px', color: '#94a3b8' }}>
         {patient.city ?? '—'}
+      </td>
+      <td style={{ padding: '14px 16px' }}>
+        <span style={{
+          display: 'inline-block', borderRadius: '20px', padding: '3px 10px',
+          background: patient.isActive ? '#ebfbee' : '#fff1f1',
+          color: patient.isActive ? '#2f9e44' : '#c92a2a',
+          fontSize: '12px', fontWeight: 600,
+        }}>
+          {patient.isActive ? 'Ativo' : 'Inativo'}
+        </span>
       </td>
       <td style={{ padding: '14px 16px', fontSize: '13px', color: '#94a3b8' }}>
         {new Date(patient.createdAt).toLocaleDateString('pt-BR')}
@@ -62,6 +85,22 @@ function PatientRow({ patient, slug }: { patient: Patient; slug: string }) {
           >
             Editar
           </Link>
+          <button
+            onClick={() => onToggle(patient)}
+            disabled={isToggling}
+            style={{
+              padding: '5px 10px', borderRadius: '8px',
+              background: patient.isActive ? '#fef2f2' : '#ebfbee',
+              color: patient.isActive ? '#dc2626' : '#2f9e44',
+              border: patient.isActive ? '1px solid #fecaca' : '1px solid #b2f2bb',
+              fontSize: '12px', fontWeight: 600,
+              cursor: isToggling ? 'not-allowed' : 'pointer',
+              fontFamily: 'var(--font-sans)',
+              opacity: isToggling ? 0.6 : 1,
+            }}
+          >
+            {isToggling ? '...' : patient.isActive ? 'Desativar' : 'Ativar'}
+          </button>
         </div>
       </td>
     </tr>
@@ -71,13 +110,32 @@ function PatientRow({ patient, slug }: { patient: Patient; slug: string }) {
 export function PatientsPage() {
   const params = useParams({ strict: false }) as { slug?: string }
   const slug = params.slug ?? clinicTokens.getSlug() ?? ''
+  const qc = useQueryClient()
+
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [page, setPage] = useState(1)
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['patients', { page, search }],
-    queryFn: () => patientsApi.list({ page, limit: 20, search: search || undefined }),
+    queryKey: ['patients', { page, search, activeFilter }],
+    queryFn: () => patientsApi.list({
+      page,
+      limit: 20,
+      search: search || undefined,
+      ...(activeFilter !== 'all' ? { isActive: activeFilter === 'active' } : {}),
+    }),
+  })
+
+  const toggleMutation = useMutation({
+    mutationFn: (p: Patient) =>
+      p.isActive ? patientsApi.deactivate(p.id) : patientsApi.activate(p.id),
+    onMutate: (p) => setTogglingId(p.id),
+    onSettled: () => {
+      setTogglingId(null)
+      qc.invalidateQueries({ queryKey: ['patients'] })
+    },
   })
 
   function handleSearch(e: React.FormEvent) {
@@ -88,6 +146,12 @@ export function PatientsPage() {
 
   const patients = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
+
+  const filterButtons: { label: string; value: 'all' | 'active' | 'inactive' }[] = [
+    { label: 'Todos', value: 'all' },
+    { label: 'Ativos', value: 'active' },
+    { label: 'Inativos', value: 'inactive' },
+  ]
 
   return (
     <div className="r-page" style={{ maxWidth: '1200px', fontFamily: 'var(--font-sans)' }}>
@@ -124,15 +188,14 @@ export function PatientsPage() {
         display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'flex-end',
         padding: '16px', background: '#fff', borderRadius: '14px',
         border: '1px solid #f0f2f5', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+        flexWrap: 'wrap',
       }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, maxWidth: '320px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '200px', maxWidth: '320px' }}>
           <label style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             Buscar Paciente
           </label>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{
-              position: 'absolute', left: '10px', color: '#94a3b8'
-            }}>
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ position: 'absolute', left: '10px', color: '#94a3b8' }}>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -149,6 +212,31 @@ export function PatientsPage() {
               onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--color-primary-light)' }}
               onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none' }}
             />
+          </div>
+        </div>
+
+        {/* Filtro Ativo/Inativo */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <label style={{ fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Status
+          </label>
+          <div style={{ display: 'flex', gap: '4px', background: '#f8fafc', borderRadius: '10px', padding: '3px', border: '1px solid #e2e8f0' }}>
+            {filterButtons.map((btn) => (
+              <button
+                key={btn.value}
+                type="button"
+                onClick={() => { setActiveFilter(btn.value); setPage(1) }}
+                style={{
+                  padding: '5px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+                  border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                  background: activeFilter === btn.value ? 'var(--color-primary)' : 'transparent',
+                  color: activeFilter === btn.value ? '#fff' : '#64748b',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {btn.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -215,26 +303,32 @@ export function PatientsPage() {
         ) : (
           <>
             <div className="r-table-wrap">
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-              <thead>
-                <tr style={{ background: '#fafbfc', borderBottom: '1px solid #f0f2f5' }}>
-                  {['Paciente', 'Telefone', 'E-mail', 'Cidade', 'Cadastrado em', ''].map((h) => (
-                    <th key={h} style={{
-                      padding: '11px 16px', textAlign: 'left',
-                      fontSize: '11px', fontWeight: 700,
-                      color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em',
-                    }}>
-                      {h}
-                    </th>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
+                <thead>
+                  <tr style={{ background: '#fafbfc', borderBottom: '1px solid #f0f2f5' }}>
+                    {['Paciente', 'Telefone', 'E-mail', 'Cidade', 'Status', 'Cadastrado em', ''].map((h) => (
+                      <th key={h} style={{
+                        padding: '11px 16px', textAlign: 'left',
+                        fontSize: '11px', fontWeight: 700,
+                        color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em',
+                      }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {patients.map((p) => (
+                    <PatientRow
+                      key={p.id}
+                      patient={p}
+                      slug={slug}
+                      onToggle={(pt) => toggleMutation.mutate(pt)}
+                      isToggling={togglingId === p.id}
+                    />
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {patients.map((p) => (
-                  <PatientRow key={p.id} patient={p} slug={slug} />
-                ))}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
             </div>
             {totalPages > 1 && (
               <div style={{

@@ -9,7 +9,7 @@
 
 import axios from 'axios'
 
-const BASE_URL = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3333'
+export const BASE_URL = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3333'
 
 // ─── Token helpers ────────────────────────────────────────────────────────────
 
@@ -59,7 +59,12 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Nunca tenta refresh se o 401 veio do próprio endpoint de login ou refresh.
+    // Esses erros são credenciais inválidas, não token expirado.
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') ||
+                           originalRequest?.url?.includes('/auth/refresh')
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true
 
       try {

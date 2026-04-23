@@ -15,11 +15,15 @@ import { uploadRoutes } from './routes/upload.routes.js'
 import { professionalRoutes } from './routes/professional.routes.js'
 import { procedureRoutes } from './routes/procedure.routes.js'
 import { workScheduleRoutes } from './routes/work-schedule.routes.js'
+import { scheduleBlockRoutes } from './routes/schedule-block.routes.js'
 import { patientRoutes } from './routes/patient.routes.js'
 import { appointmentRoutes } from './routes/appointment.routes.js'
 import { waitlistRoutes } from './routes/waitlist.routes.js'
 import { publicBookingRoutes } from './routes/public-booking.routes.js'
 import { notificationRoutes } from './routes/notification.routes.js'
+import { userRoutes } from './routes/user.routes.js'
+import { whatsappRoutes } from './routes/whatsapp.routes.js'
+import { startWhatsappWorker } from '../../application/workers/whatsapp.worker.js'
 
 export async function buildApp() {
   const app = Fastify({
@@ -77,6 +81,8 @@ export async function buildApp() {
       const stream = createReadStream(filepath)
       reply.header('Content-Type', contentType)
       reply.header('Cache-Control', 'public, max-age=31536000, immutable')
+      // Permite que a imagem seja carregada por origens diferentes (ex: app em :5173 buscando API em :3333)
+      reply.header('Cross-Origin-Resource-Policy', 'cross-origin')
       return reply.send(stream)
     } catch {
       return reply.status(404).send({ error: 'Logo não encontrada.' })
@@ -97,11 +103,14 @@ export async function buildApp() {
       await tenantScope.register(procedureRoutes, { prefix: '/procedures' })
       // Work schedule nested under professional — :professionalId é resolvido pelo Fastify
       await tenantScope.register(workScheduleRoutes, { prefix: '/professionals/:professionalId/schedule' })
+      await tenantScope.register(scheduleBlockRoutes, { prefix: '/professionals/:professionalId/schedule/blocks' })
       await tenantScope.register(patientRoutes, { prefix: '/patients' })
       await tenantScope.register(appointmentRoutes, { prefix: '/appointments' })
       await tenantScope.register(waitlistRoutes, { prefix: '/waitlist' })
       await tenantScope.register(publicBookingRoutes, { prefix: '/public' })
       await tenantScope.register(notificationRoutes, { prefix: '/notifications' })
+      await tenantScope.register(userRoutes, { prefix: '/users' })
+      await tenantScope.register(whatsappRoutes, { prefix: '/whatsapp' })
     },
     { prefix: '/t/:slug' },
   )
@@ -127,6 +136,12 @@ export async function buildApp() {
 
   // ─── Error handler ───────────────────────────────────────────
   app.setErrorHandler(errorHandler)
+
+  // ─── WhatsApp Worker ─────────────────────────────────────────
+  // Inicia o polling loop após o servidor estar pronto.
+  app.addHook('onReady', () => {
+    startWhatsappWorker()
+  })
 
   return app
 }

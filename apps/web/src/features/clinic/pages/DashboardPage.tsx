@@ -214,7 +214,7 @@ function DonutTooltip({ active, payload }: { active?: boolean; payload?: Array<{
       background: '#1a2530', borderRadius: 10, padding: '8px 14px',
       fontSize: 12, color: '#fff', boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
     }}>
-      <p style={{ margin: '0 0 2px', fontWeight: 700 }}>{STATUS_LABEL[payload[0]?.name] ?? payload[0]?.name}</p>
+      <p style={{ margin: '0 0 2px', fontWeight: 700 }}>{STATUS_LABEL[payload[0]?.name ?? ''] ?? payload[0]?.name}</p>
       <p style={{ margin: 0, color: '#94a3b8' }}>{payload[0]?.value} agendamentos</p>
     </div>
   )
@@ -327,6 +327,17 @@ export function DashboardPage() {
           from { background-position: 200% 0; }
           to   { background-position: -200% 0; }
         }
+        .dashboard-charts-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+          gap: 16px;
+          margin-bottom: 28px;
+        }
+        @media (max-width: 768px) {
+          .dashboard-charts-grid {
+            grid-template-columns: 1fr;
+          }
+        }
       `}</style>
 
       <div className="r-page" style={{ minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
@@ -424,13 +435,7 @@ export function DashboardPage() {
         </div>
 
         {/* ── Gráficos ────────────────────────────────────────────────────────── */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
-          gap: 16, marginBottom: 28,
-        }}
-          className="r-grid-2"
-        >
+        <div className="dashboard-charts-grid">
           {/* Gráfico de barras — 7 dias */}
           <div style={{
             background: '#fff', borderRadius: 16, border: '1px solid #eaecef',
@@ -456,7 +461,7 @@ export function DashboardPage() {
                   <XAxis
                     dataKey="day"
                     axisLine={false} tickLine={false}
-                    tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 600, textTransform: 'capitalize' }}
+                    tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 600, style: { textTransform: 'capitalize' } }}
                   />
                   <YAxis
                     allowDecimals={false}

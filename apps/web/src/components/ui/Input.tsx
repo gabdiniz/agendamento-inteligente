@@ -63,4 +63,24 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               margin: 0,
             }}
           >
-      
+            {error}
+          </p>
+        )}
+
+        {hint && !error && (
+          <p
+            style={{
+              fontSize: '12px',
+              color: 'var(--color-text-muted)',
+              margin: 0,
+            }}
+          >
+            {hint}
+          </p>
+        )}
+      </div>
+    )
+  },
+)
+
+Input.displayName = 'Input'

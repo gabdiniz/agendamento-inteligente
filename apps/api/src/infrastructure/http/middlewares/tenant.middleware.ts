@@ -11,7 +11,7 @@ declare module 'fastify' {
     tenantId: string
     tenantSchema: string
     tenantSlug: string
-    tenantPrisma: PrismaClient | null
+    tenantPrisma: PrismaClient
   }
 }
 
@@ -39,7 +39,7 @@ const tenantPluginImpl: FastifyPluginAsync = async (fastify) => {
   fastify.decorateRequest('tenantId', '')
   fastify.decorateRequest('tenantSchema', '')
   fastify.decorateRequest('tenantSlug', '')
-  fastify.decorateRequest('tenantPrisma', null)
+  fastify.decorateRequest('tenantPrisma', null as unknown as PrismaClient)
 
   fastify.addHook('onRequest', async (request: FastifyRequest) => {
     const params = request.params as Record<string, string>

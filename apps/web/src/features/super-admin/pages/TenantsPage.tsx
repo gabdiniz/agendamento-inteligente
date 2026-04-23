@@ -4,10 +4,179 @@
 // ações de ativar/desativar, edição e deleção com modais de confirmação.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { superAdminApi, type Tenant, type UpdateTenantPayload } from '@/lib/api/super-admin.api'
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const API_BASE = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3333'
+
+/** Converte URL relativa da logo em URL absoluta para exibição. */
+function logoSrc(url: string | null | undefined): string | null {
+  if (!url) return null
+  if (url.startsWith('http')) return url
+  return `${API_BASE}${url}`
+}
+
+/** Avatar da clínica — logo real ou inicial do nome. */
+function TenantAvatar({ name, logoUrl, size = 36 }: { name: string; logoUrl?: string | null; size?: number }) {
+  const src = logoSrc(logoUrl)
+  const [imgError, setImgError] = useState(false)
+
+  if (src && !imgError) {
+    return (
+      <img
+        src={src}
+        alt={`Logo ${name}`}
+        onError={() => setImgError(true)}
+        style={{
+          width: size, height: size, borderRadius: '8px',
+          objectFit: 'contain', background: '#f8fafc',
+          border: '1px solid #eaecef', flexShrink: 0,
+        }}
+      />
+    )
+  }
+
+  const initial = name.trim()[0]?.toUpperCase() ?? '?'
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '8px', flexShrink: 0,
+      background: 'var(--admin-color-primary-light)',
+      color: 'var(--admin-color-primary)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.38, fontWeight: 700,
+    }}>
+      {initial}
+    </div>
+  )
+}
+
+// ─── Logo Upload (reutilizável dentro desta página) ────────────────────────────
+
+function LogoUpload({
+  currentUrl,
+  onChange,
+}: {
+  currentUrl?: string | null
+  onChange: (url: string | null) => void
+}) {
+  const [preview, setPreview]   = useState<string | null>(logoSrc(currentUrl))
+  const [uploading, setUploading] = useState(false)
+  const [error, setError]       = useState<string | null>(null)
+  const [uploaded, setUploaded] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 5 * 1024 * 1024) { setError('Máximo 5 MB.'); return }
+    const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/gif']
+    if (!allowed.includes(file.type)) { setError('Use PNG, JPG, WebP, SVG ou GIF.'); return }
+
+    setError(null)
+    setPreview(URL.createObjectURL(file))
+    setUploading(true)
+    setUploaded(false)
+    try {
+      const result = await superAdminApi.uploadLogo(file)
+      onChange(result.url)
+      setUploaded(true)
+    } catch {
+      setError('Falha no upload. Tente novamente.')
+      setPreview(logoSrc(currentUrl))
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function handleRemove() {
+    setPreview(null)
+    setUploaded(false)
+    setError(null)
+    onChange(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const fieldLabelStyle: React.CSSProperties = {
+    display: 'block', fontSize: '11px', fontWeight: 700,
+    color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em',
+    marginBottom: '6px',
+  }
+
+  return (
+    <div>
+      <label style={fieldLabelStyle}>Logo da clínica</label>
+
+      {preview ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{
+            width: '64px', height: '64px', borderRadius: '10px',
+            border: '1.5px solid #e2e8f0', overflow: 'hidden',
+            background: '#f8fafc', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <img src={preview} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            {uploading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#64748b' }}>
+                <div style={{ width: '12px', height: '12px', border: '2px solid #e2e8f0', borderTopColor: 'var(--admin-color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                Enviando...
+              </div>
+            )}
+            {uploaded && !uploading && (
+              <p style={{ margin: '0 0 4px', fontSize: '12.5px', color: '#16a34a', fontWeight: 600 }}>✓ Upload concluído</p>
+            )}
+            {error && <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#dc2626' }}>{error}</p>}
+            <button
+              type="button"
+              onClick={handleRemove}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#94a3b8', padding: 0, fontFamily: 'var(--font-sans)' }}
+            >
+              ✕ Remover logo
+            </button>
+          </div>
+        </div>
+      ) : (
+        <label
+          htmlFor="edit-logo-upload"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '10px', height: '64px',
+            border: '1.5px dashed #cbd5e1', borderRadius: '10px',
+            background: '#f8fafc', cursor: 'pointer',
+            transition: 'border-color 0.15s, background 0.15s',
+            justifyContent: 'center',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--admin-color-primary)'; (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--admin-color-primary) 5%, white)' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = '#cbd5e1'; (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
+        >
+          <svg width="18" height="18" fill="none" stroke="#94a3b8" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <div>
+            <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#64748b' }}>Clique para fazer upload</p>
+            <p style={{ margin: '1px 0 0', fontSize: '11px', color: '#94a3b8' }}>PNG, JPG, WebP, SVG · máx. 5 MB</p>
+          </div>
+        </label>
+      )}
+
+      <input
+        ref={fileRef}
+        id="edit-logo-upload"
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+        onChange={handleFile}
+        style={{ display: 'none' }}
+      />
+      {error && !preview && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#dc2626' }}>{error}</p>}
+    </div>
+  )
+}
 
 // ─── Shared Styles ────────────────────────────────────────────────────────────
 
@@ -142,6 +311,7 @@ function EditTenantModal({
     address:  tenant.address ?? '',
     planType: (tenant.planType as 'BASIC' | 'PRO') ?? 'BASIC',
   })
+  const [logoUrl, setLogoUrl] = useState<string | null | undefined>(tenant.logoUrl)
   const [error, setError] = useState<string | null>(null)
 
   // Sync se o tenant mudar (troca de linha)
@@ -153,6 +323,7 @@ function EditTenantModal({
       address:  tenant.address ?? '',
       planType: (tenant.planType as 'BASIC' | 'PRO') ?? 'BASIC',
     })
+    setLogoUrl(tenant.logoUrl)
     setError(null)
   }, [tenant.id])
 
@@ -172,6 +343,7 @@ function EditTenantModal({
       phone:    form.phone?.trim() || null,
       address:  form.address?.trim() || null,
       planType: form.planType,
+      logoUrl:  logoUrl ?? null,
     })
   }
 
@@ -241,6 +413,11 @@ function EditTenantModal({
               {error}
             </div>
           )}
+
+          {/* Logo */}
+          <div style={{ marginBottom: '20px' }}>
+            <LogoUpload currentUrl={logoUrl} onChange={setLogoUrl} />
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             {/* Nome */}
@@ -339,6 +516,55 @@ function EditTenantModal({
   )
 }
 
+// ─── Copy Clinic URL Button ───────────────────────────────────────────────────
+
+function CopyUrlButton({ slug }: { slug: string }) {
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy() {
+    const url = `${window.location.protocol}//${window.location.host}/app/${slug}/login`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      title="Copiar URL de login da clínica"
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: '5px',
+        padding: '5px 10px', borderRadius: '8px',
+        background: copied ? '#ebfbee' : '#f8fafc',
+        color: copied ? '#2f9e44' : '#374151',
+        border: copied ? '1px solid #b2f2bb' : '1px solid #e2e8f0',
+        fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+        fontFamily: 'var(--font-sans)',
+        transition: 'all 0.15s',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {copied ? (
+        <>
+          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+          </svg>
+          Copiado!
+        </>
+      ) : (
+        <>
+          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          Copiar URL
+        </>
+      )}
+    </button>
+  )
+}
+
 // ─── Tenant Row ───────────────────────────────────────────────────────────────
 
 function TenantRow({
@@ -358,12 +584,17 @@ function TenantRow({
     <tr style={{ borderBottom: '1px solid #f0f2f5' }}>
       {/* Nome + slug */}
       <td style={{ padding: '14px 16px' }}>
-        <p style={{ margin: '0 0 3px', fontSize: '13px', fontWeight: 600, color: '#1a2530' }}>
-          {tenant.name}
-        </p>
-        <p style={{ margin: 0, fontSize: '11.5px', color: '#94a3b8', fontFamily: 'var(--font-mono, monospace)' }}>
-          /{tenant.slug}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <TenantAvatar name={tenant.name} logoUrl={tenant.logoUrl} size={36} />
+          <div>
+            <p style={{ margin: '0 0 3px', fontSize: '13px', fontWeight: 600, color: '#1a2530' }}>
+              {tenant.name}
+            </p>
+            <p style={{ margin: 0, fontSize: '11.5px', color: '#94a3b8', fontFamily: 'var(--font-mono, monospace)' }}>
+              /{tenant.slug}
+            </p>
+          </div>
+        </div>
       </td>
 
       {/* Contato */}
@@ -406,6 +637,9 @@ function TenantRow({
       {/* Ações */}
       <td style={{ padding: '14px 16px' }}>
         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+          {/* Copiar URL */}
+          <CopyUrlButton slug={tenant.slug} />
+
           {/* Editar */}
           <button
             onClick={() => onEdit(tenant)}

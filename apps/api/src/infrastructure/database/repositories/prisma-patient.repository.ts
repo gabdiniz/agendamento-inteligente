@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
+import { Gender, NotificationChannel } from '@prisma/client'
 
 import type {
   IPatientRepository,
@@ -87,9 +88,9 @@ export class PrismaPatientRepository implements IPatientRepository {
         phone: data.phone,
         email: data.email ?? null,
         birthDate: data.birthDate ? parseBirthDate(data.birthDate) : null,
-        gender: data.gender ?? null,
+        gender: (data.gender as Gender | undefined) ?? null,
         city: data.city ?? null,
-        preferredContactChannel: data.preferredContactChannel ?? null,
+        preferredContactChannel: (data.preferredContactChannel as NotificationChannel | undefined) ?? null,
         marketingOptIn: data.marketingOptIn ?? false,
         notes: data.notes ?? null,
         source: (data.source as never) ?? 'MANUAL',

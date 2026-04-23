@@ -1,5 +1,6 @@
 import type { IAppointmentRepository, AppointmentRecord } from '../../../domain/repositories/appointment.repository.js'
 import { NotFoundError, ValidationError } from '../../../domain/errors/app-error.js'
+import type { CheckVacanciesUseCase } from '../waitlist/check-vacancies.use-case.js'
 
 // ─── Transições de status válidas ─────────────────────────────────────────────
 //
@@ -25,7 +26,12 @@ interface UpdateStatusInput {
 }
 
 export class UpdateAppointmentStatusUseCase {
-  constructor(private readonly appointmentRepo: IAppointmentRepository) {}
+  constructor(
+    private readonly appointmentRepo: IAppointmentRepository,
+    // Opcional — quando injetado, dispara verificação de vagas na waitlist
+    // automaticamente se a transição for para CANCELED (fire-and-forget).
+    private readonly checkVacancies?: CheckVacanciesUseCase,
+  ) {}
 
   async execute(input: UpdateStatusInput): Promise<AppointmentRecord> {
     const { appointmentId, newStatus, changedByUserId, notes } = input
@@ -43,6 +49,22 @@ export class UpdateAppointmentStatusUseCase {
       )
     }
 
-    return this.appointmentRepo.updateStatus(appointmentId, newStatus, changedByUserId, notes)
+    const updated = await this.appointmentRepo.updateStatus(appointmentId, newStatus, changedByUserId, notes)
+
+    // ── Dispara verificação de vagas na waitlist se cancelado (fire-and-forget) ─
+    if (newStatus === 'CANCELED' && this.checkVacancies) {
+      this.checkVacancies
+        .execute({
+          procedureId:      updated.procedureId,
+          professionalId:   updated.professionalId,
+          vacancyDate:      updated.scheduledDate,
+          vacancyStartTime: updated.startTime,
+        })
+        .catch((err: unknown) => {
+          console.error('[UpdateAppointmentStatus] Falha ao verificar waitlist após cancelamento:', err)
+        })
+    }
+
+    return updated
   }
 }

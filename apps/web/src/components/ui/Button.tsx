@@ -80,4 +80,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             stroke="currentColor"
             strokeWidth="4"
           />
-          
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v8z"
+          />
+        </svg>
+      )}
+      {children}
+    </button>
+  ),
+)
+
+Button.displayName = 'Button'

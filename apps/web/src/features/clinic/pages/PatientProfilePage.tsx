@@ -1,7 +1,8 @@
 // ─── PatientProfilePage ───────────────────────────────────────────────────────
 
+import { useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { patientsApi, appointmentsApi } from '@/lib/api/clinic.api'
 import { clinicTokens } from '@/lib/api/client'
 
@@ -45,11 +46,23 @@ export function PatientProfilePage() {
   const params = useParams({ strict: false }) as { slug?: string; id?: string }
   const slug   = params.slug ?? clinicTokens.getSlug() ?? ''
   const id     = params.id ?? ''
+  const qc     = useQueryClient()
+  const [isToggling, setIsToggling] = useState(false)
 
   const { data: patient, isLoading } = useQuery({
     queryKey: ['patient', id],
     queryFn:  () => patientsApi.get(id),
     enabled:  !!id,
+  })
+
+  const toggleMutation = useMutation({
+    mutationFn: () => patient!.isActive ? patientsApi.deactivate(id) : patientsApi.activate(id),
+    onMutate:   () => setIsToggling(true),
+    onSettled:  () => {
+      setIsToggling(false)
+      qc.invalidateQueries({ queryKey: ['patient', id] })
+      qc.invalidateQueries({ queryKey: ['patients'] })
+    },
   })
 
   const { data: aptsData } = useQuery({
@@ -93,31 +106,60 @@ export function PatientProfilePage() {
           </svg>
         </Link>
         <div style={{ flex: 1 }}>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 400, fontFamily: 'var(--font-display)', fontStyle: 'italic', color: '#1a2530', letterSpacing: '-0.02em' }}>
-            {patient.name}
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 400, fontFamily: 'var(--font-display)', fontStyle: 'italic', color: '#1a2530', letterSpacing: '-0.02em' }}>
+              {patient.name}
+            </h1>
+            <span style={{
+              display: 'inline-block', borderRadius: '20px', padding: '3px 10px',
+              background: patient.isActive ? '#ebfbee' : '#fff1f1',
+              color: patient.isActive ? '#2f9e44' : '#c92a2a',
+              fontSize: '12px', fontWeight: 600,
+            }}>
+              {patient.isActive ? 'Ativo' : 'Inativo'}
+            </span>
+          </div>
           <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#94a3b8' }}>
             {age !== null ? `${age} anos · ` : ''}{patient.phone}
           </p>
         </div>
-        <Link
-          to="/app/$slug/patients/$id/edit"
-          params={{ slug, id }}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '8px 16px', borderRadius: '10px',
-            border: '1.5px solid #e2e8f0', background: '#fff',
-            color: '#374151', fontSize: '13px', fontWeight: 600,
-            textDecoration: 'none',
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '#fff' }}
-        >
-          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 11l6.586-6.586a2 2 0 112.828 2.828L11.828 13.828A2 2 0 0110 14H8v-2a2 2 0 01.586-1.414z" />
-          </svg>
-          Editar
-        </Link>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            onClick={() => toggleMutation.mutate()}
+            disabled={isToggling}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '8px 16px', borderRadius: '10px',
+              background: patient.isActive ? '#fef2f2' : '#ebfbee',
+              color: patient.isActive ? '#dc2626' : '#2f9e44',
+              border: patient.isActive ? '1.5px solid #fecaca' : '1.5px solid #b2f2bb',
+              fontSize: '13px', fontWeight: 600,
+              cursor: isToggling ? 'not-allowed' : 'pointer',
+              fontFamily: 'var(--font-sans)',
+              opacity: isToggling ? 0.6 : 1,
+            }}
+          >
+            {isToggling ? 'Processando...' : patient.isActive ? 'Desativar Paciente' : 'Ativar Paciente'}
+          </button>
+          <Link
+            to="/app/$slug/patients/$id/edit"
+            params={{ slug, id }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '8px 16px', borderRadius: '10px',
+              border: '1.5px solid #e2e8f0', background: '#fff',
+              color: '#374151', fontSize: '13px', fontWeight: 600,
+              textDecoration: 'none',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '#fff' }}
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 11l6.586-6.586a2 2 0 112.828 2.828L11.828 13.828A2 2 0 0110 14H8v-2a2 2 0 01.586-1.414z" />
+            </svg>
+            Editar
+          </Link>
+        </div>
       </div>
 
       {/* ── Dados pessoais ───────────────────────────────────────────────── */}

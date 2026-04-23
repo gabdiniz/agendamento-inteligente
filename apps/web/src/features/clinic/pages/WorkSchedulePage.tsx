@@ -12,10 +12,10 @@
 //   PATCH  /t/:slug/professionals/:id/schedule/:day/deactivate
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { professionalsApi, workScheduleApi, type WorkScheduleRecord } from '@/lib/api/clinic.api'
+import { professionalsApi, workScheduleApi, scheduleBlocksApi, type WorkScheduleRecord, type ScheduleBlock } from '@/lib/api/clinic.api'
 import { clinicTokens } from '@/lib/api/client'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -374,6 +374,248 @@ function DayCard({
   )
 }
 
+// ─── Schedule Blocks ──────────────────────────────────────────────────────────
+
+function formatBlockDate(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+    ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function BlockModal({
+  onClose,
+  onSave,
+  loading,
+  error,
+}: {
+  onClose: () => void
+  onSave: (start: string, end: string, reason: string) => void
+  loading: boolean
+  error: string
+}) {
+  const today = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const defaultStart = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}T08:00`
+  const defaultEnd   = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}T18:00`
+
+  const [start, setStart] = useState(defaultStart)
+  const [end, setEnd]     = useState(defaultEnd)
+  const [reason, setReason] = useState('')
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    // Converte datetime-local (sem timezone) para ISO com offset local
+    const toISO = (local: string) => new Date(local).toISOString()
+    onSave(toISO(start), toISO(end), reason)
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '9px 12px', borderRadius: '10px',
+    border: '1.5px solid #e2e8f0', fontSize: '13px',
+    fontFamily: 'var(--font-sans)', color: '#1a2530',
+    outline: 'none', boxSizing: 'border-box',
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 100,
+        background: 'rgba(15,20,30,0.45)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{
+        background: '#fff', borderRadius: '18px',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+        width: '100%', maxWidth: '440px',
+        animation: 'fadeUp 0.2s ease',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px 0' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#1a2530' }}>
+              Novo bloqueio de agenda
+            </h3>
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
+              O profissional não receberá agendamentos neste período.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 36, height: 36, borderRadius: '50%', border: '1px solid #eaecef',
+              background: 'transparent', cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', color: '#94a3b8', flexShrink: 0,
+            }}
+          >
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ padding: '24px 28px 28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>
+              Início *
+            </label>
+            <input
+              type="datetime-local"
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+              required
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>
+              Fim *
+            </label>
+            <input
+              type="datetime-local"
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+              required
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>
+              Motivo (opcional)
+            </label>
+            <input
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ex: Férias, Feriado, Congresso..."
+              maxLength={255}
+              style={inputStyle}
+            />
+          </div>
+
+          {error && (
+            <div style={{
+              padding: '10px 14px', borderRadius: '10px',
+              background: '#fef2f2', border: '1px solid #fecaca',
+              color: '#dc2626', fontSize: '13px',
+            }}>
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: '10px 20px', borderRadius: '10px',
+                border: '1.5px solid #e2e8f0', background: 'transparent',
+                fontSize: '13px', fontWeight: 600, color: '#64748b',
+                cursor: 'pointer', fontFamily: 'var(--font-sans)',
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                padding: '10px 24px', borderRadius: '10px',
+                border: 'none', background: loading ? '#94a3b8' : 'var(--color-primary)',
+                fontSize: '13px', fontWeight: 600, color: '#fff',
+                cursor: loading ? 'default' : 'pointer',
+                fontFamily: 'var(--font-sans)',
+              }}
+            >
+              {loading ? 'Criando...' : 'Criar bloqueio'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function BlockRow({ block, onDelete, isDeleting }: { block: ScheduleBlock; onDelete: () => void; isDeleting: boolean }) {
+  const start = new Date(block.startDatetime)
+  const end   = new Date(block.endDatetime)
+  const isPast = end < new Date()
+  const isOngoing = start <= new Date() && end >= new Date()
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '12px',
+      padding: '14px 16px',
+      borderBottom: '1px solid #f0f2f5',
+      opacity: isPast ? 0.5 : 1,
+    }}>
+      {/* Ícone */}
+      <div style={{
+        width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
+        background: isOngoing ? '#fef2f2' : isPast ? '#f8fafc' : '#fffbeb',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <svg width="16" height="16" fill="none" stroke={isOngoing ? '#dc2626' : isPast ? '#94a3b8' : '#d97706'} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+        </svg>
+      </div>
+
+      {/* Datas */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#1a2530' }}>
+          {formatBlockDate(block.startDatetime)} → {formatBlockDate(block.endDatetime)}
+        </p>
+        <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#94a3b8' }}>
+          {block.reason ?? 'Sem motivo informado'}
+          {isOngoing && (
+            <span style={{
+              marginLeft: '8px', display: 'inline-block',
+              background: '#fef2f2', color: '#dc2626',
+              borderRadius: '99px', padding: '1px 8px',
+              fontSize: '11px', fontWeight: 600,
+            }}>
+              Em andamento
+            </span>
+          )}
+          {isPast && !isOngoing && (
+            <span style={{
+              marginLeft: '8px', display: 'inline-block',
+              background: '#f1f5f9', color: '#94a3b8',
+              borderRadius: '99px', padding: '1px 8px',
+              fontSize: '11px', fontWeight: 600,
+            }}>
+              Passado
+            </span>
+          )}
+        </p>
+      </div>
+
+      {/* Ação */}
+      {!isPast && (
+        <button
+          onClick={onDelete}
+          disabled={isDeleting}
+          title="Remover bloqueio"
+          style={{
+            width: 32, height: 32, borderRadius: '8px', flexShrink: 0,
+            border: '1px solid #fecaca', background: '#fef2f2',
+            cursor: isDeleting ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#dc2626', opacity: isDeleting ? 0.5 : 1,
+          }}
+        >
+          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function WorkSchedulePage() {
@@ -385,6 +627,11 @@ export function WorkSchedulePage() {
 
   const [days, setDays] = useState<DayState[]>([])
   const [initialized, setInitialized] = useState(false)
+
+  // ── Bloqueios ─────────────────────────────────────────────────────────────
+  const [blockModalOpen, setBlockModalOpen] = useState(false)
+  const [blockError, setBlockError]         = useState('')
+  const [deletingBlockId, setDeletingBlockId] = useState<string | null>(null)
 
   // ── Busca profissional e horários em paralelo ──────────────────────────────
 
@@ -431,6 +678,37 @@ export function WorkSchedulePage() {
       active ? workScheduleApi.activate(id, dayOfWeek) : workScheduleApi.deactivate(id, dayOfWeek),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['work-schedule', id] })
+    },
+  })
+
+  // ── Bloqueios queries/mutations ───────────────────────────────────────────
+
+  const { data: blocksData, isLoading: loadingBlocks } = useQuery({
+    queryKey: ['schedule-blocks', id],
+    queryFn:  () => scheduleBlocksApi.list(id),
+    enabled:  !!id,
+  })
+
+  const createBlockMutation = useMutation({
+    mutationFn: ({ start, end, reason }: { start: string; end: string; reason: string }) =>
+      scheduleBlocksApi.create(id, { startDatetime: start, endDatetime: end, reason: reason || undefined }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['schedule-blocks', id] })
+      setBlockModalOpen(false)
+      setBlockError('')
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      setBlockError(msg ?? 'Erro ao criar bloqueio.')
+    },
+  })
+
+  const deleteBlockMutation = useMutation({
+    mutationFn: (blockId: string) => scheduleBlocksApi.remove(id, blockId),
+    onMutate:   (blockId) => setDeletingBlockId(blockId),
+    onSettled:  () => {
+      setDeletingBlockId(null)
+      void qc.invalidateQueries({ queryKey: ['schedule-blocks', id] })
     },
   })
 
@@ -663,6 +941,87 @@ export function WorkSchedulePage() {
             )
           })}
         </div>
+      )}
+
+      {/* ── Bloqueios de Agenda ──────────────────────────────────────────── */}
+      {!isLoading && initialized && (
+        <div style={{ marginTop: '32px' }}>
+          {/* Header da seção */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1a2530' }}>
+                Bloqueios de Agenda
+              </h2>
+              <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: '#64748b' }}>
+                Períodos em que o profissional não estará disponível para agendamentos.
+              </p>
+            </div>
+            <button
+              onClick={() => { setBlockError(''); setBlockModalOpen(true) }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '8px 14px', borderRadius: '10px',
+                background: '#fff', border: '1.5px solid #e2e8f0',
+                fontSize: '12.5px', fontWeight: 600, color: '#374151',
+                cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '#fff' }}
+            >
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+              Adicionar bloqueio
+            </button>
+          </div>
+
+          {/* Lista */}
+          <div style={{
+            background: '#fff', borderRadius: '14px',
+            border: '1px solid #f0f2f5',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            overflow: 'hidden',
+          }}>
+            {loadingBlocks ? (
+              <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                Carregando bloqueios...
+              </div>
+            ) : !blocksData || blocksData.length === 0 ? (
+              <div style={{ padding: '36px', textAlign: 'center' }}>
+                <svg width="32" height="32" fill="none" stroke="#cbd5e1" viewBox="0 0 24 24" style={{ margin: '0 auto 10px', display: 'block' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8' }}>
+                  Nenhum bloqueio cadastrado.
+                </p>
+                <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#cbd5e1' }}>
+                  Adicione bloqueios para férias, feriados ou outras indisponibilidades.
+                </p>
+              </div>
+            ) : (
+              blocksData.map((block) => (
+                <BlockRow
+                  key={block.id}
+                  block={block}
+                  onDelete={() => deleteBlockMutation.mutate(block.id)}
+                  isDeleting={deletingBlockId === block.id}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal de criação de bloqueio ─────────────────────────────────── */}
+      {blockModalOpen && (
+        <BlockModal
+          onClose={() => setBlockModalOpen(false)}
+          onSave={(start, end, reason) => createBlockMutation.mutate({ start, end, reason })}
+          loading={createBlockMutation.isPending}
+          error={blockError}
+        />
       )}
 
       {/* ── Dica de uso ─────────────────────────────────────────────────── */}

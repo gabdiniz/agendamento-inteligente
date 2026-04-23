@@ -16,7 +16,7 @@ const schema = z.object({
   phone:     z.string().min(10, 'Telefone inválido'),
   email:     z.string().email('E-mail inválido').optional().or(z.literal('')),
   birthDate: z.string().optional(),
-  gender:    z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
+  gender:    z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional().or(z.literal('')),
   city:      z.string().optional(),
   notes:     z.string().optional(),
 })

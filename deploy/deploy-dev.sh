@@ -232,11 +232,13 @@ ssh -i "$SSH_KEY" $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
   done
 
   # Rodar migrations via container da API
-  sudo docker exec myagendix-dev-api sh -c \
-    'cd /app && node -e \"
-      const { execSync } = require(\"child_process\");
-      execSync(\"npx prisma migrate deploy --schema packages/database/prisma/schema.prisma\", { stdio: \"inherit\" });
-    \"' 2>/dev/null || echo 'Migrations: verifique manualmente se necessário'
+  # O runner image instala prisma globalmente — usa direto
+  sudo docker exec \
+    -w /app \
+    myagendix-dev-api \
+    prisma migrate deploy \
+      --schema /app/packages/database/prisma/schema.prisma \
+  || echo 'Migrations: verifique manualmente se necessário'
 "
 
 # ── Validar nginx e recarregar ────────────────────────────────────────────────
@@ -260,9 +262,25 @@ ssh -i "$SSH_KEY" $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
 
   # Adicionar entrada se não existir
   python3 -c \"
-import json, sys
+import json
+
 with open('\$REGISTRY') as f:
-    data = json.load(f)
+    raw = json.load(f)
+
+# Normaliza para lista — aceita list, dict de projetos ou dict de entrada única
+if isinstance(raw, list):
+    data = raw
+elif isinstance(raw, dict):
+    if 'nome' in raw:
+        data = [raw]          # entrada única
+    else:
+        data = list(raw.values())  # dict chaveado por nome
+else:
+    data = []
+
+# Remove entradas que não são dict (limpeza defensiva)
+data = [p for p in data if isinstance(p, dict)]
+
 entry = {
     'nome': 'myagendix',
     'dominio_dev': '$APP_DOMAIN',
@@ -271,14 +289,16 @@ entry = {
     'status': 'ativo',
     'ambiente_atual': 'dev'
 }
-existing = [i for i, p in enumerate(data) if p.get('nome') == 'myagendix']
-if existing:
-    data[existing[0]] = entry
+
+idx = next((i for i, p in enumerate(data) if p.get('nome') == 'myagendix'), None)
+if idx is not None:
+    data[idx] = entry
 else:
     data.append(entry)
+
 with open('\$REGISTRY', 'w') as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
-print('Catálogo atualizado')
+print('Catalogo atualizado')
   \"
 "
 success "Catálogo atualizado"

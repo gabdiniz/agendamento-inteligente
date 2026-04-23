@@ -173,6 +173,25 @@ export const createWaitlistEntrySchema = z.object({
   minAdvanceMinutes: z.number().int().min(30).max(1440).default(60),
 })
 
+// ─── User Management ───────────────────────────────────────────────────────
+
+export const createUserSchema = z.object({
+  name:           z.string().min(2).max(255),
+  email:          z.string().email(),
+  password:       z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
+  phone:          z.string().max(20).optional(),
+  role:           z.enum(['GESTOR', 'RECEPCAO', 'PROFISSIONAL']),
+  professionalId: z.string().uuid().optional(),
+})
+
+export const updateUserSchema = z.object({
+  name:  z.string().min(2).max(255).optional(),
+  phone: z.string().max(20).optional().nullable(),
+})
+
+export type CreateUserInput  = z.infer<typeof createUserSchema>
+export type UpdateUserInput  = z.infer<typeof updateUserSchema>
+
 // ─── Appointment Evaluation ────────────────────────────────────────────────
 
 export const createAppointmentEvaluationSchema = z.object({

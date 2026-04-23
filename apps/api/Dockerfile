@@ -37,8 +37,9 @@ COPY apps/api                    ./apps/api
 # Gerar Prisma client
 RUN pnpm --filter @myagendix/database exec prisma generate
 
-# Compilar shared + api
-RUN pnpm --filter @myagendix/shared build 2>/dev/null || true
+# Compilar pacotes internos na ordem correta (shared → database → api)
+RUN pnpm --filter @myagendix/shared build
+RUN pnpm --filter @myagendix/database build
 RUN pnpm --filter @myagendix/api run build
 
 # ── Stage 3: Runtime mínimo ───────────────────────────────────────────────────
@@ -47,12 +48,18 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN npm install -g pnpm@9.15.0 --quiet
+# pnpm (workspace) + prisma CLI (migrations no runtime)
+# Versão pinada em 6 para coincidir com @prisma/client@^6 do projeto
+RUN npm install -g pnpm@9.15.0 prisma@6 --quiet
 
 # Copiar setup do workspace
 COPY --from=builder /app/package.json          ./
 COPY --from=builder /app/pnpm-workspace.yaml   ./
 COPY --from=builder /app/node_modules          ./node_modules
+
+# Copiar node_modules da API (pnpm não faz hoist por padrão —
+# fastify e demais deps ficam em apps/api/node_modules, não na raiz)
+COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 
 # Copiar pacotes compilados
 COPY --from=builder /app/packages              ./packages
