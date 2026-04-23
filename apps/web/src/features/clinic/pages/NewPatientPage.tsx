@@ -74,8 +74,10 @@ export function NewPatientPage() {
       })
       await qc.invalidateQueries({ queryKey: ['patients'] })
       void navigate({ to: '/app/$slug/$section', params: { slug, section: 'patients' } })
-    } catch {
-      setServerError('Erro ao cadastrar paciente. Tente novamente.')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message
+      setServerError(msg ?? 'Erro ao cadastrar paciente. Tente novamente.')
     }
   }
 
