@@ -12,14 +12,19 @@ import { ListAppointmentsUseCase } from '../../../application/use-cases/appointm
 import { GetAppointmentUseCase } from '../../../application/use-cases/appointment/get-appointment.use-case.js'
 import { UpdateAppointmentStatusUseCase } from '../../../application/use-cases/appointment/update-appointment-status.use-case.js'
 import { CancelAppointmentUseCase } from '../../../application/use-cases/appointment/cancel-appointment.use-case.js'
+import { CheckVacanciesUseCase } from '../../../application/use-cases/waitlist/check-vacancies.use-case.js'
 
 import { PrismaAppointmentRepository } from '../../database/repositories/prisma-appointment.repository.js'
 import { PrismaProfessionalRepository } from '../../database/repositories/prisma-professional.repository.js'
 import { PrismaProcedureRepository } from '../../database/repositories/prisma-procedure.repository.js'
 import { PrismaPatientRepository } from '../../database/repositories/prisma-patient.repository.js'
 import { PrismaWorkScheduleRepository } from '../../database/repositories/prisma-work-schedule.repository.js'
+import { PrismaWaitlistRepository } from '../../database/repositories/prisma-waitlist.repository.js'
+import { PrismaNotificationRepository } from '../../database/repositories/prisma-notification.repository.js'
 
 import { requireAuth, requireRoles } from '../middlewares/auth.middleware.js'
+import { prisma } from '@myagendix/database'
+import { WhatsappService } from '../../../application/services/whatsapp.service.js'
 
 // ─── Appointment Routes ───────────────────────────────────────────────────────
 //
@@ -52,6 +57,38 @@ const updateAppointmentBodySchema = z.object({
   startTime: z.string().regex(/^([0-1]\d|2[0-3]):[0-5]\d$/).optional(),
   notes: z.string().nullable().optional(),
 })
+
+// ─── WhatsApp helpers ─────────────────────────────────────────────────────────
+
+/** Cache simples de nome de clínica para não bater no banco a cada agendamento. */
+const clinicNameCache = new Map<string, { name: string; ttl: number }>()
+
+async function getClinicInfo(tenantId: string): Promise<{
+  name: string
+  whatsappEnabled: boolean
+  zApiInstanceId: string | null
+  zApiToken: string | null
+  reminderHoursBefore: number
+} | null> {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: {
+      name: true,
+      whatsappEnabled: true,
+      zApiInstanceId: true,
+      zApiToken: true,
+      reminderHoursBefore: true,
+    },
+  })
+  return tenant ?? null
+}
+
+// Dispara o hook WhatsApp em background — nunca bloqueia a resposta HTTP
+function fireWhatsapp(fn: () => Promise<void>): void {
+  fn().catch((err) => console.error('[WhatsApp] Erro ao enfileirar job:', err))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const appointmentRoutes: FastifyPluginAsync = async (app) => {
   // ─── GET / ────────────────────────────────────────────────
@@ -129,6 +166,31 @@ export const appointmentRoutes: FastifyPluginAsync = async (app) => {
     const toTimeStr = (d: Date) => d.toISOString().slice(11, 16)
     const toDateStr = (d: Date) => d.toISOString().slice(0, 10)
 
+    const isRescheduled = body.scheduledDate !== undefined || body.startTime !== undefined
+
+    // ── WhatsApp: notificação de reagendamento ────────────────
+    if (isRescheduled) {
+      fireWhatsapp(async () => {
+        const clinic = await getClinicInfo(request.tenantId)
+        if (!clinic?.whatsappEnabled) return
+
+        const svc = new WhatsappService(request.tenantPrisma)
+        await svc.enqueueReschedule(
+          {
+            id:               updated.id,
+            scheduledDate:    updated.scheduledDate,
+            startTime:        updated.startTime,
+            patientName:      updated.patient.name,
+            patientPhone:     updated.patient.phone ?? null,
+            professionalName: updated.professional.name,
+            procedureName:    updated.procedure.name,
+            clinicName:       clinic.name,
+          },
+          clinic.reminderHoursBefore,
+        )
+      })
+    }
+
     return reply.status(200).send({
       success: true,
       data: {
@@ -158,6 +220,27 @@ export const appointmentRoutes: FastifyPluginAsync = async (app) => {
       createdByUserId: request.currentUser?.sub,
     })
 
+    // ── WhatsApp: confirmação + lembrete ──────────────────────
+    fireWhatsapp(async () => {
+      const clinic = await getClinicInfo(request.tenantId)
+      if (!clinic?.whatsappEnabled) return
+
+      const svc = new WhatsappService(request.tenantPrisma)
+      await svc.enqueueConfirmation(
+        {
+          id:              appointment.id,
+          scheduledDate:   new Date(`${appointment.scheduledDate}T00:00:00Z`),
+          startTime:       new Date(`1970-01-01T${appointment.startTime}:00Z`),
+          patientName:     appointment.patient.name,
+          patientPhone:    appointment.patient.phone ?? null,
+          professionalName: appointment.professional.name,
+          procedureName:   appointment.procedure.name,
+          clinicName:      clinic.name,
+        },
+        clinic.reminderHoursBefore,
+      )
+    })
+
     return reply.status(201).send({ success: true, data: appointment })
   })
 
@@ -169,9 +252,15 @@ export const appointmentRoutes: FastifyPluginAsync = async (app) => {
       const params = request.params as Record<string, string>
       const id = uuidSchema.parse(params['id'])
       const body = updateStatusBodySchema.parse(request.body)
-      const repo = new PrismaAppointmentRepository(request.tenantPrisma!)
+      const prisma = request.tenantPrisma!
+      const repo = new PrismaAppointmentRepository(prisma)
 
-      const appointment = await new UpdateAppointmentStatusUseCase(repo).execute({
+      const checkVacancies = new CheckVacanciesUseCase(
+        new PrismaWaitlistRepository(prisma),
+        new PrismaNotificationRepository(prisma),
+      )
+
+      const appointment = await new UpdateAppointmentStatusUseCase(repo, checkVacancies).execute({
         appointmentId: id,
         newStatus: body.status,
         changedByUserId: request.currentUser?.sub,
@@ -190,13 +279,37 @@ export const appointmentRoutes: FastifyPluginAsync = async (app) => {
       const params = request.params as Record<string, string>
       const id = uuidSchema.parse(params['id'])
       const body = cancelAppointmentSchema.parse(request.body)
-      const repo = new PrismaAppointmentRepository(request.tenantPrisma!)
+      const prisma = request.tenantPrisma!
+      const repo = new PrismaAppointmentRepository(prisma)
 
-      const appointment = await new CancelAppointmentUseCase(repo).execute({
+      const checkVacancies = new CheckVacanciesUseCase(
+        new PrismaWaitlistRepository(prisma),
+        new PrismaNotificationRepository(prisma),
+      )
+
+      const appointment = await new CancelAppointmentUseCase(repo, checkVacancies).execute({
         appointmentId: id,
         reason: body.reason,
         canceledBy: 'STAFF',
         changedByUserId: request.currentUser?.sub,
+      })
+
+      // ── WhatsApp: notificação de cancelamento ─────────────
+      fireWhatsapp(async () => {
+        const clinic = await getClinicInfo(request.tenantId)
+        if (!clinic?.whatsappEnabled) return
+
+        const svc = new WhatsappService(request.tenantPrisma)
+        await svc.enqueueCancellation({
+          id:               appointment.id,
+          scheduledDate:    new Date(`${appointment.scheduledDate}T00:00:00Z`),
+          startTime:        new Date(`1970-01-01T${appointment.startTime}:00Z`),
+          patientName:      appointment.patient.name,
+          patientPhone:     appointment.patient.phone ?? null,
+          professionalName: appointment.professional.name,
+          procedureName:    appointment.procedure.name,
+          clinicName:       clinic.name,
+        })
       })
 
       return reply.status(200).send({ success: true, data: appointment })

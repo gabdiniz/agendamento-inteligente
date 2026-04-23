@@ -4,7 +4,7 @@
 // Fundo branco puro + faixa lateral com gradiente, formulário centrado e arejado.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useNavigate, useParams, Link } from '@tanstack/react-router'
 
 import { clinicAuthApi } from '@/lib/api/clinic.api'
 import { useAuthStore } from '@/stores/auth.store'
@@ -300,6 +300,23 @@ export function ClinicLoginPage() {
                 {errors.password && (
                   <p style={{ fontSize: '12px', color: '#ef4444', marginTop: '5px' }}>{errors.password.message}</p>
                 )}
+              </div>
+
+              {/* Esqueceu a senha */}
+              <div style={{ textAlign: 'right', marginTop: '-6px' }}>
+                <Link
+                  to="/app/$slug/forgot-password"
+                  params={{ slug }}
+                  style={{
+                    fontSize: '12px',
+                    color: 'var(--color-primary)',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    opacity: 0.85,
+                  }}
+                >
+                  Esqueceu a senha?
+                </Link>
               </div>
 
               <button

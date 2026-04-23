@@ -35,6 +35,8 @@ import { WorkSchedulePage } from '@/features/clinic/pages/WorkSchedulePage'
 import { ClinicLayout } from '@/features/clinic/ClinicLayout'
 import { requireClinicAuth } from '@/features/clinic/guards/ClinicGuard'
 import { ClinicLoginPage } from '@/features/clinic/pages/LoginPage'
+import { ForgotPasswordPage } from '@/features/clinic/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/features/clinic/pages/ResetPasswordPage'
 import { DashboardPage } from '@/features/clinic/pages/DashboardPage'
 import { ProfessionalsPage } from '@/features/clinic/pages/ProfessionalsPage'
 import { NewProfessionalPage } from '@/features/clinic/pages/NewProfessionalPage'
@@ -53,6 +55,8 @@ import { NewProcedurePage } from '@/features/clinic/pages/NewProcedurePage'
 import { EditProcedurePage } from '@/features/clinic/pages/EditProcedurePage'
 import { WaitlistPage } from '@/features/clinic/pages/WaitlistPage'
 import { NotificationsPage } from '@/features/clinic/pages/NotificationsPage'
+import { UsersPage } from '@/features/clinic/pages/UsersPage'
+import { WhatsappPage } from '@/features/clinic/pages/WhatsappPage'
 
 // ─── Dispatcher de seção ─────────────────────────────────────────────────────
 // Rota /$section serve dashboard | professionals | patients sem criar N rotas.
@@ -65,6 +69,8 @@ function SectionDispatcher() {
     case 'patients':      return <PatientsPage />
     case 'waitlist':       return <WaitlistPage />
     case 'notifications':  return <NotificationsPage />
+    case 'usuarios':       return <UsersPage />
+    case 'whatsapp':       return <WhatsappPage />
     default:               return <DashboardPage />
   }
 }
@@ -106,12 +112,24 @@ const newTenantRoute = createRoute({
   component: NewTenantPage,
 })
 
-// ─── Clinic — login (pública) ─────────────────────────────────────────────────
+// ─── Clinic — rotas públicas (sem auth) ──────────────────────────────────────
 
 const clinicLoginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/app/$slug/login',
   component: ClinicLoginPage,
+})
+
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/app/$slug/forgot-password',
+  component: ForgotPasswordPage,
+})
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/app/$slug/reset-password',
+  component: ResetPasswordPage,
 })
 
 // ─── Clinic — painel protegido ────────────────────────────────────────────────
@@ -236,6 +254,8 @@ const routeTree = rootRoute.addChildren([
     newTenantRoute,
   ]),
   clinicLoginRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
   clinicRoute.addChildren([
     clinicIndexRoute,
     clinicSectionRoute,

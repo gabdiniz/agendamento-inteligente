@@ -39,7 +39,10 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
   // Lista todos os profissionais ativos com seus procedimentos ativos.
   // Usado para popular os selects da página pública.
   //
-  app.get('/professionals', async (request, reply) => {
+  // 60 req/min — listagem pública, tolerância mais alta (usada no carregamento inicial)
+  app.get('/professionals', {
+    config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
     const prisma = request.tenantPrisma!
 
     // ── Query única — busca profissionais ativos com seus procedimentos ──
@@ -97,7 +100,10 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
   // ?professionalId=uuid&procedureId=uuid&date=YYYY-MM-DD
   // Retorna lista de { startTime, endTime } disponíveis.
   //
-  app.get('/slots', async (request, reply) => {
+  // 30 req/min — busca de slots disponíveis (pode ser chamada repetidamente ao navegar por datas)
+  app.get('/slots', {
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
     const query = slotsQuerySchema.parse(request.query)
     const prisma = request.tenantPrisma!
 
@@ -121,7 +127,19 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
   // Usa o mesmo CreateAppointmentUseCase do painel interno,
   // com find-or-create de paciente embutido.
   //
-  app.post('/book', async (request, reply) => {
+  // 5 agendamentos/min por IP — previne criação em massa de agendamentos falsos
+  app.post('/book', {
+    config: {
+      rateLimit: {
+        max: 5,
+        timeWindow: '1 minute',
+        errorResponseBuilder: () => ({
+          success: false,
+          error: 'Muitas tentativas de agendamento. Aguarde um momento e tente novamente.',
+        }),
+      },
+    },
+  }, async (request, reply) => {
     const body = publicBookingSchema.parse(request.body)
     const prisma = request.tenantPrisma!
 
@@ -160,7 +178,19 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
   // Paciente entra na lista de espera quando não encontra horário.
   // Reutiliza o AddToWaitlistUseCase existente.
   //
-  app.post('/waitlist', async (request, reply) => {
+  // 5 entradas/min por IP
+  app.post('/waitlist', {
+    config: {
+      rateLimit: {
+        max: 5,
+        timeWindow: '1 minute',
+        errorResponseBuilder: () => ({
+          success: false,
+          error: 'Muitas solicitações. Aguarde um momento e tente novamente.',
+        }),
+      },
+    },
+  }, async (request, reply) => {
     const body = createWaitlistEntrySchema.parse(request.body)
     const prisma = request.tenantPrisma!
 

@@ -196,6 +196,7 @@ model Procedure {
   name            String   @db.VarChar(255)
   description     String?
   durationMinutes Int
+  priceCents      Int?
   color           String?  @db.VarChar(7)
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now()) @db.Timestamptz
@@ -528,4 +529,66 @@ model CampaignRecipient {
   @@unique([campaignId, patientId])
   @@index([campaignId])
   @@map("campaign_recipients")
+}
+
+// ─── Recuperação de senha ─────────────────────────────────────────────────────
+
+model PasswordResetToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @db.VarChar(255)
+  expiresAt DateTime  @db.Timestamptz
+  usedAt    DateTime? @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  @@unique([tokenHash])
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// ─── WhatsApp / Z-API ─────────────────────────────────────────────────────────
+
+enum WhatsappEvent {
+  CONFIRMATION
+  REMINDER
+  CANCELLATION
+  RESCHEDULE
+}
+
+enum WhatsappJobStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  CANCELED
+}
+
+model WhatsappTemplate {
+  id        String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event     WhatsappEvent @unique
+  body      String
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now()) @db.Timestamptz
+  updatedAt DateTime      @updatedAt @db.Timestamptz
+
+  @@map("whatsapp_templates")
+}
+
+model WhatsappJob {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event         WhatsappEvent
+  phone         String            @db.VarChar(20)
+  message       String
+  status        WhatsappJobStatus @default(PENDING)
+  retries       Int               @default(0)
+  scheduledAt   DateTime          @db.Timestamptz
+  sentAt        DateTime?         @db.Timestamptz
+  errorLog      String?
+  appointmentId String            @db.Uuid
+  patientName   String            @db.VarChar(255)
+  createdAt     DateTime          @default(now()) @db.Timestamptz
+  updatedAt     DateTime          @updatedAt @db.Timestamptz
+
+  @@index([status, scheduledAt])
+  @@map("whatsapp_jobs")
 }

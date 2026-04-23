@@ -15,6 +15,8 @@ export interface ClinicUser {
   phone: string | null
   avatarUrl: string | null
   roles: string[]
+  /** URL relativa da logo da clínica — ex: /uploads/logos/filename.png */
+  tenantLogoUrl?: string | null
 }
 
 export interface ClinicAuthTokens {
@@ -43,6 +45,16 @@ export const clinicAuthApi = {
 
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
     await apiClient.patch('/auth/password', { currentPassword, newPassword })
+  },
+
+  /** Envia e-mail de recuperação de senha (pública, usa slug na URL). */
+  async forgotPassword(slug: string, email: string): Promise<void> {
+    await apiClient.post(`/t/${slug}/auth/forgot-password`, { email })
+  },
+
+  /** Redefine a senha usando o token recebido por e-mail (pública). */
+  async resetPassword(slug: string, token: string, newPassword: string): Promise<void> {
+    await apiClient.post(`/t/${slug}/auth/reset-password`, { token, newPassword })
   },
 }
 
@@ -236,6 +248,7 @@ export const patientsApi = {
     page?: number
     limit?: number
     search?: string
+    isActive?: boolean
   }): Promise<PaginatedPatients> {
     const { data } = await apiClient.get('/patients', { params })
     // Backend retorna { success, data: [...], meta: {total, page, limit, totalPages} }
@@ -260,6 +273,16 @@ export const patientsApi = {
 
   async update(id: string, payload: Partial<CreatePatientPayload>): Promise<Patient> {
     const { data } = await apiClient.patch(`/patients/${id}`, payload)
+    return data.data as Patient
+  },
+
+  async activate(id: string): Promise<Patient> {
+    const { data } = await apiClient.patch(`/patients/${id}/activate`)
+    return data.data as Patient
+  },
+
+  async deactivate(id: string): Promise<Patient> {
+    const { data } = await apiClient.patch(`/patients/${id}/deactivate`)
     return data.data as Patient
   },
 }
@@ -400,6 +423,42 @@ export const workScheduleApi = {
   async deactivate(professionalId: string, dayOfWeek: number): Promise<WorkScheduleRecord> {
     const { data } = await apiClient.patch(`/professionals/${professionalId}/schedule/${dayOfWeek}/deactivate`)
     return data.data as WorkScheduleRecord
+  },
+}
+
+// ─── Schedule Blocks ──────────────────────────────────────────────────────────
+// Bloqueios pontuais na agenda (férias, feriados, indisponibilidades).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ScheduleBlock {
+  id: string
+  professionalId: string
+  startDatetime: string   // ISO 8601 com timezone
+  endDatetime: string     // ISO 8601 com timezone
+  reason: string | null
+  createdByUserId: string
+  createdAt: string
+}
+
+export interface CreateScheduleBlockPayload {
+  startDatetime: string
+  endDatetime: string
+  reason?: string
+}
+
+export const scheduleBlocksApi = {
+  async list(professionalId: string, params?: { from?: string; until?: string }): Promise<ScheduleBlock[]> {
+    const { data } = await apiClient.get(`/professionals/${professionalId}/schedule/blocks`, { params })
+    return data.data as ScheduleBlock[]
+  },
+
+  async create(professionalId: string, payload: CreateScheduleBlockPayload): Promise<ScheduleBlock> {
+    const { data } = await apiClient.post(`/professionals/${professionalId}/schedule/blocks`, payload)
+    return data.data as ScheduleBlock
+  },
+
+  async remove(professionalId: string, blockId: string): Promise<void> {
+    await apiClient.delete(`/professionals/${professionalId}/schedule/blocks/${blockId}`)
   },
 }
 
@@ -590,5 +649,148 @@ export const notificationsApi = {
   async markRead(id: string): Promise<NotificationRecord> {
     const { data } = await apiClient.patch(`/notifications/${id}/read`)
     return data.data as NotificationRecord
+  },
+}
+
+// ─── Users (Gestão de usuários da clínica) ───────────────────────────────────
+
+export type UserRole = 'GESTOR' | 'RECEPCAO' | 'PROFISSIONAL'
+
+export interface ClinicUserRecord {
+  id: string
+  name: string
+  email: string
+  phone: string | null
+  avatarUrl: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  roles: { role: UserRole }[]
+  professional: { id: string; name: string; specialty: string | null } | null
+}
+
+export interface PaginatedUsers {
+  data: ClinicUserRecord[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export interface CreateUserPayload {
+  name: string
+  email: string
+  password: string
+  phone?: string
+  role: UserRole
+  professionalId?: string
+}
+
+export interface UpdateUserPayload {
+  name?: string
+  phone?: string | null
+}
+
+export const usersApi = {
+  async list(params?: { page?: number; limit?: number; search?: string; isActive?: boolean }): Promise<PaginatedUsers> {
+    const { data } = await apiClient.get('/users', { params })
+    return {
+      data:       data.data                  as ClinicUserRecord[],
+      total:      (data.meta?.total      ?? 0)  as number,
+      page:       (data.meta?.page       ?? 1)  as number,
+      limit:      (data.meta?.limit      ?? 20) as number,
+      totalPages: (data.meta?.totalPages ?? 1)  as number,
+    }
+  },
+
+  async get(id: string): Promise<ClinicUserRecord> {
+    const { data } = await apiClient.get(`/users/${id}`)
+    return data.data as ClinicUserRecord
+  },
+
+  async create(payload: CreateUserPayload): Promise<ClinicUserRecord> {
+    const { data } = await apiClient.post('/users', payload)
+    return data.data as ClinicUserRecord
+  },
+
+  async update(id: string, payload: UpdateUserPayload): Promise<ClinicUserRecord> {
+    const { data } = await apiClient.patch(`/users/${id}`, payload)
+    return data.data as ClinicUserRecord
+  },
+
+  async activate(id: string): Promise<ClinicUserRecord> {
+    const { data } = await apiClient.patch(`/users/${id}/activate`)
+    return data.data as ClinicUserRecord
+  },
+
+  async deactivate(id: string): Promise<ClinicUserRecord> {
+    const { data } = await apiClient.patch(`/users/${id}/deactivate`)
+    return data.data as ClinicUserRecord
+  },
+}
+
+
+// ─── WhatsApp ─────────────────────────────────────────────────────────────────
+
+export interface WhatsappConfig {
+  whatsappEnabled: boolean
+  zApiInstanceId: string | null
+  zApiToken: string | null
+  reminderHoursBefore: number
+  hasCredentials: boolean
+}
+
+export interface WhatsappTemplate {
+  id: string | null
+  event: 'CONFIRMATION' | 'REMINDER' | 'CANCELLATION' | 'RESCHEDULE'
+  body: string
+  isActive: boolean
+}
+
+export interface WhatsappJob {
+  id: string
+  event: 'CONFIRMATION' | 'REMINDER' | 'CANCELLATION' | 'RESCHEDULE'
+  phone: string
+  message: string
+  status: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'CANCELED'
+  retries: number
+  scheduledAt: string
+  sentAt: string | null
+  errorLog: string | null
+  appointmentId: string
+  patientName: string
+  createdAt: string
+}
+
+export const whatsappApi = {
+  async getConfig(): Promise<WhatsappConfig> {
+    const { data } = await apiClient.get('/whatsapp/config')
+    return data.data as WhatsappConfig
+  },
+
+  async saveConfig(payload: Partial<WhatsappConfig> & { zApiInstanceId?: string | null; zApiToken?: string | null }): Promise<void> {
+    await apiClient.put('/whatsapp/config', payload)
+  },
+
+  async getTemplates(): Promise<WhatsappTemplate[]> {
+    const { data } = await apiClient.get('/whatsapp/templates')
+    return data.data as WhatsappTemplate[]
+  },
+
+  async saveTemplate(event: string, body: string, isActive?: boolean): Promise<WhatsappTemplate> {
+    const { data } = await apiClient.put(`/whatsapp/templates/${event}`, { body, isActive })
+    return data.data as WhatsappTemplate
+  },
+
+  async test(phone: string, message?: string): Promise<void> {
+    await apiClient.post('/whatsapp/test', { phone, message })
+  },
+
+  async listJobs(params?: { status?: string; event?: string; page?: number; limit?: number }): Promise<{
+    data: WhatsappJob[]
+    meta: { total: number; page: number; limit: number; totalPages: number }
+  }> {
+    const { data } = await apiClient.get('/whatsapp/jobs', { params })
+    return { data: data.data, meta: data.meta }
   },
 }
