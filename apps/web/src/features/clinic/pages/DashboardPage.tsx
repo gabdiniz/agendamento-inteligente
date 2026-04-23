@@ -242,8 +242,8 @@ export function DashboardPage() {
   const prevDay  = offsetDate(selectedDate, -1)
   const isToday  = selectedDate === today
 
-  // Últimos 7 dias fixos (sempre de hoje) — usado nos gráficos de período
-  const weekStart = offsetDate(today, -6)
+  // Últimos 7 dias relativos ao dia selecionado
+  const weekStart = offsetDate(selectedDate, -6)
 
   // ── Queries ───────────────────────────────────────────────────────────────
 
@@ -259,10 +259,10 @@ export function DashboardPage() {
     queryFn: () => appointmentsApi.list({ scheduledDate: prevDay, limit: 100 }),
   })
 
-  /** Últimos 7 dias — gráfico + donut (sempre fixo em hoje) */
+  /** Últimos 7 dias relativos ao dia selecionado — gráfico + donut */
   const { data: weekData, isLoading: loadingWeek } = useQuery({
-    queryKey: ['appointments-week', { start: weekStart, end: today }],
-    queryFn: () => appointmentsApi.list({ startDate: weekStart, endDate: today, limit: 500 }),
+    queryKey: ['appointments-week', { start: weekStart, end: selectedDate }],
+    queryFn: () => appointmentsApi.list({ startDate: weekStart, endDate: selectedDate, limit: 500 }),
     staleTime: 5 * 60_000,
   })
 
@@ -303,10 +303,10 @@ export function DashboardPage() {
 
   const waitingCount = waitlistData?.total ?? 0
 
-  // Gráfico de barras: últimos 7 dias (fixo em hoje)
+  // Gráfico de barras: últimos 7 dias relativos ao dia selecionado
   const barData: { day: string; total: number }[] = []
   for (let i = -6; i <= 0; i++) {
-    const date = offsetDate(today, i)
+    const date = offsetDate(selectedDate, i)
     const count = weekApts.filter(a => a.scheduledDate === date).length
     barData.push({ day: dayLabel(date), total: count })
   }
@@ -364,16 +364,6 @@ export function DashboardPage() {
         .day-nav-btn:hover { background: #f4f6f8; border-color: #d0d7de; }
       `}</style>
 
-      {/* Input date escondido — acionado pelo ícone de calendário */}
-      <input
-        ref={dateInputRef}
-        type="date"
-        value={selectedDate}
-        max={offsetDate(today, 30)}
-        onChange={e => e.target.value && setSelectedDate(e.target.value)}
-        style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
-      />
-
       <div className="r-page" style={{ minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
 
         {/* ── Cabeçalho ──────────────────────────────────────────────────────── */}
@@ -422,28 +412,43 @@ export function DashboardPage() {
               </button>
 
               {/* Label da data + ícone de calendário */}
-              <button
-                onClick={() => dateInputRef.current?.showPicker?.()}
-                style={{
-                  padding: '7px 13px', borderRadius: 10, background: '#fff',
-                  border: '1px solid #eaecef', fontSize: 12, fontWeight: 600, color: '#4a5568',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)', cursor: 'pointer',
-                  transition: 'background 0.15s, border-color 0.15s',
-                  whiteSpace: 'nowrap',
-                  ...(isToday ? {} : {
-                    borderColor: 'color-mix(in srgb, var(--color-primary) 30%, transparent)',
-                    background: 'color-mix(in srgb, var(--color-primary) 5%, white)',
-                  }),
-                }}
-                title="Escolher data"
-              >
-                <svg width="14" height="14" fill="none" stroke={isToday ? 'var(--color-primary)' : 'var(--color-primary)'} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {isToday ? 'Hoje' : formatDateDisplay(selectedDate)}
-              </button>
+              <div style={{ position: 'relative', display: 'inline-flex' }}>
+                {/* Input date oculto — fica aqui para o popup abrir perto do botão */}
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  value={selectedDate}
+                  onChange={e => e.target.value && setSelectedDate(e.target.value)}
+                  style={{
+                    position: 'absolute', bottom: 0, left: 0,
+                    width: '100%', height: 0,
+                    opacity: 0, pointerEvents: 'none',
+                    border: 'none', padding: 0, margin: 0,
+                  }}
+                />
+                <button
+                  onClick={() => dateInputRef.current?.showPicker?.()}
+                  style={{
+                    padding: '7px 13px', borderRadius: 10, background: '#fff',
+                    border: '1px solid #eaecef', fontSize: 12, fontWeight: 600, color: '#4a5568',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.04)', cursor: 'pointer',
+                    transition: 'background 0.15s, border-color 0.15s',
+                    whiteSpace: 'nowrap',
+                    ...(isToday ? {} : {
+                      borderColor: 'color-mix(in srgb, var(--color-primary) 30%, transparent)',
+                      background: 'color-mix(in srgb, var(--color-primary) 5%, white)',
+                    }),
+                  }}
+                  title="Escolher data"
+                >
+                  <svg width="14" height="14" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {isToday ? 'Hoje' : formatDateDisplay(selectedDate)}
+                </button>
+              </div>
 
               {/* → Próximo dia */}
               <button
