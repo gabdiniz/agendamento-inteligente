@@ -91,7 +91,7 @@ export const scheduleBlockRoutes: FastifyPluginAsync = async (app) => {
         startDatetime:   new Date(body.startDatetime),
         endDatetime:     new Date(body.endDatetime),
         reason:          body.reason ?? null,
-        createdByUserId: request.userId!,
+        createdByUserId: request.currentUser.sub,
       },
     })
 
