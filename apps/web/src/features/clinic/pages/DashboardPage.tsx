@@ -1,11 +1,12 @@
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 //
 // Resumo do dia + métricas da semana.
-// Cards com delta vs ontem, gráfico de barras (7 dias), donut de status,
-// contagem de lista de espera e agenda do dia.
+// Cards com delta vs dia anterior, gráfico de barras (7 dias), donut de status,
+// contagem de lista de espera e agenda do dia selecionado.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useQuery } from '@tanstack/react-query'
+import { useState, useRef } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -22,13 +23,14 @@ import { useAuthStore } from '@/stores/auth.store'
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function todayISO() {
-  return new Date().toISOString().split('T')[0]!
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function offsetDate(days: number): string {
-  const d = new Date()
+function offsetDate(baseISO: string, days: number): string {
+  const d = new Date(baseISO + 'T12:00:00') // meio-dia evita problemas de DST
   d.setDate(d.getDate() + days)
-  return d.toISOString().split('T')[0]!
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function formatTime(t: string) {
@@ -46,6 +48,16 @@ function greeting() {
 function dayLabel(isoDate: string): string {
   const d = new Date(isoDate + 'T00:00:00')
   return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+}
+
+/** Formata data ISO para exibição amigável no cabeçalho */
+function formatDateDisplay(isoDate: string, long = false): string {
+  const d = new Date(isoDate + 'T12:00:00')
+  if (long) {
+    return d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+  }
+  return d.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })
+    .replace(/\./g, '').replace(/,/, ',')
 }
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -66,7 +78,6 @@ const STATUS_STYLE: Record<string, React.CSSProperties> = {
   CANCELED:        { background: '#fff5f5', color: '#c92a2a', border: '1px solid #ffc9c9' },
 }
 
-// Cores do donut de status
 const STATUS_CHART_COLORS: Record<string, string> = {
   SCHEDULED:       '#3b5bdb',
   PATIENT_PRESENT: '#2f9e44',
@@ -83,7 +94,7 @@ interface StatCardProps {
   icon: React.ReactNode
   accent: string
   iconColor: string
-  delta?: { value: number; label: string }  // positivo = subiu, negativo = caiu
+  delta?: { value: number; label: string }
   loading?: boolean
   delay?: number
 }
@@ -190,7 +201,7 @@ function AppointmentRow({ apt, index }: { apt: Appointment; index: number }) {
   )
 }
 
-// ─── Bar Chart custom tooltip ─────────────────────────────────────────────────
+// ─── Tooltips ─────────────────────────────────────────────────────────────────
 
 function BarTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
   if (!active || !payload?.length) return null
@@ -204,8 +215,6 @@ function BarTooltip({ active, payload, label }: { active?: boolean; payload?: Ar
     </div>
   )
 }
-
-// ─── Donut custom tooltip ─────────────────────────────────────────────────────
 
 function DonutTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number }> }) {
   if (!active || !payload?.length) return null
@@ -224,26 +233,33 @@ function DonutTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 
 export function DashboardPage() {
   const { user } = useAuthStore()
-  const today     = todayISO()
-  const yesterday = offsetDate(-1)
-  // últimos 7 dias: D-6 até hoje
-  const weekStart = offsetDate(-6)
 
-  // ── Queries ──────────────────────────────────────────────────────────────
+  // ── Navegação de data ─────────────────────────────────────────────────────
+  const today = todayISO()
+  const [selectedDate, setSelectedDate] = useState(today)
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
-  /** Agendamentos de hoje */
-  const { data: todayData, isLoading: loadingToday } = useQuery({
-    queryKey: ['appointments', { date: today }],
-    queryFn: () => appointmentsApi.list({ scheduledDate: today, limit: 100 }),
+  const prevDay  = offsetDate(selectedDate, -1)
+  const isToday  = selectedDate === today
+
+  // Últimos 7 dias fixos (sempre de hoje) — usado nos gráficos de período
+  const weekStart = offsetDate(today, -6)
+
+  // ── Queries ───────────────────────────────────────────────────────────────
+
+  /** Agendamentos do dia selecionado */
+  const { data: selectedData, isLoading: loadingSelected } = useQuery({
+    queryKey: ['appointments', { date: selectedDate }],
+    queryFn: () => appointmentsApi.list({ scheduledDate: selectedDate, limit: 100 }),
   })
 
-  /** Agendamentos de ontem (para delta) */
-  const { data: yesterdayData } = useQuery({
-    queryKey: ['appointments', { date: yesterday }],
-    queryFn: () => appointmentsApi.list({ scheduledDate: yesterday, limit: 100 }),
+  /** Agendamentos do dia anterior (para delta) */
+  const { data: prevDayData } = useQuery({
+    queryKey: ['appointments', { date: prevDay }],
+    queryFn: () => appointmentsApi.list({ scheduledDate: prevDay, limit: 100 }),
   })
 
-  /** Agendamentos dos últimos 7 dias (para gráfico de barras + donut) */
+  /** Últimos 7 dias — gráfico + donut (sempre fixo em hoje) */
   const { data: weekData, isLoading: loadingWeek } = useQuery({
     queryKey: ['appointments-week', { start: weekStart, end: today }],
     queryFn: () => appointmentsApi.list({ startDate: weekStart, endDate: today, limit: 500 }),
@@ -271,31 +287,31 @@ export function DashboardPage() {
     staleTime: 5 * 60_000,
   })
 
-  // ── Derivações ───────────────────────────────────────────────────────────
+  // ── Derivações ────────────────────────────────────────────────────────────
 
-  const apts          = todayData?.data ?? []
-  const yesterdayApts = yesterdayData?.data ?? []
-  const weekApts      = weekData?.data ?? []
+  const apts       = selectedData?.data ?? []
+  const prevApts   = prevDayData?.data ?? []
+  const weekApts   = weekData?.data ?? []
 
-  const todayCount     = apts.length
-  const yesterdayCount = yesterdayApts.length
-  const deltaTodayVsYesterday = todayCount - yesterdayCount
+  const dayCount       = apts.length
+  const prevDayCount   = prevApts.length
+  const deltaDayCount  = dayCount - prevDayCount
 
-  const todayCompleted  = apts.filter(a => a.status === 'COMPLETED').length
-  const yesterdayCompleted = yesterdayApts.filter(a => a.status === 'COMPLETED').length
-  const deltaCompleted  = todayCompleted - yesterdayCompleted
+  const dayCompleted   = apts.filter(a => a.status === 'COMPLETED').length
+  const prevCompleted  = prevApts.filter(a => a.status === 'COMPLETED').length
+  const deltaCompleted = dayCompleted - prevCompleted
 
   const waitingCount = waitlistData?.total ?? 0
 
-  // Gráfico de barras: quantidade por dia nos últimos 7 dias
+  // Gráfico de barras: últimos 7 dias (fixo em hoje)
   const barData: { day: string; total: number }[] = []
   for (let i = -6; i <= 0; i++) {
-    const date = offsetDate(i)
+    const date = offsetDate(today, i)
     const count = weekApts.filter(a => a.scheduledDate === date).length
     barData.push({ day: dayLabel(date), total: count })
   }
 
-  // Donut: distribuição de status nos últimos 7 dias
+  // Donut: distribuição de status — últimos 7 dias
   const statusCounts: Record<string, number> = {}
   for (const apt of weekApts) {
     statusCounts[apt.status] = (statusCounts[apt.status] ?? 0) + 1
@@ -304,9 +320,10 @@ export function DashboardPage() {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value)
 
-  const todayFormatted = new Date().toLocaleDateString('pt-BR', {
-    weekday: 'long', day: 'numeric', month: 'long',
-  })
+  // Label da data selecionada
+  const selectedDateLabel = isToday
+    ? formatDateDisplay(selectedDate, true)
+    : formatDateDisplay(selectedDate, true)
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -334,11 +351,28 @@ export function DashboardPage() {
           margin-bottom: 28px;
         }
         @media (max-width: 768px) {
-          .dashboard-charts-grid {
-            grid-template-columns: 1fr;
-          }
+          .dashboard-charts-grid { grid-template-columns: 1fr; }
         }
+        .day-nav-btn {
+          width: 30px; height: 30px; border-radius: 8px;
+          border: 1px solid #eaecef; background: #fff;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; color: #4a5568;
+          transition: background 0.15s, border-color 0.15s;
+          flex-shrink: 0;
+        }
+        .day-nav-btn:hover { background: #f4f6f8; border-color: #d0d7de; }
       `}</style>
+
+      {/* Input date escondido — acionado pelo ícone de calendário */}
+      <input
+        ref={dateInputRef}
+        type="date"
+        value={selectedDate}
+        max={offsetDate(today, 30)}
+        onChange={e => e.target.value && setSelectedDate(e.target.value)}
+        style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0 }}
+      />
 
       <div className="r-page" style={{ minHeight: '100%', fontFamily: 'var(--font-sans)' }}>
 
@@ -353,20 +387,74 @@ export function DashboardPage() {
                 {greeting()}, {user?.name?.split(' ')[0]} 👋
               </h1>
               <p style={{ fontSize: 13, color: '#8a99a6', margin: 0, textTransform: 'capitalize' }}>
-                {todayFormatted}
+                {selectedDateLabel}
               </p>
             </div>
-            <div style={{
-              padding: '8px 14px', borderRadius: 10, background: '#fff',
-              border: '1px solid #eaecef', fontSize: 12, fontWeight: 600, color: '#4a5568',
-              display: 'flex', alignItems: 'center', gap: 6,
-              boxShadow: '0 1px 4px rgba(0,0,0,0.04)', flexShrink: 0,
-            }}>
-              <svg width="14" height="14" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              Hoje
+
+            {/* ── Navegador de data ─────────────────────────────────────────── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              {/* Botão Hoje — só aparece quando não é hoje */}
+              {!isToday && (
+                <button
+                  onClick={() => setSelectedDate(today)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 8,
+                    border: '1px solid color-mix(in srgb, var(--color-primary) 40%, transparent)',
+                    background: 'color-mix(in srgb, var(--color-primary) 8%, white)',
+                    color: 'var(--color-primary)', fontSize: 11, fontWeight: 700,
+                    cursor: 'pointer', letterSpacing: '0.04em',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  Hoje
+                </button>
+              )}
+
+              {/* ← Dia anterior */}
+              <button
+                className="day-nav-btn"
+                onClick={() => setSelectedDate(offsetDate(selectedDate, -1))}
+                title="Dia anterior"
+              >
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              {/* Label da data + ícone de calendário */}
+              <button
+                onClick={() => dateInputRef.current?.showPicker?.()}
+                style={{
+                  padding: '7px 13px', borderRadius: 10, background: '#fff',
+                  border: '1px solid #eaecef', fontSize: 12, fontWeight: 600, color: '#4a5568',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)', cursor: 'pointer',
+                  transition: 'background 0.15s, border-color 0.15s',
+                  whiteSpace: 'nowrap',
+                  ...(isToday ? {} : {
+                    borderColor: 'color-mix(in srgb, var(--color-primary) 30%, transparent)',
+                    background: 'color-mix(in srgb, var(--color-primary) 5%, white)',
+                  }),
+                }}
+                title="Escolher data"
+              >
+                <svg width="14" height="14" fill="none" stroke={isToday ? 'var(--color-primary)' : 'var(--color-primary)'} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {isToday ? 'Hoje' : formatDateDisplay(selectedDate)}
+              </button>
+
+              {/* → Próximo dia */}
+              <button
+                className="day-nav-btn"
+                onClick={() => setSelectedDate(offsetDate(selectedDate, 1))}
+                title="Próximo dia"
+              >
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -378,12 +466,12 @@ export function DashboardPage() {
           gap: 14, marginBottom: 28,
         }}>
           <StatCard
-            label="Agendamentos hoje"
-            value={todayCount}
-            loading={loadingToday}
+            label={isToday ? 'Agendamentos hoje' : 'Agendamentos no dia'}
+            value={dayCount}
+            loading={loadingSelected}
             accent="color-mix(in srgb, var(--color-primary) 12%, white)"
             iconColor="var(--color-primary)"
-            delta={{ value: deltaTodayVsYesterday, label: 'vs ontem' }}
+            delta={{ value: deltaDayCount, label: 'vs anterior' }}
             icon={
               <svg width="20" height="20" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
@@ -393,12 +481,12 @@ export function DashboardPage() {
             delay={0}
           />
           <StatCard
-            label="Concluídos hoje"
-            value={todayCompleted}
-            loading={loadingToday}
+            label={isToday ? 'Concluídos hoje' : 'Concluídos no dia'}
+            value={dayCompleted}
+            loading={loadingSelected}
             accent="#f3f0ff"
             iconColor="#6741d9"
-            delta={{ value: deltaCompleted, label: 'vs ontem' }}
+            delta={{ value: deltaCompleted, label: 'vs anterior' }}
             icon={
               <svg width="20" height="20" fill="none" stroke="#6741d9" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 13l4 4L19 7" />
@@ -434,9 +522,9 @@ export function DashboardPage() {
           />
         </div>
 
-        {/* ── Gráficos ────────────────────────────────────────────────────────── */}
+        {/* ── Gráficos ─────────────────────────────────────────────────────────── */}
         <div className="dashboard-charts-grid">
-          {/* Gráfico de barras — 7 dias */}
+          {/* Gráfico de barras — últimos 7 dias (fixo) */}
           <div style={{
             background: '#fff', borderRadius: 16, border: '1px solid #eaecef',
             padding: '20px 20px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
@@ -470,15 +558,13 @@ export function DashboardPage() {
                     width={30}
                   />
                   <Tooltip content={<BarTooltip />} cursor={{ fill: '#f8fafc', radius: 6 }} />
-                  <Bar dataKey="total" radius={[6, 6, 0, 0]}
-                    fill="var(--color-primary)"
-                  />
+                  <Bar dataKey="total" radius={[6, 6, 0, 0]} fill="var(--color-primary)" />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          {/* Donut — distribuição de status */}
+          {/* Donut — distribuição de status (fixo nos últimos 7 dias) */}
           <div style={{
             background: '#fff', borderRadius: 16, border: '1px solid #eaecef',
             padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
@@ -515,17 +601,13 @@ export function DashboardPage() {
                       dataKey="value"
                     >
                       {donutData.map(entry => (
-                        <Cell
-                          key={entry.name}
-                          fill={STATUS_CHART_COLORS[entry.name] ?? '#94a3b8'}
-                        />
+                        <Cell key={entry.name} fill={STATUS_CHART_COLORS[entry.name] ?? '#94a3b8'} />
                       ))}
                     </Pie>
                     <Tooltip content={<DonutTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
 
-                {/* Legenda */}
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {donutData.map(entry => (
                     <div key={entry.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -556,14 +638,13 @@ export function DashboardPage() {
           overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
           animation: 'fadeUp 0.4s ease 0.25s both',
         }}>
-          {/* Header */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '16px 20px', borderBottom: '1px solid #f0f2f5',
           }}>
             <div>
               <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1a2530', margin: '0 0 2px' }}>
-                Agenda de hoje
+                {isToday ? 'Agenda de hoje' : `Agenda — ${formatDateDisplay(selectedDate)}`}
               </h2>
               <p style={{ fontSize: 12, color: '#8a99a6', margin: 0 }}>
                 {apts.length > 0 ? `${apts.length} agendamento${apts.length !== 1 ? 's' : ''}` : 'Nenhum agendamento'}
@@ -573,7 +654,7 @@ export function DashboardPage() {
               <div style={{ display: 'flex', gap: 6 }}>
                 {[
                   { label: `${apts.filter(a => ['SCHEDULED','PATIENT_PRESENT','IN_PROGRESS'].includes(a.status)).length} ativos`, color: '#2f9e44', bg: '#ebfbee' },
-                  { label: `${todayCompleted} concluídos`, color: '#6741d9', bg: '#f3f0ff' },
+                  { label: `${dayCompleted} concluídos`, color: '#6741d9', bg: '#f3f0ff' },
                 ].map(({ label, color, bg }) => (
                   <span key={label} style={{ fontSize: 11, fontWeight: 600, color, background: bg, padding: '3px 10px', borderRadius: 20 }}>
                     {label}
@@ -583,7 +664,7 @@ export function DashboardPage() {
             )}
           </div>
 
-          {loadingToday ? (
+          {loadingSelected ? (
             <div style={{ padding: '48px 20px', textAlign: 'center', color: '#b0bbc6' }}>
               <div style={{ width: 32, height: 32, border: '2px solid #eaecef', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
               <p style={{ fontSize: 13, margin: 0 }}>Carregando agenda...</p>
@@ -594,8 +675,12 @@ export function DashboardPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                   d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <p style={{ fontSize: 14, fontWeight: 600, color: '#4a5568', margin: '0 0 4px' }}>Dia livre por enquanto</p>
-              <p style={{ fontSize: 13, margin: 0 }}>Nenhum agendamento para hoje.</p>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#4a5568', margin: '0 0 4px' }}>
+                {isToday ? 'Dia livre por enquanto' : 'Nenhum agendamento'}
+              </p>
+              <p style={{ fontSize: 13, margin: 0 }}>
+                {isToday ? 'Nenhum agendamento para hoje.' : `Sem agendamentos em ${formatDateDisplay(selectedDate)}.`}
+              </p>
             </div>
           ) : (
             <div className="r-table-wrap">
@@ -621,7 +706,6 @@ export function DashboardPage() {
           )}
         </div>
 
-        {/* Rodapé info */}
         {profsData && (
           <p style={{ fontSize: 11.5, color: '#b0bbc6', marginTop: 16, textAlign: 'right' }}>
             {profsData.total} profissional{profsData.total !== 1 ? 'is' : ''} ativo{profsData.total !== 1 ? 's' : ''}
