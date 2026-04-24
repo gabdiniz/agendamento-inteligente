@@ -151,10 +151,14 @@ model Tenant {
   phone     String?   @db.VarChar(20)
   logoUrl   String?
   address   String?
-  planType  PlanType  @default(BASIC)
+  planType  PlanType  @default(BASIC)  // deprecated — usar planId
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now()) @db.Timestamptz
   updatedAt DateTime  @updatedAt @db.Timestamptz
+
+  // ─── Plano ───────────────────────────────────
+  planId    String?  @db.Uuid
+  plan      Plan?    @relation("TenantPlan", fields: [planId], references: [id])
 
   // ─── WhatsApp / Z-API ────────────────────────
   whatsappEnabled     Boolean @default(false)
@@ -166,6 +170,7 @@ model Tenant {
   subscriptions Subscription[]
 
   @@index([isActive])
+  @@index([planId])
   @@map("tenants")
 }
 
@@ -201,22 +206,48 @@ model SuperAdminRefreshToken {
 // ─── MVP2: Billing ──────────────────────────────────────────────────────────
 
 model Plan {
-  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                     String   @db.VarChar(100)
-  slug                     String   @unique @db.VarChar(50)
-  description              String?
-  priceMonthyCents         Int
-  priceYearlyCents         Int?
-  maxProfessionals         Int      @default(5)
-  maxMonthlyAppointments   Int      @default(200)
-  features                 Json     @default("{}")
-  isActive                 Boolean  @default(true)
-  createdAt                DateTime @default(now()) @db.Timestamptz
-  updatedAt                DateTime @updatedAt @db.Timestamptz
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(100)
+  slug        String   @unique @db.VarChar(50)
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
 
+  // Campos de billing — preenchidos futuramente
+  priceMonthyCents       Int?
+  priceYearlyCents       Int?
+
+  features      PlanFeature[]
   subscriptions Subscription[]
+  tenants       Tenant[]       @relation("TenantPlan")
 
   @@map("plans")
+}
+
+model Feature {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug        String   @unique @db.VarChar(100)
+  name        String   @db.VarChar(255)
+  description String?
+  category    String   @db.VarChar(100) // core | communication | crm | ai | billing | reports
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  plans PlanFeature[]
+
+  @@map("features")
+}
+
+model PlanFeature {
+  planId    String @db.Uuid
+  featureId String @db.Uuid
+
+  plan    Plan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@id([planId, featureId])
+  @@map("plan_features")
 }
 
 model Subscription {

@@ -33,6 +33,7 @@ export const createTenantSchema = z.object({
   phone: z.string().optional(),
   address: z.string().optional(),
   planType: z.enum(['BASIC', 'PRO']).default('BASIC').optional(),
+  planId: z.string().uuid().optional().nullable(),
   logoUrl: z.string().optional().nullable(),  // URL absoluta ou caminho relativo (/uploads/...)
 })
 
@@ -52,6 +53,7 @@ export const updateTenantSchema = z.object({
   phone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
   planType: z.enum(['BASIC', 'PRO']).optional(),
+  planId: z.string().uuid().optional().nullable(),
   logoUrl: z.string().optional().nullable(),  // URL absoluta ou caminho relativo (/uploads/...)
 })
 

@@ -2,7 +2,8 @@
 //
 // Opera no schema do tenant via tenantPrisma.
 // phone é o identificador único do paciente (deduplicação no cadastro).
-// birthDate é "YYYY-MM-DD" no domínio — o repositório converte para Date.
+// birthDate é sempre "YYYY-MM-DD" no domínio e na resposta da API.
+// O repositório converte Date do Prisma para string antes de retornar.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface PatientRecord {
@@ -10,7 +11,7 @@ export interface PatientRecord {
   name: string
   phone: string                         // único por tenant
   email: string | null
-  birthDate: Date | null
+  birthDate: string | null              // "YYYY-MM-DD"
   gender: string | null                 // MALE | FEMALE | OTHER | PREFER_NOT_TO_SAY
   city: string | null
   preferredContactChannel: string | null // WHATSAPP | SMS | EMAIL

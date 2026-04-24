@@ -26,6 +26,8 @@ import { requireSuperAdminAuth } from '@/features/super-admin/guards/SuperAdminG
 import { LoginPage as SuperAdminLoginPage } from '@/features/super-admin/pages/LoginPage'
 import { TenantsPage } from '@/features/super-admin/pages/TenantsPage'
 import { NewTenantPage } from '@/features/super-admin/pages/NewTenantPage'
+import { PlansPage } from '@/features/super-admin/pages/PlansPage'
+import { PlanDetailPage } from '@/features/super-admin/pages/PlanDetailPage'
 
 // ── Public Booking ───────────────────────────────────────────────────────────
 import { BookingPage } from '@/features/public-booking/BookingPage'
@@ -57,6 +59,7 @@ import { WaitlistPage } from '@/features/clinic/pages/WaitlistPage'
 import { NotificationsPage } from '@/features/clinic/pages/NotificationsPage'
 import { UsersPage } from '@/features/clinic/pages/UsersPage'
 import { WhatsappPage } from '@/features/clinic/pages/WhatsappPage'
+import { FeatureGate } from '@/components/FeatureGate'
 
 // ─── Dispatcher de seção ─────────────────────────────────────────────────────
 // Rota /$section serve dashboard | professionals | patients sem criar N rotas.
@@ -67,10 +70,10 @@ function SectionDispatcher() {
     case 'appointments':  return <AppointmentsPage />
     case 'professionals': return <ProfessionalsPage />
     case 'patients':      return <PatientsPage />
-    case 'waitlist':       return <WaitlistPage />
-    case 'notifications':  return <NotificationsPage />
+    case 'waitlist':       return <FeatureGate slug="waitlist"><WaitlistPage /></FeatureGate>
+    case 'notifications':  return <FeatureGate slug="whatsapp"><NotificationsPage /></FeatureGate>
     case 'usuarios':       return <UsersPage />
-    case 'whatsapp':       return <WhatsappPage />
+    case 'whatsapp':       return <FeatureGate slug="whatsapp"><WhatsappPage /></FeatureGate>
     default:               return <DashboardPage />
   }
 }
@@ -110,6 +113,18 @@ const newTenantRoute = createRoute({
   getParentRoute: () => superAdminRoute,
   path: '/tenants/new',
   component: NewTenantPage,
+})
+
+const plansRoute = createRoute({
+  getParentRoute: () => superAdminRoute,
+  path: '/plans',
+  component: PlansPage,
+})
+
+const planDetailRoute = createRoute({
+  getParentRoute: () => superAdminRoute,
+  path: '/plans/$id',
+  component: PlanDetailPage,
 })
 
 // ─── Clinic — rotas públicas (sem auth) ──────────────────────────────────────
@@ -252,6 +267,8 @@ const routeTree = rootRoute.addChildren([
     superAdminIndexRoute,
     tenantsRoute,
     newTenantRoute,
+    plansRoute,
+    planDetailRoute,
   ]),
   clinicLoginRoute,
   forgotPasswordRoute,

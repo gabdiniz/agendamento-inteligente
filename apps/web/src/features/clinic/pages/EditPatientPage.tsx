@@ -16,7 +16,11 @@ const schema = z.object({
   phone:     z.string().min(10, 'Telefone inválido'),
   email:     z.string().email('E-mail inválido').optional().or(z.literal('')),
   birthDate: z.string().optional(),
-  gender:    z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
+  // '' (Não informado) é aceito e tratado como undefined no onSubmit
+  gender:    z.preprocess(
+    v => (v === '' ? undefined : v),
+    z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
+  ),
   city:      z.string().optional(),
   notes:     z.string().optional(),
 })
@@ -73,7 +77,9 @@ export function EditPatientPage() {
         name:      patient.name,
         phone:     patient.phone,
         email:     patient.email     ?? '',
-        birthDate: patient.birthDate ?? '',
+        // Garante formato YYYY-MM-DD para o <input type="date">
+        // (a API já retorna YYYY-MM-DD, mas o slice defende contra cache antigo)
+        birthDate: patient.birthDate ? patient.birthDate.slice(0, 10) : '',
         gender:    (patient.gender as FormData['gender']) ?? undefined,
         city:      patient.city      ?? '',
         notes:     patient.notes     ?? '',
@@ -96,8 +102,10 @@ export function EditPatientPage() {
       await qc.invalidateQueries({ queryKey: ['patients'] })
       await qc.invalidateQueries({ queryKey: ['patient', id] })
       void navigate({ to: '/app/$slug/patients/$id', params: { slug, id } })
-    } catch {
-      setServerError('Erro ao salvar. Tente novamente.')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message
+      setServerError(msg ?? 'Erro ao salvar. Tente novamente.')
     }
   }
 

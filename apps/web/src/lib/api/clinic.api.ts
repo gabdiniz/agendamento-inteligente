@@ -17,6 +17,8 @@ export interface ClinicUser {
   roles: string[]
   /** URL relativa da logo da clínica — ex: /uploads/logos/filename.png */
   tenantLogoUrl?: string | null
+  /** Slugs das features do plano do tenant — ex: ['waitlist', 'whatsapp'] */
+  tenantFeatures?: string[]
 }
 
 export interface ClinicAuthTokens {

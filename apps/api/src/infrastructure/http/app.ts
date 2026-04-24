@@ -23,6 +23,7 @@ import { publicBookingRoutes } from './routes/public-booking.routes.js'
 import { notificationRoutes } from './routes/notification.routes.js'
 import { userRoutes } from './routes/user.routes.js'
 import { whatsappRoutes } from './routes/whatsapp.routes.js'
+import { planManagementRoutes } from './routes/plan-management.routes.js'
 import { startWhatsappWorker } from '../../application/workers/whatsapp.worker.js'
 
 export async function buildApp() {
@@ -124,6 +125,7 @@ export async function buildApp() {
     async (adminScope) => {
       await adminScope.register(superAdminAuthRoutes, { prefix: '/auth' })
       await adminScope.register(tenantManagementRoutes, { prefix: '/tenants' })
+      await adminScope.register(planManagementRoutes, { prefix: '' })
       await adminScope.register(uploadRoutes, { prefix: '/upload' })
 
       adminScope.get('/health', async () => ({

@@ -19,6 +19,7 @@ import { PrismaProcedureRepository } from '../../database/repositories/prisma-pr
 
 import { requireAuth } from '../middlewares/auth.middleware.js'
 import { requireRoles } from '../middlewares/auth.middleware.js'
+import { prisma } from '@myagendix/database'
 
 // ─── Query/Body schemas locais ───────────────────────────────────────────────
 
@@ -73,6 +74,39 @@ export const professionalRoutes: FastifyPluginAsync = async (app) => {
   app.post('/', { preHandler: [requireAuth, requireRoles('GESTOR')] }, async (request, reply) => {
     const body = createProfessionalSchema.parse(request.body)
     const repo = new PrismaProfessionalRepository(request.tenantPrisma!)
+
+    // ── Verificar limite de profissionais do plano ────────────────────────────
+    // Planos sem a feature 'professionals_unlimited' ficam limitados a 2.
+    const tenantPlan = await prisma.tenant.findUnique({
+      where:  { id: request.tenantId },
+      select: {
+        plan: {
+          select: {
+            features: {
+              where:  { feature: { slug: 'professionals_unlimited' } },
+              select: { featureId: true },
+            },
+          },
+        },
+      },
+    })
+
+    const hasUnlimited = (tenantPlan?.plan?.features.length ?? 0) > 0
+
+    if (!hasUnlimited) {
+      const activeCount = await request.tenantPrisma!.professional.count({
+        where: { isActive: true },
+      })
+      if (activeCount >= 2) {
+        return reply.status(403).send({
+          statusCode: 403,
+          error: 'Forbidden',
+          message: 'Seu plano permite no máximo 2 profissionais ativos. Faça upgrade para adicionar mais.',
+          featureRequired: 'professionals_unlimited',
+        })
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     const professional = await new CreateProfessionalUseCase(repo).execute(body)
 

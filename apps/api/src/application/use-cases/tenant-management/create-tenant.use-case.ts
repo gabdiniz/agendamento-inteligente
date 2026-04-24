@@ -31,6 +31,7 @@ interface CreateTenantInput {
   phone?: string
   address?: string
   planType?: string
+  planId?: string | null
   logoUrl?: string | null
   gestor: GestorInput
 }
@@ -68,6 +69,7 @@ export class CreateTenantUseCase {
       phone:    input.phone,
       address:  input.address,
       planType: input.planType,
+      planId:   input.planId ?? undefined,
       logoUrl:  input.logoUrl,
     })
 

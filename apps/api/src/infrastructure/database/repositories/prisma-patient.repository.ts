@@ -44,7 +44,9 @@ function toRecord(row: PatientRow): PatientRecord {
     name: row.name,
     phone: row.phone,
     email: row.email,
-    birthDate: row.birthDate,
+    // Prisma retorna Date (às 00:00 UTC). Converte para "YYYY-MM-DD" para
+    // manter consistência na API e evitar que o frontend receba ISO datetime.
+    birthDate: row.birthDate ? row.birthDate.toISOString().slice(0, 10) : null,
     gender: row.gender,
     city: row.city,
     preferredContactChannel: row.preferredContactChannel,

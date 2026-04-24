@@ -70,6 +70,7 @@ export const tenantManagementRoutes: FastifyPluginAsync = async (app) => {
       phone:    body.phone,
       address:  body.address,
       planType: body.planType,
+      planId:   body.planId ?? undefined,
       gestor: {
         name:     body.gestor.name,
         email:    body.gestor.email,

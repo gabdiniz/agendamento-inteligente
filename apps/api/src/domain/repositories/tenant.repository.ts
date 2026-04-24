@@ -4,6 +4,13 @@
 // Usado exclusivamente pelo Super Admin (tenant management).
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface PlanInfo {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+}
+
 export interface TenantRecord {
   id: string
   name: string
@@ -12,7 +19,9 @@ export interface TenantRecord {
   phone: string | null
   logoUrl: string | null
   address: string | null
-  planType: string
+  planType: string          // deprecated — usar planId/plan
+  planId: string | null
+  plan: PlanInfo | null
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -25,6 +34,7 @@ export interface CreateTenantData {
   phone?: string
   address?: string
   planType?: string
+  planId?: string
   logoUrl?: string | null
 }
 
@@ -34,6 +44,7 @@ export interface UpdateTenantData {
   phone?: string | null
   address?: string | null
   planType?: string
+  planId?: string | null
   logoUrl?: string | null
 }
 

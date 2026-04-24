@@ -11,12 +11,15 @@ import { Outlet, Link, useNavigate, useLocation, useParams } from '@tanstack/rea
 import { useAuthStore } from '@/stores/auth.store'
 import { clinicAuthApi } from '@/lib/api/clinic.api'
 import { clinicTokens, BASE_URL } from '@/lib/api/client'
+import { useFeature } from '@/hooks/useFeature'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const BREAKPOINT_DESKTOP = 1024
 const BREAKPOINT_TABLET  = 768
 
+// featureSlug: se definido, o item só aparece quando o tenant tem essa feature.
+// undefined = sempre visível (core da plataforma).
 const navItems = [
   {
     label: 'Dashboard', path: 'dashboard',
@@ -36,10 +39,12 @@ const navItems = [
   },
   {
     label: 'Lista de Espera', path: 'waitlist',
+    featureSlug: 'waitlist',
     icon: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
   },
   {
     label: 'Notificações', path: 'notifications',
+    featureSlug: 'whatsapp',
     icon: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>,
   },
 ]
@@ -161,6 +166,17 @@ function SidebarContent({
 }) {
   const isGestor = user?.roles?.includes('GESTOR') ?? false
 
+  // Feature gating — graceful: retorna true se ainda não carregado
+  const canWaitlist = useFeature('waitlist')
+  const canWhatsapp = useFeature('whatsapp')
+
+  const visibleNavItems = navItems.filter(item => {
+    if (!item.featureSlug) return true
+    if (item.featureSlug === 'waitlist') return canWaitlist
+    if (item.featureSlug === 'whatsapp') return canWhatsapp
+    return true
+  })
+
   const configPath    = `/app/${slug}/configuracoes/procedimentos`
   const configActive  = location.pathname.startsWith(configPath)
 
@@ -218,7 +234,7 @@ function SidebarContent({
 
       {/* Nav items */}
       <nav style={{ flex: 1, padding: '0 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const fullPath = `/app/${slug}/${item.path}`
           const active = location.pathname === fullPath || location.pathname.startsWith(fullPath + '/')
           return (
@@ -267,7 +283,7 @@ function SidebarContent({
               onClick={onNav}
             />
           )}
-          {isGestor && (
+          {isGestor && canWhatsapp && (
             <NavItem
               to="/app/$slug/$section"
               params={{ slug, section: 'whatsapp' }}

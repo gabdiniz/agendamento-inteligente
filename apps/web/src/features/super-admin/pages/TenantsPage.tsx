@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { superAdminApi, type Tenant, type UpdateTenantPayload } from '@/lib/api/super-admin.api'
+import { superAdminApi, type Tenant, type UpdateTenantPayload, type PlanInfo } from '@/lib/api/super-admin.api'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -298,18 +298,20 @@ function EditTenantModal({
   onSave,
   onClose,
   loading,
+  plans,
 }: {
   tenant: Tenant
   onSave: (payload: UpdateTenantPayload) => void
   onClose: () => void
   loading: boolean
+  plans: PlanInfo[]
 }) {
   const [form, setForm] = useState<UpdateTenantPayload>({
-    name:     tenant.name,
-    email:    tenant.email,
-    phone:    tenant.phone ?? '',
-    address:  tenant.address ?? '',
-    planType: (tenant.planType as 'BASIC' | 'PRO') ?? 'BASIC',
+    name:    tenant.name,
+    email:   tenant.email,
+    phone:   tenant.phone ?? '',
+    address: tenant.address ?? '',
+    planId:  tenant.planId ?? '',
   })
   const [logoUrl, setLogoUrl] = useState<string | null | undefined>(tenant.logoUrl)
   const [error, setError] = useState<string | null>(null)
@@ -317,11 +319,11 @@ function EditTenantModal({
   // Sync se o tenant mudar (troca de linha)
   useEffect(() => {
     setForm({
-      name:     tenant.name,
-      email:    tenant.email,
-      phone:    tenant.phone ?? '',
-      address:  tenant.address ?? '',
-      planType: (tenant.planType as 'BASIC' | 'PRO') ?? 'BASIC',
+      name:    tenant.name,
+      email:   tenant.email,
+      phone:   tenant.phone ?? '',
+      address: tenant.address ?? '',
+      planId:  tenant.planId ?? '',
     })
     setLogoUrl(tenant.logoUrl)
     setError(null)
@@ -338,12 +340,12 @@ function EditTenantModal({
     if (!form.email?.trim()) { setError('E-mail é obrigatório.'); return }
 
     onSave({
-      name:     form.name.trim(),
-      email:    form.email.trim(),
-      phone:    form.phone?.trim() || null,
-      address:  form.address?.trim() || null,
-      planType: form.planType,
-      logoUrl:  logoUrl ?? null,
+      name:    form.name.trim(),
+      email:   form.email.trim(),
+      phone:   form.phone?.trim() || null,
+      address: form.address?.trim() || null,
+      planId:  form.planId || null,
+      logoUrl: logoUrl ?? null,
     })
   }
 
@@ -458,12 +460,14 @@ function EditTenantModal({
             <div>
               <label style={fieldLabelStyle}>Plano</label>
               <select
-                value={form.planType ?? 'BASIC'}
-                onChange={(e) => handleChange('planType', e.target.value)}
+                value={form.planId ?? ''}
+                onChange={(e) => handleChange('planId', e.target.value)}
                 style={{ ...inputStyle, cursor: 'pointer' }}
               >
-                <option value="BASIC">BASIC</option>
-                <option value="PRO">PRO</option>
+                <option value="">— sem plano —</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
               </select>
             </div>
 
@@ -613,7 +617,7 @@ function TenantRow({
           color: 'var(--admin-color-primary)',
           fontSize: '11.5px', fontWeight: 700, letterSpacing: '0.04em',
         }}>
-          {tenant.planType}
+          {tenant.plan?.name ?? tenant.planType ?? '—'}
         </span>
       </td>
 
@@ -770,6 +774,13 @@ export function TenantsPage() {
     queryKey: ['sa-tenants', { page, search }],
     queryFn: () => superAdminApi.listTenants({ page, limit: 10, search: search || undefined }),
   })
+
+  const { data: plansData } = useQuery({
+    queryKey: ['sa-plans-list'],
+    queryFn:  () => superAdminApi.listPlans(),
+    staleTime: 5 * 60 * 1000,
+  })
+  const plans = plansData ?? []
 
   const toggleMutation = useMutation({
     mutationFn: (tenant: Tenant) =>
@@ -977,6 +988,7 @@ export function TenantsPage() {
           onClose={() => setEditTarget(null)}
           loading={updateMutation.isPending}
           onSave={(payload) => updateMutation.mutate({ id: editTarget.id, payload })}
+          plans={plans}
         />
       )}
 

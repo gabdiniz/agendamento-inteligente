@@ -50,6 +50,30 @@ async function getTenantLogoUrl(tenantId: string): Promise<string | null> {
   }
 }
 
+/**
+ * Busca os slugs das features do plano do tenant.
+ * Retorna array vazio se o tenant não tem plano atribuído.
+ */
+async function getTenantFeatures(tenantId: string): Promise<string[]> {
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where:  { id: tenantId },
+      select: {
+        plan: {
+          select: {
+            features: {
+              select: { feature: { select: { slug: true } } },
+            },
+          },
+        },
+      },
+    })
+    return tenant?.plan?.features.map((pf) => pf.feature.slug) ?? []
+  } catch {
+    return []
+  }
+}
+
 // ─── Serviços (singleton) ────────────────────────────────────────────────
 
 const hashService = new HashService()
@@ -100,13 +124,16 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       tenantSlug: request.tenantSlug,
     })
 
-    const tenantLogoUrl = await getTenantLogoUrl(request.tenantId)
+    const [tenantLogoUrl, tenantFeatures] = await Promise.all([
+      getTenantLogoUrl(request.tenantId),
+      getTenantFeatures(request.tenantId),
+    ])
 
     return reply.status(200).send({
       success: true,
       data: {
         ...result,
-        user: { ...result.user, tenantLogoUrl },
+        user: { ...result.user, tenantLogoUrl, tenantFeatures },
       },
     })
   })
@@ -164,7 +191,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       })
     }
 
-    const tenantLogoUrl = await getTenantLogoUrl(request.tenantId)
+    const [tenantLogoUrl, tenantFeatures] = await Promise.all([
+      getTenantLogoUrl(request.tenantId),
+      getTenantFeatures(request.tenantId),
+    ])
 
     return reply.status(200).send({
       success: true,
@@ -176,6 +206,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         avatarUrl: user.avatarUrl,
         roles: user.roles.map((r) => r.role),
         tenantLogoUrl,
+        tenantFeatures,
       },
     })
   })

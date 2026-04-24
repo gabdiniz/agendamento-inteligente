@@ -17,6 +17,29 @@ export interface AuthTokens {
   user: SuperAdminUser
 }
 
+export interface PlanInfo {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+}
+
+export interface Feature {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  category: string
+  isActive: boolean
+}
+
+export interface Plan extends PlanInfo {
+  isActive: boolean
+  createdAt: string
+  tenantCount: number
+  features: Feature[]
+}
+
 export interface Tenant {
   id: string
   name: string
@@ -26,7 +49,9 @@ export interface Tenant {
   address: string | null
   logoUrl: string | null
   isActive: boolean
-  planType: string
+  planType: string       // deprecated
+  planId: string | null
+  plan: PlanInfo | null
   createdAt: string
 }
 
@@ -41,7 +66,7 @@ export interface CreateTenantPayload {
   email: string
   phone?: string
   address?: string
-  planType?: 'BASIC' | 'PRO'
+  planId?: string
   logoUrl?: string | null
   gestor: {
     name: string
@@ -56,7 +81,7 @@ export interface UpdateTenantPayload {
   email?: string
   phone?: string | null
   address?: string | null
-  planType?: 'BASIC' | 'PRO'
+  planId?: string | null
   logoUrl?: string | null
 }
 
@@ -120,6 +145,48 @@ export const superAdminApi = {
 
   async deleteTenant(id: string): Promise<void> {
     await saClient.delete(`/super-admin/tenants/${id}`)
+  },
+
+  async assignPlan(tenantId: string, planId: string): Promise<void> {
+    await saClient.patch(`/super-admin/tenants/${tenantId}/plan`, { planId })
+  },
+
+  // ─── Plans ────────────────────────────────────────────────────────────────
+
+  async listPlans(): Promise<Plan[]> {
+    const { data } = await saClient.get('/super-admin/plans')
+    return data.data as Plan[]
+  },
+
+  async getPlan(id: string): Promise<Plan> {
+    const { data } = await saClient.get(`/super-admin/plans/${id}`)
+    return data.data as Plan
+  },
+
+  async createPlan(payload: { name: string; slug: string; description?: string }): Promise<Plan> {
+    const { data } = await saClient.post('/super-admin/plans', payload)
+    return data.data as Plan
+  },
+
+  async updatePlan(id: string, payload: { name?: string; description?: string; isActive?: boolean }): Promise<Plan> {
+    const { data } = await saClient.patch(`/super-admin/plans/${id}`, payload)
+    return data.data as Plan
+  },
+
+  async deletePlan(id: string): Promise<void> {
+    await saClient.delete(`/super-admin/plans/${id}`)
+  },
+
+  async setPlanFeatures(planId: string, featureSlugs: string[]): Promise<Feature[]> {
+    const { data } = await saClient.put(`/super-admin/plans/${planId}/features`, { featureSlugs })
+    return data.data as Feature[]
+  },
+
+  // ─── Features ─────────────────────────────────────────────────────────────
+
+  async listFeatures(): Promise<Feature[]> {
+    const { data } = await saClient.get('/super-admin/features')
+    return data.data as Feature[]
   },
 
   // ─── Upload ───────────────────────────────────────────────────────────────

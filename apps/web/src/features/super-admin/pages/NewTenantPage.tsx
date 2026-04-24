@@ -7,6 +7,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
+import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { superAdminApi } from '@/lib/api/super-admin.api'
@@ -22,7 +23,7 @@ const schema = z.object({
   email:          z.string().email('E-mail inválido'),
   phone:          z.string().optional(),
   address:        z.string().optional(),
-  planType:       z.enum(['BASIC', 'PRO']).default('BASIC'),
+  planId:         z.string().optional(),
   gestorName:     z.string().min(2, 'Nome do gestor obrigatório'),
   gestorEmail:    z.string().email('E-mail do gestor inválido'),
   gestorPassword: z.string().min(6, 'Senha deve ter ao menos 6 caracteres'),
@@ -79,9 +80,16 @@ export function NewTenantPage() {
   const [logoError,     setLogoError]     = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const { data: plansData } = useQuery({
+    queryKey: ['sa-plans-list'],
+    queryFn:  () => superAdminApi.listPlans(),
+    staleTime: 5 * 60 * 1000,
+  })
+  const plans = plansData ?? []
+
   const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { slug: '', planType: 'BASIC' },
+    defaultValues: { slug: '', planId: '' },
   })
 
   function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -133,13 +141,13 @@ export function NewTenantPage() {
     setServerError(null)
     try {
       await superAdminApi.createTenant({
-        name:     values.name,
-        slug:     values.slug,
-        email:    values.email,
-        phone:    values.phone    || undefined,
-        address:  values.address  || undefined,
-        planType: values.planType,
-        logoUrl:  logoUrl || undefined,
+        name:    values.name,
+        slug:    values.slug,
+        email:   values.email,
+        phone:   values.phone   || undefined,
+        address: values.address || undefined,
+        planId:  values.planId  || undefined,
+        logoUrl: logoUrl || undefined,
         gestor: {
           name:     values.gestorName,
           email:    values.gestorEmail,
@@ -274,11 +282,13 @@ export function NewTenantPage() {
             <div>
               <label style={labelStyle}>Plano</label>
               <select
-                {...register('planType')}
+                {...register('planId')}
                 style={{ ...inputStyle, cursor: 'pointer' }}
               >
-                <option value="BASIC">BASIC</option>
-                <option value="PRO">PRO</option>
+                <option value="">— Free (padrão) —</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
               </select>
             </div>
             <div>
