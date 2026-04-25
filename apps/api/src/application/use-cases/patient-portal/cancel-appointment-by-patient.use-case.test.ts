@@ -50,8 +50,9 @@ function makeAppointment(overrides?: Partial<AppointmentRecord>): AppointmentRec
     createdAt:          new Date(),
     updatedAt:          new Date(),
     patient:     { id: 'patient-1', name: 'Ana Lima',    phone: '11999990001' },
-    professional:{ id: 'prof-1',    name: 'Dr. Carlos',  specialty: 'Clínica Geral' },
+    professional:{ id: 'prof-1',    name: 'Dr. Carlos',  specialty: 'Clínica Geral', avatarUrl: null },
     procedure:   { id: 'proc-1',    name: 'Consulta',    durationMinutes: 30, color: '#4f8ef7' },
+    evaluation:  null,
     ...overrides,
   }
 }
