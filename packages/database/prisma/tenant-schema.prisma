@@ -113,6 +113,12 @@ enum CampaignStatus {
   CANCELED
 }
 
+enum QuickRating {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
 // ─── Tenant models ────────────────────────────────────────────────────────────
 
 model User {
@@ -426,19 +432,29 @@ model Notification {
 }
 
 model AppointmentEvaluation {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  appointmentId  String   @unique @db.Uuid
-  patientId      String   @db.Uuid
-  professionalId String   @db.Uuid
-  rating         Int      @db.SmallInt
-  comment        String?
-  createdAt      DateTime @default(now()) @db.Timestamptz
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  appointmentId  String       @unique @db.Uuid
+  patientId      String       @db.Uuid
+  professionalId String       @db.Uuid
+
+  // ─── Momento 1 — Avaliação rápida (emoji) ─────────────────────────────────
+  quickRating               QuickRating? // POSITIVE | NEUTRAL | NEGATIVE
+  quickRatingReasons        String[]     @default([])
+  detailedRatingRequestedAt DateTime?    @db.Timestamptz
+
+  // ─── Momento 2 — Avaliação detalhada (opcional, 24h depois) ───────────────
+  rating  Int?    @db.SmallInt  // 1–5 estrelas — null até avaliação detalhada
+  comment String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
 
   appointment  Appointment  @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   patient      Patient      @relation(fields: [patientId], references: [id])
   professional Professional @relation(fields: [professionalId], references: [id])
 
   @@index([professionalId])
+  @@index([quickRating])
   @@index([rating])
   @@map("appointment_evaluations")
 }
