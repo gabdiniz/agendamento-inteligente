@@ -272,6 +272,13 @@ model Patient {
   createdAt                 DateTime             @default(now()) @db.Timestamptz
   updatedAt                 DateTime             @updatedAt @db.Timestamptz
 
+  // ─── Portal do Paciente — Auth ────────────────────────────────────────────
+  passwordHash              String?              @db.VarChar(255)
+  emailVerifiedAt           DateTime?            @db.Timestamptz
+  lastLoginAt               DateTime?            @db.Timestamptz
+  passwordResetToken        String?              @unique @db.VarChar(255)
+  passwordResetExpiresAt    DateTime?            @db.Timestamptz
+
   appointments           Appointment[]
   waitlistEntries        WaitlistEntry[]
   notifications          Notification[]
@@ -280,9 +287,11 @@ model Patient {
   conversations          Conversation[]
   interests              PatientInterest[]
   crmMetrics             PatientCrmMetrics?
+  refreshTokens          PatientRefreshToken[]
 
   @@index([isActive])
   @@index([birthDate])
+  @@index([email])
   @@map("patients")
 }
 
@@ -544,6 +553,33 @@ model PasswordResetToken {
   @@unique([tokenHash])
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+// ─── Portal do Paciente ───────────────────────────────────────────────────────
+
+model PatientRefreshToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patientId String    @db.Uuid
+  tokenHash String    @unique @db.VarChar(255)
+  expiresAt DateTime  @db.Timestamptz
+  revokedAt DateTime? @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@map("patient_refresh_tokens")
+}
+
+model ClinicPatientConfig {
+  id                            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cancellationAllowed           Boolean  @default(true)
+  cancellationMinHoursInAdvance Int      @default(2)
+  cancellationAllowedStatuses   String[] @default(["SCHEDULED"])
+  createdAt                     DateTime @default(now()) @db.Timestamptz
+  updatedAt                     DateTime @updatedAt @db.Timestamptz
+
+  @@map("clinic_patient_configs")
 }
 
 // ─── WhatsApp / Z-API ─────────────────────────────────────────────────────────

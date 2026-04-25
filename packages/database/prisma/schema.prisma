@@ -484,12 +484,21 @@ model Patient {
   createdAt                  DateTime             @default(now()) @db.Timestamptz
   updatedAt                  DateTime             @updatedAt @db.Timestamptz
 
+  // Portal do Paciente — autenticação
+  // passwordHash nulo = paciente existe mas não tem conta no portal (criado manualmente ou sem e-mail)
+  passwordHash             String?   @db.VarChar(255)
+  emailVerifiedAt          DateTime? @db.Timestamptz
+  lastLoginAt              DateTime? @db.Timestamptz
+  passwordResetToken       String?   @unique @db.VarChar(255)
+  passwordResetExpiresAt   DateTime? @db.Timestamptz
+
   appointments           Appointment[]
   waitlistEntries        WaitlistEntry[]
   notifications          Notification[]
   evaluations            PatientEvaluation[]
   appointmentEvaluations AppointmentEvaluation[]
   conversations          Conversation[]
+  refreshTokens          PatientRefreshToken[]
 
   // MVP2 — CRM
   interests  PatientInterest[]
@@ -497,7 +506,40 @@ model Patient {
 
   @@index([isActive])
   @@index([birthDate])
+  @@index([email])
   @@map("patients")
+}
+
+model PatientRefreshToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patientId String    @db.Uuid
+  tokenHash String    @db.VarChar(255)
+  expiresAt DateTime  @db.Timestamptz
+  revokedAt DateTime? @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([tokenHash])
+  @@index([patientId])
+  @@map("patient_refresh_tokens")
+}
+
+// Configuração do portal do paciente por clínica (singleton por tenant — uma linha)
+// Controla regras de cancelamento pelo paciente
+model ClinicPatientConfig {
+  id                            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // Se false, o paciente não pode cancelar pelo portal (independente dos outros campos)
+  cancellationAllowed           Boolean  @default(true)
+  // 0 = sem restrição de antecedência; N = exige pelo menos N horas antes do horário agendado
+  cancellationMinHoursInAdvance Int      @default(2)
+  // Quais status permitem cancelamento pelo paciente (valores do enum AppointmentStatus)
+  // Ex: ["SCHEDULED"] ou ["SCHEDULED", "PATIENT_PRESENT"]
+  cancellationAllowedStatuses   String[]
+  createdAt                     DateTime @default(now()) @db.Timestamptz
+  updatedAt                     DateTime @updatedAt @db.Timestamptz
+
+  @@map("clinic_patient_configs")
 }
 
 // MVP2 — CRM
