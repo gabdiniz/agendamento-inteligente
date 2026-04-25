@@ -15,6 +15,8 @@ import {
   type PublicProcedure,
   type TimeSlot,
 } from '@/lib/api/public.api'
+import { usePatientAuthStore } from '@/stores/patient-auth.store'
+import { patientTokens } from '@/lib/api/patient-client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -590,22 +592,72 @@ function Step3({
   onSubmit,
   onBack,
   loading,
+  loggedInPatient,
 }: {
   onSubmit: (data: PatientForm) => void
   onBack: () => void
   loading: boolean
+  loggedInPatient?: { name: string; phone: string; email: string | null } | null
 }) {
+  const locked = !!loggedInPatient
+
   const { register, handleSubmit, formState: { errors } } = useForm<PatientForm>({
     resolver: zodResolver(patientSchema),
+    defaultValues: locked ? {
+      name:  loggedInPatient.name,
+      phone: loggedInPatient.phone,
+      email: loggedInPatient.email ?? '',
+    } : undefined,
   })
 
   const [focusedField, setFocusedField] = useState<string | null>(null)
 
+  // Estilo compartilhado para campos bloqueados
+  const lockedStyle: React.CSSProperties = {
+    ...styles.input,
+    background: '#f4f1ed',
+    color: '#6b6057',
+    cursor: 'default',
+    borderColor: '#e5e1db',
+  }
+
   return (
     <div style={{ padding: 'clamp(16px, 5vw, 28px)', animation: 'slideRight 0.3s ease both' }}>
-      <p style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#b0a899', marginBottom: '20px' }}>
-        Seus dados
-      </p>
+
+      {/* Banner: agendando como paciente logado */}
+      {locked ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          background: 'color-mix(in srgb, var(--color-primary) 8%, white)',
+          border: '1.5px solid color-mix(in srgb, var(--color-primary) 25%, transparent)',
+          borderRadius: '10px', padding: '10px 14px', marginBottom: '20px',
+        }}>
+          <div style={{
+            width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
+            background: 'color-mix(in srgb, var(--color-primary) 15%, white)',
+            color: 'var(--color-primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '11px', fontWeight: 700,
+          }}>
+            {loggedInPatient.name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-primary)', margin: 0 }}>
+              Agendando como
+            </p>
+            <p style={{ fontSize: '13px', color: '#1a1614', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {loggedInPatient.name}
+            </p>
+          </div>
+          <svg width="16" height="16" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      ) : (
+        <p style={{ fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#b0a899', marginBottom: '20px' }}>
+          Seus dados
+        </p>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {/* Nome */}
@@ -615,13 +667,14 @@ function Step3({
             type="text"
             placeholder="João da Silva"
             autoComplete="name"
+            readOnly={locked}
             {...register('name')}
-            style={{
+            style={locked ? lockedStyle : {
               ...styles.input,
               borderColor: errors.name ? '#e57373' : focusedField === 'name' ? 'var(--color-primary)' : '#e5e1db',
               boxShadow: focusedField === 'name' ? '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'none',
             }}
-            onFocus={() => setFocusedField('name')}
+            onFocus={() => !locked && setFocusedField('name')}
             onBlur={() => setFocusedField(null)}
           />
           {errors.name && <p style={{ fontSize: '12px', color: '#e57373', marginTop: '5px' }}>{errors.name.message}</p>}
@@ -634,13 +687,14 @@ function Step3({
             type="tel"
             placeholder="(11) 9 9999-9999"
             autoComplete="tel"
+            readOnly={locked}
             {...register('phone')}
-            style={{
+            style={locked ? lockedStyle : {
               ...styles.input,
               borderColor: errors.phone ? '#e57373' : focusedField === 'phone' ? 'var(--color-primary)' : '#e5e1db',
               boxShadow: focusedField === 'phone' ? '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'none',
             }}
-            onFocus={() => setFocusedField('phone')}
+            onFocus={() => !locked && setFocusedField('phone')}
             onBlur={() => setFocusedField(null)}
           />
           {errors.phone && <p style={{ fontSize: '12px', color: '#e57373', marginTop: '5px' }}>{errors.phone.message}</p>}
@@ -653,13 +707,14 @@ function Step3({
             type="email"
             placeholder="voce@email.com"
             autoComplete="email"
+            readOnly={locked}
             {...register('email')}
-            style={{
+            style={locked ? lockedStyle : {
               ...styles.input,
               borderColor: errors.email ? '#e57373' : focusedField === 'email' ? 'var(--color-primary)' : '#e5e1db',
               boxShadow: focusedField === 'email' ? '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'none',
             }}
-            onFocus={() => setFocusedField('email')}
+            onFocus={() => !locked && setFocusedField('email')}
             onBlur={() => setFocusedField(null)}
           />
           {errors.email && <p style={{ fontSize: '12px', color: '#e57373', marginTop: '5px' }}>{errors.email.message}</p>}
@@ -892,6 +947,11 @@ function Step4({
 export function BookingPage() {
   const { slug } = useParams({ strict: false }) as { slug?: string }
   const tenantSlug = slug ?? ''
+
+  // Paciente autenticado — pré-preenche o Step3
+  const { patient } = usePatientAuthStore()
+  const isPatientLoggedIn = patientTokens.isAuthenticated(tenantSlug)
+  const loggedInPatient = isPatientLoggedIn && patient ? patient : null
 
   const [step, setStep] = useState<Step>(1)
   const [professionals, setProfessionals] = useState<PublicProfessional[]>([])
@@ -1150,7 +1210,12 @@ export function BookingPage() {
             />
           )}
           {step === 3 && selectedProf && selectedProc && selectedSlot && (
-            <Step3 onSubmit={handleConfirm} onBack={() => setStep(2)} loading={booking} />
+            <Step3
+              onSubmit={handleConfirm}
+              onBack={() => setStep(2)}
+              loading={booking}
+              loggedInPatient={loggedInPatient}
+            />
           )}
           {step === 4 && selectedProf && selectedProc && selectedSlot && (
             <Step4
