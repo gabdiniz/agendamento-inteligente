@@ -24,6 +24,9 @@ import { notificationRoutes } from './routes/notification.routes.js'
 import { userRoutes } from './routes/user.routes.js'
 import { whatsappRoutes } from './routes/whatsapp.routes.js'
 import { planManagementRoutes } from './routes/plan-management.routes.js'
+import { patientAuthRoutes } from './routes/patient-auth.routes.js'
+import { patientPortalRoutes } from './routes/patient-portal.routes.js'
+import { clinicPatientConfigRoutes } from './routes/clinic-patient-config.routes.js'
 import { startWhatsappWorker } from '../../application/workers/whatsapp.worker.js'
 
 export async function buildApp() {
@@ -112,6 +115,9 @@ export async function buildApp() {
       await tenantScope.register(notificationRoutes, { prefix: '/notifications' })
       await tenantScope.register(userRoutes, { prefix: '/users' })
       await tenantScope.register(whatsappRoutes, { prefix: '/whatsapp' })
+      await tenantScope.register(patientAuthRoutes, { prefix: '/patient-auth' })
+      await tenantScope.register(patientPortalRoutes, { prefix: '/patient' })
+      await tenantScope.register(clinicPatientConfigRoutes, { prefix: '/clinic/patient-config' })
     },
     { prefix: '/t/:slug' },
   )
