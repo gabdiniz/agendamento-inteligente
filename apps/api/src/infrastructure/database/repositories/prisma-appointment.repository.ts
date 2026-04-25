@@ -44,9 +44,18 @@ const appointmentSelect = {
   createdByUserId: true,
   createdAt: true,
   updatedAt: true,
-  patient: { select: { id: true, name: true, phone: true } },
-  professional: { select: { id: true, name: true, specialty: true } },
-  procedure: { select: { id: true, name: true, durationMinutes: true, color: true } },
+  patient:      { select: { id: true, name: true, phone: true } },
+  professional: { select: { id: true, name: true, specialty: true, avatarUrl: true } },
+  procedure:    { select: { id: true, name: true, durationMinutes: true, color: true } },
+  evaluation:   {
+    select: {
+      id:                 true,
+      quickRating:        true,
+      quickRatingReasons: true,
+      rating:             true,
+      comment:            true,
+    },
+  },
 }
 
 // ─── Raw row shape ─────────────────────────────────────────────────────────────
@@ -66,30 +75,46 @@ interface AppointmentRow {
   createdByUserId: string | null
   createdAt: Date
   updatedAt: Date
-  patient: { id: string; name: string; phone: string }
-  professional: { id: string; name: string; specialty: string | null }
-  procedure: { id: string; name: string; durationMinutes: number; color: string | null }
+  patient:      { id: string; name: string; phone: string }
+  professional: { id: string; name: string; specialty: string | null; avatarUrl: string | null }
+  procedure:    { id: string; name: string; durationMinutes: number; color: string | null }
+  evaluation: {
+    id: string
+    quickRating: string | null
+    quickRatingReasons: string[]
+    rating: number | null
+    comment: string | null
+  } | null
 }
 
 function toRecord(row: AppointmentRow): AppointmentRecord {
   return {
-    id: row.id,
-    patientId: row.patientId,
-    professionalId: row.professionalId,
-    procedureId: row.procedureId,
-    scheduledDate: dateToDateString(row.scheduledDate),
-    startTime: dateToTimeString(row.startTime),
-    endTime: dateToTimeString(row.endTime),
-    status: row.status,
+    id:                 row.id,
+    patientId:          row.patientId,
+    professionalId:     row.professionalId,
+    procedureId:        row.procedureId,
+    scheduledDate:      dateToDateString(row.scheduledDate),
+    startTime:          dateToTimeString(row.startTime),
+    endTime:            dateToTimeString(row.endTime),
+    status:             row.status,
     cancellationReason: row.cancellationReason,
-    canceledBy: row.canceledBy,
-    notes: row.notes,
-    createdByUserId: row.createdByUserId,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    patient: row.patient,
-    professional: row.professional,
-    procedure: row.procedure,
+    canceledBy:         row.canceledBy,
+    notes:              row.notes,
+    createdByUserId:    row.createdByUserId,
+    createdAt:          row.createdAt,
+    updatedAt:          row.updatedAt,
+    patient:            row.patient,
+    professional:       row.professional,
+    procedure:          row.procedure,
+    evaluation: row.evaluation
+      ? {
+          id:                 row.evaluation.id,
+          quickRating:        row.evaluation.quickRating as 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | null,
+          quickRatingReasons: row.evaluation.quickRatingReasons,
+          rating:             row.evaluation.rating,
+          comment:            row.evaluation.comment,
+        }
+      : null,
   }
 }
 
@@ -101,18 +126,17 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
   async create(data: CreateAppointmentData): Promise<AppointmentRecord> {
     const row = await this.prisma.appointment.create({
       data: {
-        patientId: data.patientId,
-        professionalId: data.professionalId,
-        procedureId: data.procedureId,
-        scheduledDate: dateStringToDate(data.scheduledDate),
-        startTime: timeStringToDate(data.startTime),
-        endTime: timeStringToDate(data.endTime),
-        notes: data.notes ?? null,
+        patientId:       data.patientId,
+        professionalId:  data.professionalId,
+        procedureId:     data.procedureId,
+        scheduledDate:   dateStringToDate(data.scheduledDate),
+        startTime:       timeStringToDate(data.startTime),
+        endTime:         timeStringToDate(data.endTime),
+        notes:           data.notes ?? null,
         createdByUserId: data.createdByUserId ?? null,
-        // cria a entrada inicial no histórico de status
         statusHistory: {
           create: {
-            status: 'SCHEDULED',
+            status:          'SCHEDULED',
             changedByUserId: data.createdByUserId ?? null,
           },
         },
@@ -124,7 +148,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
 
   async findById(id: string): Promise<AppointmentRecord | null> {
     const row = await this.prisma.appointment.findUnique({
-      where: { id },
+      where:  { id },
       select: appointmentSelect,
     })
     return row ? toRecord(row as AppointmentRow) : null
@@ -136,10 +160,9 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
 
     const where: Record<string, unknown> = {}
     if (professionalId) where['professionalId'] = professionalId
-    if (patientId) where['patientId'] = patientId
-    if (status) where['status'] = status
+    if (patientId)      where['patientId']      = patientId
+    if (status)         where['status']         = status
 
-    // Filtro por dia exato — tem precedência sobre startDate/endDate
     if (scheduledDate) {
       where['scheduledDate'] = dateStringToDate(scheduledDate)
     } else if (startDate || endDate) {
@@ -153,16 +176,15 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
       this.prisma.appointment.findMany({
         where,
         skip,
-        take: limit,
-        // agenda do dia: ordenar por data + horário de início
+        take:    limit,
         orderBy: [{ scheduledDate: 'asc' }, { startTime: 'asc' }],
-        select: appointmentSelect,
+        select:  appointmentSelect,
       }),
       this.prisma.appointment.count({ where }),
     ])
 
     return {
-      data: (rows as AppointmentRow[]).map(toRecord),
+      data:       (rows as AppointmentRow[]).map(toRecord),
       total,
       page,
       limit,
@@ -172,18 +194,15 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
 
   async findByProfessionalAndDate(professionalId: string, date: string): Promise<AppointmentSlim[]> {
     const rows = await this.prisma.appointment.findMany({
-      where: {
-        professionalId,
-        scheduledDate: dateStringToDate(date),
-      },
-      select: { id: true, startTime: true, endTime: true, status: true },
+      where:   { professionalId, scheduledDate: dateStringToDate(date) },
+      select:  { id: true, startTime: true, endTime: true, status: true },
       orderBy: { startTime: 'asc' },
     })
     return rows.map((r: { id: string; startTime: unknown; endTime: unknown; status: unknown }) => ({
-      id: r.id,
+      id:        r.id,
       startTime: dateToTimeString(r.startTime as Date),
-      endTime: dateToTimeString(r.endTime as Date),
-      status: r.status as string,
+      endTime:   dateToTimeString(r.endTime as Date),
+      status:    r.status as string,
     }))
   }
 
@@ -193,16 +212,15 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
     changedByUserId?: string,
     notes?: string,
   ): Promise<AppointmentRecord> {
-    // Atualiza status + cria histórico em transação
     const row = await this.prisma.appointment.update({
       where: { id },
       data: {
         status: status as never,
         statusHistory: {
           create: {
-            status: status as never,
+            status:          status as never,
             changedByUserId: changedByUserId ?? null,
-            notes: notes ?? null,
+            notes:           notes ?? null,
           },
         },
       },
@@ -220,14 +238,14 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
     const row = await this.prisma.appointment.update({
       where: { id },
       data: {
-        status: 'CANCELED',
+        status:             'CANCELED',
         cancellationReason: reason ?? null,
-        canceledBy: canceledBy as never,
+        canceledBy:         canceledBy as never,
         statusHistory: {
           create: {
-            status: 'CANCELED',
+            status:          'CANCELED',
             changedByUserId: changedByUserId ?? null,
-            notes: reason ?? null,
+            notes:           reason ?? null,
           },
         },
       },

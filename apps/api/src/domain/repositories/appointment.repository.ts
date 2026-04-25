@@ -1,9 +1,9 @@
 // ─── Appointment Repository ───────────────────────────────────────────────────
 //
 // Opera no schema do tenant via tenantPrisma.
-// scheduledDate é "YYYY-MM-DD" no domínio.
-// startTime / endTime são "HH:MM" no domínio (mesmo padrão do WorkSchedule).
-// updateStatus e cancel criam AppointmentStatusHistory em transação.
+// scheduledDate e "YYYY-MM-DD" no dominio.
+// startTime / endTime sao "HH:MM" no dominio (mesmo padrao do WorkSchedule).
+// updateStatus e cancel criam AppointmentStatusHistory em transacao.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Tipos de relacionamento embutidos (read model) ───────────────────────────
@@ -18,6 +18,7 @@ export interface AppointmentProfessional {
   id: string
   name: string
   specialty: string | null
+  avatarUrl: string | null
 }
 
 export interface AppointmentProcedure {
@@ -27,19 +28,29 @@ export interface AppointmentProcedure {
   color: string | null
 }
 
-// ─── AppointmentRecord — modelo de leitura com relações embutidas ─────────────
+// ─── Avaliacao embutida no AppointmentRecord ──────────────────────────────────
+
+export interface AppointmentEvaluationData {
+  id: string
+  quickRating: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | null
+  quickRatingReasons: string[]
+  rating: number | null
+  comment: string | null
+}
+
+// ─── AppointmentRecord ────────────────────────────────────────────────────────
 
 export interface AppointmentRecord {
   id: string
   patientId: string
   professionalId: string
   procedureId: string
-  scheduledDate: string         // "YYYY-MM-DD"
-  startTime: string             // "HH:MM"
-  endTime: string               // "HH:MM"
-  status: string                // SCHEDULED | PATIENT_PRESENT | IN_PROGRESS | COMPLETED | CANCELED
+  scheduledDate: string
+  startTime: string
+  endTime: string
+  status: string
   cancellationReason: string | null
-  canceledBy: string | null     // PATIENT | STAFF
+  canceledBy: string | null
   notes: string | null
   createdByUserId: string | null
   createdAt: Date
@@ -47,14 +58,15 @@ export interface AppointmentRecord {
   patient: AppointmentPatient
   professional: AppointmentProfessional
   procedure: AppointmentProcedure
+  evaluation: AppointmentEvaluationData | null
 }
 
-// ─── Modelo de leitura simples (sem relações) — usado para collision check ────
+// ─── AppointmentSlim ──────────────────────────────────────────────────────────
 
 export interface AppointmentSlim {
   id: string
-  startTime: string  // "HH:MM"
-  endTime: string    // "HH:MM"
+  startTime: string
+  endTime: string
   status: string
 }
 
@@ -64,9 +76,9 @@ export interface CreateAppointmentData {
   patientId: string
   professionalId: string
   procedureId: string
-  scheduledDate: string    // "YYYY-MM-DD"
-  startTime: string        // "HH:MM"
-  endTime: string          // "HH:MM" — calculado pelo use case
+  scheduledDate: string
+  startTime: string
+  endTime: string
   notes?: string
   createdByUserId?: string
 }
@@ -76,9 +88,9 @@ export interface ListAppointmentsParams {
   limit: number
   professionalId?: string
   patientId?: string
-  scheduledDate?: string   // "YYYY-MM-DD" — filtra dia exato (exclusivo com startDate/endDate)
-  startDate?: string       // "YYYY-MM-DD" — início do intervalo (inclusivo)
-  endDate?: string         // "YYYY-MM-DD" — fim do intervalo (inclusivo)
+  scheduledDate?: string
+  startDate?: string
+  endDate?: string
   status?: string
 }
 
