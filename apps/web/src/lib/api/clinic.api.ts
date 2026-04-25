@@ -796,3 +796,23 @@ export const whatsappApi = {
     return { data: data.data, meta: data.meta }
   },
 }
+
+// ─── Clinic Patient Config ────────────────────────────────────────────────────
+
+export interface ClinicPatientConfig {
+  cancellationAllowed: boolean
+  cancellationMinHoursInAdvance: number   // 0 = sem restrição
+  cancellationAllowedStatuses: string[]
+}
+
+export const clinicPatientConfigApi = {
+  async get(): Promise<ClinicPatientConfig> {
+    const { data } = await apiClient.get('/clinic/patient-config')
+    return data.data as ClinicPatientConfig
+  },
+
+  async save(config: ClinicPatientConfig): Promise<ClinicPatientConfig> {
+    const { data } = await apiClient.put('/clinic/patient-config', config)
+    return data.data as ClinicPatientConfig
+  },
+}

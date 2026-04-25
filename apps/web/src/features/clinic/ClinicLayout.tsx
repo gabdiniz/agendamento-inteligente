@@ -177,8 +177,11 @@ function SidebarContent({
     return true
   })
 
-  const configPath    = `/app/${slug}/configuracoes/procedimentos`
-  const configActive  = location.pathname.startsWith(configPath)
+  const configPath          = `/app/${slug}/configuracoes/procedimentos`
+  const configActive        = location.pathname.startsWith(configPath)
+
+  const portalConfigPath    = `/app/${slug}/configuracoes/portal-paciente`
+  const portalConfigActive  = location.pathname.startsWith(portalConfigPath)
 
   const usersPath     = `/app/${slug}/usuarios`
   const usersActive   = location.pathname.startsWith(usersPath)
@@ -268,6 +271,21 @@ function SidebarContent({
             label="Procedimentos"
             onClick={onNav}
           />
+          {isGestor && (
+            <NavItem
+              to="/app/$slug/configuracoes/portal-paciente"
+              params={{ slug }}
+              active={portalConfigActive}
+              icon={
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+              label="Portal do Paciente"
+              onClick={onNav}
+            />
+          )}
           {isGestor && (
             <NavItem
               to="/app/$slug/$section"
