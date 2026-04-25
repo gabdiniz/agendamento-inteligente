@@ -33,6 +33,16 @@ export interface PatientAuthTokens {
   tenantSlug: string
 }
 
+export type QuickRating = 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE'
+
+export interface PatientAppointmentEvaluation {
+  id: string
+  quickRating: QuickRating | null
+  quickRatingReasons: string[]
+  rating: number | null
+  comment: string | null
+}
+
 export interface PatientAppointment {
   id: string
   scheduledDate: string
@@ -42,6 +52,7 @@ export interface PatientAppointment {
   notes: string | null
   professional: { id: string; name: string; specialty: string | null; avatarUrl: string | null }
   procedure: { id: string; name: string; durationMinutes: number }
+  evaluation: PatientAppointmentEvaluation | null
 }
 
 export interface PatientAppointmentListResult {
@@ -125,5 +136,19 @@ export const patientPortalApi = {
     const client = createPatientClient(slug)
     const { data } = await client.post(`/patient/appointments/${id}/cancel`, { reason })
     return data.data as PatientAppointment
+  },
+
+  async submitQuickRating(
+    slug: string,
+    appointmentId: string,
+    quickRating: QuickRating,
+    reasons: string[] = [],
+  ): Promise<PatientAppointmentEvaluation> {
+    const client = createPatientClient(slug)
+    const { data } = await client.post(`/patient/appointments/${appointmentId}/quick-rating`, {
+      quickRating,
+      reasons,
+    })
+    return data.data as PatientAppointmentEvaluation
   },
 }

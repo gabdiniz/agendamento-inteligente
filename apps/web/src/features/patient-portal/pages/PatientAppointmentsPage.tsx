@@ -2,12 +2,14 @@
 //
 // Histórico completo de agendamentos do paciente.
 // Abas: Próximos / Histórico. Cancel inline para agendamentos elegíveis.
+// M9 — Avaliação rápida inline para agendamentos COMPLETED sem quickRating.
 // Rota: /:slug/minha-conta/agendamentos
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { patientPortalApi, type PatientAppointment } from '@/lib/api/patient-auth.api'
+import { patientPortalApi, type PatientAppointment, type QuickRating } from '@/lib/api/patient-auth.api'
+import { QuickRatingCard } from '../components/QuickRatingCard'
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -38,24 +40,36 @@ function formatDateFull(iso: string) {
 
 function AppointmentCard({
   apt,
+  slug,
   onCancel,
   canceling,
+  onRated,
 }: {
   apt: PatientAppointment
+  slug: string
   onCancel: (id: string) => void
   canceling: string | null
+  onRated: (id: string, rating: QuickRating) => void
 }) {
-  const sc = STATUS_COLORS[apt.status] ?? STATUS_COLORS.SCHEDULED!
-  const canCancel = apt.status === 'SCHEDULED'
+  const sc = STATUS_COLORS[apt.status] ?? STATUS_COLORS['SCHEDULED']!
+  const canCancel   = apt.status === 'SCHEDULED'
   const isCanceling = canceling === apt.id
+
+  // Mostra quick-rating para COMPLETED sem avaliação enviada
+  const showRating = apt.status === 'COMPLETED' && apt.evaluation?.quickRating == null
+
+  async function handleQuickRating(rating: QuickRating, reasons: string[]) {
+    await patientPortalApi.submitQuickRating(slug, apt.id, rating, reasons)
+    onRated(apt.id, rating)
+  }
 
   return (
     <div style={{
-      background: '#fff',
+      background:   '#fff',
       borderRadius: '14px',
-      border: '1px solid #ece9e4',
-      overflow: 'hidden',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+      border:       '1px solid #ece9e4',
+      overflow:     'hidden',
+      boxShadow:    '0 1px 3px rgba(0,0,0,0.04)',
     }}>
       {/* Header */}
       <div style={{
@@ -82,47 +96,72 @@ function AppointmentCard({
       </div>
 
       {/* Body */}
-      <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
-            background: 'color-mix(in srgb, var(--color-primary) 15%, white)',
-            color: 'var(--color-primary)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '13px', fontWeight: 700,
-          }}>
-            {apt.professional.name.charAt(0)}
-          </div>
-          <div>
-            <p style={{ fontSize: '13px', fontWeight: 600, color: '#1a1614', margin: 0 }}>
-              {apt.professional.name}
-            </p>
-            {apt.professional.specialty && (
-              <p style={{ fontSize: '11px', color: '#b0a899', margin: '1px 0 0' }}>
-                {apt.professional.specialty}
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+              background: 'color-mix(in srgb, var(--color-primary) 15%, white)',
+              color: 'var(--color-primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '13px', fontWeight: 700,
+            }}>
+              {apt.professional.name.charAt(0)}
+            </div>
+            <div>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: '#1a1614', margin: 0 }}>
+                {apt.professional.name}
               </p>
-            )}
+              {apt.professional.specialty && (
+                <p style={{ fontSize: '11px', color: '#b0a899', margin: '1px 0 0' }}>
+                  {apt.professional.specialty}
+                </p>
+              )}
+            </div>
           </div>
+
+          {canCancel && (
+            <button
+              onClick={() => onCancel(apt.id)}
+              disabled={isCanceling}
+              style={{
+                padding: '7px 14px', borderRadius: '8px',
+                background: 'transparent', border: '1.5px solid #fecaca',
+                color: '#dc2626', fontSize: '12px', fontWeight: 600,
+                cursor: isCanceling ? 'wait' : 'pointer',
+                opacity: isCanceling ? 0.7 : 1,
+                fontFamily: 'var(--font-sans)',
+                transition: 'all 0.2s', flexShrink: 0,
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#fef2f2' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+            >
+              {isCanceling ? 'Cancelando...' : 'Cancelar'}
+            </button>
+          )}
+
+          {/* Badge: avaliação já enviada */}
+          {apt.status === 'COMPLETED' && apt.evaluation?.quickRating != null && (
+            <span style={{
+              display: 'flex', alignItems: 'center', gap: '4px',
+              fontSize: '11px', color: '#166534', fontWeight: 600,
+              background: '#f0fdf4', padding: '4px 10px', borderRadius: '20px',
+              flexShrink: 0,
+            }}>
+              {apt.evaluation.quickRating === 'POSITIVE' ? '😊'
+                : apt.evaluation.quickRating === 'NEUTRAL' ? '😐'
+                : '😞'} Avaliado
+            </span>
+          )}
         </div>
 
-        {canCancel && (
-          <button
-            onClick={() => onCancel(apt.id)}
-            disabled={isCanceling}
-            style={{
-              padding: '7px 14px', borderRadius: '8px',
-              background: 'transparent', border: '1.5px solid #fecaca',
-              color: '#dc2626', fontSize: '12px', fontWeight: 600,
-              cursor: isCanceling ? 'wait' : 'pointer',
-              opacity: isCanceling ? 0.7 : 1,
-              fontFamily: 'var(--font-sans)',
-              transition: 'all 0.2s', flexShrink: 0,
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#fef2f2' }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-          >
-            {isCanceling ? 'Cancelando...' : 'Cancelar'}
-          </button>
+        {/* Quick Rating inline */}
+        {showRating && (
+          <QuickRatingCard
+            appointmentId={apt.id}
+            professionalName={apt.professional.name}
+            onSubmit={handleQuickRating}
+          />
         )}
       </div>
     </div>
@@ -136,13 +175,11 @@ export function PatientAppointmentsPage() {
   const slug = params.slug ?? ''
 
   type Tab = 'upcoming' | 'past'
-  const [tab, setTab] = useState<Tab>('upcoming')
+  const [tab, setTab]           = useState<Tab>('upcoming')
   const [appointments, setAppointments] = useState<PatientAppointment[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading]   = useState(true)
   const [canceling, setCanceling] = useState<string | null>(null)
   const [cancelError, setCancelError] = useState<string | null>(null)
-
-  // Modal de confirmação
   const [confirmId, setConfirmId] = useState<string | null>(null)
 
   function loadAppointments(t: Tab) {
@@ -174,15 +211,35 @@ export function PatientAppointmentsPage() {
     }
   }
 
+  // Após avaliação, atualiza o campo evaluation no state local (sem refetch)
+  function handleRated(id: string, quickRating: QuickRating) {
+    setAppointments((prev) =>
+      prev.map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              evaluation: {
+                id:                 '',
+                quickRating,
+                quickRatingReasons: [],
+                rating:             null,
+                comment:            null,
+              },
+            }
+          : a,
+      ),
+    )
+  }
+
   const tabStyle = (active: boolean): React.CSSProperties => ({
-    padding: '10px 20px',
+    padding:    '10px 20px',
     borderRadius: '10px',
-    fontSize: '13px',
+    fontSize:   '13px',
     fontWeight: active ? 600 : 500,
-    color: active ? 'var(--color-primary)' : '#8a7f75',
+    color:      active ? 'var(--color-primary)' : '#8a7f75',
     background: active ? 'color-mix(in srgb, var(--color-primary) 10%, white)' : 'transparent',
-    border: active ? '1.5px solid color-mix(in srgb, var(--color-primary) 20%, transparent)' : '1.5px solid #ece9e4',
-    cursor: 'pointer',
+    border:     active ? '1.5px solid color-mix(in srgb, var(--color-primary) 20%, transparent)' : '1.5px solid #ece9e4',
+    cursor:     'pointer',
     fontFamily: 'var(--font-sans)',
     transition: 'all 0.15s',
   })
@@ -190,17 +247,17 @@ export function PatientAppointmentsPage() {
   return (
     <div style={{
       maxWidth: '640px',
-      margin: '0 auto',
-      padding: 'clamp(24px, 5vw, 40px) clamp(16px, 4vw, 32px)',
+      margin:   '0 auto',
+      padding:  'clamp(24px, 5vw, 40px) clamp(16px, 4vw, 32px)',
       animation: 'fadeUp 0.35s ease both',
     }}>
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{
           fontFamily: 'var(--font-display)',
-          fontSize: 'clamp(22px, 5vw, 26px)',
-          fontStyle: 'italic',
-          color: '#1a1614', margin: '0 0 4px', lineHeight: 1.2,
+          fontSize:   'clamp(22px, 5vw, 26px)',
+          fontStyle:  'italic',
+          color:      '#1a1614', margin: '0 0 4px', lineHeight: 1.2,
         }}>
           Meus Agendamentos
         </h1>
@@ -263,8 +320,10 @@ export function PatientAppointmentsPage() {
             <AppointmentCard
               key={apt.id}
               apt={apt}
+              slug={slug}
               onCancel={(id) => setConfirmId(id)}
               canceling={canceling}
+              onRated={handleRated}
             />
           ))}
         </div>
