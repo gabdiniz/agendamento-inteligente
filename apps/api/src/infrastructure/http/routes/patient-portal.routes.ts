@@ -7,25 +7,28 @@ import { ListAppointmentsUseCase } from '../../../application/use-cases/appointm
 import { CreateAppointmentUseCase } from '../../../application/use-cases/appointment/create-appointment.use-case.js'
 import { CancelAppointmentByPatientUseCase } from '../../../application/use-cases/patient-portal/cancel-appointment-by-patient.use-case.js'
 import { GetClinicPatientConfigUseCase } from '../../../application/use-cases/patient-portal/get-clinic-patient-config.use-case.js'
+import { SubmitQuickRatingUseCase } from '../../../application/use-cases/patient-portal/submit-quick-rating.use-case.js'
 
 import { PrismaPatientRepository } from '../../database/repositories/prisma-patient.repository.js'
 import { PrismaAppointmentRepository } from '../../database/repositories/prisma-appointment.repository.js'
 import { PrismaProfessionalRepository } from '../../database/repositories/prisma-professional.repository.js'
 import { PrismaProcedureRepository } from '../../database/repositories/prisma-procedure.repository.js'
 import { PrismaWorkScheduleRepository } from '../../database/repositories/prisma-work-schedule.repository.js'
+import { PrismaAppointmentEvaluationRepository } from '../../database/repositories/prisma-appointment-evaluation.repository.js'
 
-// ─── Patient Portal Routes ────────────────────────────────────────────────────
+// ─── Patient Portal Routes ─────────────────────────────────────────────────────
 //
-// Todas as rotas exigem autenticação de paciente (requirePatientAuth).
+// Todas as rotas exigem autenticacao de paciente (requirePatientAuth).
 // Prefixo: /t/:slug/patient
 //
-// GET   /profile                    → dados do paciente autenticado
-// PATCH /profile                    → atualiza dados editáveis
-// GET   /appointments               → lista agendamentos (filtros via query)
-// GET   /appointments/:id           → detalhe de um agendamento
-// POST  /appointments               → novo agendamento (autenticado)
-// POST  /appointments/:id/cancel    → cancelar agendamento (valida config da clínica)
-// ─────────────────────────────────────────────────────────────────────────────
+// GET   /profile                         => dados do paciente autenticado
+// PATCH /profile                         => atualiza dados editaveis
+// GET   /appointments                    => lista agendamentos (filtros via query)
+// GET   /appointments/:id                => detalhe de um agendamento
+// POST  /appointments                    => novo agendamento (autenticado)
+// POST  /appointments/:id/cancel         => cancelar agendamento
+// POST  /appointments/:id/quick-rating   => avaliacao rapida (M9 V2)
+// ──────────────────────────────────────────────────────────────────────────────
 
 const updateProfileSchema = z.object({
   name:      z.string().min(2).max(255).optional(),
@@ -40,7 +43,7 @@ const listAppointmentsSchema = z.object({
   page:     z.coerce.number().int().min(1).default(1),
   limit:    z.coerce.number().int().min(1).max(50).default(10),
   status:   z.string().optional(),
-  upcoming: z.coerce.boolean().optional(),   // se true, filtra apenas agendamentos futuros
+  upcoming: z.coerce.boolean().optional(),
 })
 
 const newAppointmentSchema = z.object({
@@ -55,20 +58,24 @@ const cancelSchema = z.object({
   reason: z.string().max(500).optional(),
 })
 
-// ─────────────────────────────────────────────────────────────────────────────
+const quickRatingSchema = z.object({
+  quickRating: z.enum(['POSITIVE', 'NEUTRAL', 'NEGATIVE']),
+  reasons:     z.array(z.string().max(100)).max(10).default([]),
+})
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
 
-  // Todas as rotas deste plugin exigem auth de paciente
   app.addHook('preHandler', requirePatientAuth)
 
-  // ─── GET /profile ─────────────────────────────────────────────────────────
+  // GET /profile
   app.get('/profile', async (request, reply) => {
     const patientRepo = new PrismaPatientRepository(request.tenantPrisma!)
     const patient = await patientRepo.findById(request.currentPatient.sub)
 
     if (!patient || !patient.isActive) {
-      return reply.status(401).send({ success: false, error: 'Paciente não encontrado' })
+      return reply.status(401).send({ success: false, error: 'Paciente nao encontrado' })
     }
 
     return reply.status(200).send({
@@ -86,7 +93,7 @@ export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
     })
   })
 
-  // ─── PATCH /profile ───────────────────────────────────────────────────────
+  // PATCH /profile
   app.patch('/profile', async (request, reply) => {
     const body = updateProfileSchema.parse(request.body)
     const patientRepo = new PrismaPatientRepository(request.tenantPrisma!)
@@ -114,11 +121,9 @@ export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
     })
   })
 
-  // ─── GET /appointments ────────────────────────────────────────────────────
+  // GET /appointments
   app.get('/appointments', async (request, reply) => {
     const query = listAppointmentsSchema.parse(request.query)
-
-    // "upcoming" filtra agendamentos a partir de hoje
     const today = new Date().toISOString().slice(0, 10)
 
     const result = await new ListAppointmentsUseCase(
@@ -127,25 +132,21 @@ export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
       page:      query.page,
       limit:     query.limit,
       patientId: request.currentPatient.sub,
-      ...(query.status   ? { status: query.status }         : {}),
-      ...(query.upcoming ? { startDate: today }             : {}),
+      ...(query.status   ? { status: query.status } : {}),
+      ...(query.upcoming ? { startDate: today }      : {}),
     })
 
     return reply.status(200).send({ success: true, data: result })
   })
 
-  // ─── GET /appointments/:id ────────────────────────────────────────────────
+  // GET /appointments/:id
   app.get('/appointments/:id', async (request, reply) => {
     const { id } = request.params as { id: string }
-    const appointmentRepo = new PrismaAppointmentRepository(request.tenantPrisma!)
-
-    const appointment = await appointmentRepo.findById(id)
+    const appointment = await new PrismaAppointmentRepository(request.tenantPrisma!).findById(id)
 
     if (!appointment) {
-      return reply.status(404).send({ success: false, error: 'Agendamento não encontrado' })
+      return reply.status(404).send({ success: false, error: 'Agendamento nao encontrado' })
     }
-
-    // Garante que o agendamento pertence ao paciente autenticado
     if (appointment.patientId !== request.currentPatient.sub) {
       return reply.status(403).send({ success: false, error: 'Acesso negado' })
     }
@@ -153,7 +154,7 @@ export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
     return reply.status(200).send({ success: true, data: appointment })
   })
 
-  // ─── POST /appointments ───────────────────────────────────────────────────
+  // POST /appointments
   app.post('/appointments', async (request, reply) => {
     const body = newAppointmentSchema.parse(request.body)
     const prisma = request.tenantPrisma!
@@ -176,13 +177,12 @@ export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
     return reply.status(201).send({ success: true, data: appointment })
   })
 
-  // ─── POST /appointments/:id/cancel ────────────────────────────────────────
+  // POST /appointments/:id/cancel
   app.post('/appointments/:id/cancel', async (request, reply) => {
     const { id } = request.params as { id: string }
     const body = cancelSchema.parse(request.body)
     const prisma = request.tenantPrisma!
 
-    // Carrega configuração da clínica (ou usa defaults)
     const config = await new GetClinicPatientConfigUseCase(prisma).execute()
 
     const canceled = await new CancelAppointmentByPatientUseCase(
@@ -195,5 +195,25 @@ export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
     })
 
     return reply.status(200).send({ success: true, data: canceled })
+  })
+
+  // POST /appointments/:id/quick-rating
+  // M9 — Avaliacao Leve: emoji rapido para agendamentos COMPLETED. Upsert.
+  app.post('/appointments/:id/quick-rating', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const body = quickRatingSchema.parse(request.body)
+    const prisma = request.tenantPrisma!
+
+    const result = await new SubmitQuickRatingUseCase(
+      new PrismaAppointmentRepository(prisma),
+      new PrismaAppointmentEvaluationRepository(prisma),
+    ).execute({
+      appointmentId: id,
+      patientId:     request.currentPatient.sub,
+      quickRating:   body.quickRating,
+      reasons:       body.reasons,
+    })
+
+    return reply.status(200).send({ success: true, data: result })
   })
 }
