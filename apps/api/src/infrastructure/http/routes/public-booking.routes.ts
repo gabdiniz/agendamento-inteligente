@@ -8,6 +8,7 @@ import {
 import { GetAvailableSlotsUseCase } from '../../../application/use-cases/public-booking/get-available-slots.use-case.js'
 import { CreateAppointmentUseCase } from '../../../application/use-cases/appointment/create-appointment.use-case.js'
 import { AddToWaitlistUseCase } from '../../../application/use-cases/waitlist/add-to-waitlist.use-case.js'
+import { CreatePatientAccountIfNeededUseCase } from '../../../application/use-cases/patient-auth/create-account-if-needed.use-case.js'
 
 import { PrismaProfessionalRepository } from '../../database/repositories/prisma-professional.repository.js'
 import { PrismaProcedureRepository } from '../../database/repositories/prisma-procedure.repository.js'
@@ -15,6 +16,25 @@ import { PrismaWorkScheduleRepository } from '../../database/repositories/prisma
 import { PrismaAppointmentRepository } from '../../database/repositories/prisma-appointment.repository.js'
 import { PrismaPatientRepository } from '../../database/repositories/prisma-patient.repository.js'
 import { PrismaWaitlistRepository } from '../../database/repositories/prisma-waitlist.repository.js'
+import { HashService } from '../../services/hash.service.js'
+import { EmailAdapter } from '../../notifications/channels/email.adapter.js'
+import { prisma } from '@myagendix/database'
+
+// ─── Singletons ───────────────────────────────────────────────────────────────
+
+const hashService  = new HashService()
+const emailAdapter = new EmailAdapter()
+
+// ─── Helper: base URL do frontend ────────────────────────────────────────────
+
+function getFrontendBaseUrl(request: { headers: Record<string, string | string[] | undefined> }): string {
+  if (process.env['APP_URL']) return process.env['APP_URL'].replace(/\/$/, '')
+  const origin = request.headers['origin']
+  if (origin && typeof origin === 'string') return origin.replace(/\/$/, '')
+  const host  = request.headers['host']
+  const proto = request.headers['x-forwarded-proto'] ?? 'http'
+  return `${proto}://${host}`
+}
 
 // ─── Public Booking Routes ────────────────────────────────────────────────────
 //
@@ -141,10 +161,10 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
     },
   }, async (request, reply) => {
     const body = publicBookingSchema.parse(request.body)
-    const prisma = request.tenantPrisma!
+    const tenantPrisma = request.tenantPrisma!
 
     // ── Find-or-create paciente ────────────────────────────────
-    const patientRepo = new PrismaPatientRepository(prisma)
+    const patientRepo = new PrismaPatientRepository(tenantPrisma)
     let patient = await patientRepo.findByPhone(body.patientPhone)
     if (!patient) {
       patient = await patientRepo.create({
@@ -153,15 +173,18 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
         source: 'PUBLIC_PAGE',
         ...(body.patientEmail !== undefined ? { email: body.patientEmail } : {}),
       })
+    } else if (body.patientEmail && !patient.email) {
+      // Paciente já existia sem e-mail — atualiza agora que o forneceu
+      patient = await patientRepo.update(patient.id, { email: body.patientEmail })
     }
 
     // ── Criar agendamento ──────────────────────────────────────
     const appointment = await new CreateAppointmentUseCase(
-      new PrismaAppointmentRepository(prisma),
-      new PrismaProfessionalRepository(prisma),
-      new PrismaProcedureRepository(prisma),
-      new PrismaPatientRepository(prisma),
-      new PrismaWorkScheduleRepository(prisma),
+      new PrismaAppointmentRepository(tenantPrisma),
+      new PrismaProfessionalRepository(tenantPrisma),
+      new PrismaProcedureRepository(tenantPrisma),
+      new PrismaPatientRepository(tenantPrisma),
+      new PrismaWorkScheduleRepository(tenantPrisma),
     ).execute({
       patientId: patient.id,
       professionalId: body.professionalId,
@@ -169,6 +192,33 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
       scheduledDate: body.scheduledDate,
       startTime: body.startTime,
     })
+
+    // ── Criar conta do paciente se necessário ──────────────────
+    // Fire-and-await: aguarda mas erros são capturados dentro do use case.
+    // O agendamento já foi criado e retornado — nada desfaz se o e-mail falhar.
+    if (body.patientEmail) {
+      const tenant = await prisma.tenant.findUnique({
+        where:  { id: request.tenantId },
+        select: { name: true },
+      })
+
+      await new CreatePatientAccountIfNeededUseCase(
+        patientRepo,
+        hashService,
+        emailAdapter,
+      ).execute({
+        patientId:    patient.id,
+        tenantSlug:   request.tenantSlug,
+        tenantName:   tenant?.name ?? 'MyAgendix',
+        loginBaseUrl: getFrontendBaseUrl(request as any),
+        appointment: {
+          scheduledDate:    appointment.scheduledDate,
+          startTime:        appointment.startTime,
+          professionalName: appointment.professional.name,
+          procedureName:    appointment.procedure.name,
+        },
+      })
+    }
 
     return reply.status(201).send({ success: true, data: appointment })
   })
