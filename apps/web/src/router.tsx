@@ -9,7 +9,13 @@
 //    dashboard, professionals, professionals/new
 //    patients, patients/new
 //
-//  /:slug                          → Booking público (Grupo 7C)
+//  /:slug                          → Booking público
+//  /:slug/minha-conta/login        → Patient login (pública)
+//  /:slug/minha-conta/esqueci-senha → Forgot password (pública)
+//  /:slug/minha-conta/redefinir-senha → Reset password (pública)
+//  /:slug/minha-conta              → PatientPortalLayout (guard)
+//    /                             → Dashboard
+//    /$section                     → agendamentos | perfil | seguranca
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
@@ -33,6 +39,19 @@ import { PlanDetailPage } from '@/features/super-admin/pages/PlanDetailPage'
 import { BookingPage } from '@/features/public-booking/BookingPage'
 import { WorkSchedulePage } from '@/features/clinic/pages/WorkSchedulePage'
 
+// ── Patient Portal (auth — públicas) ─────────────────────────────────────────
+import { PatientLoginPage } from '@/features/patient-portal/pages/PatientLoginPage'
+import { PatientForgotPasswordPage } from '@/features/patient-portal/pages/PatientForgotPasswordPage'
+import { PatientResetPasswordPage } from '@/features/patient-portal/pages/PatientResetPasswordPage'
+
+// ── Patient Portal (área protegida) ──────────────────────────────────────────
+import { PatientPortalLayout } from '@/features/patient-portal/PatientPortalLayout'
+import { requirePatientPortalAuth } from '@/features/patient-portal/guards/PatientGuard'
+import { PatientDashboardPage } from '@/features/patient-portal/pages/PatientDashboardPage'
+import { PatientAppointmentsPage } from '@/features/patient-portal/pages/PatientAppointmentsPage'
+import { PatientProfilePage } from '@/features/patient-portal/pages/PatientProfilePage'
+import { PatientSecurityPage } from '@/features/patient-portal/pages/PatientSecurityPage'
+
 // ── Clinic ───────────────────────────────────────────────────────────────────
 import { ClinicLayout } from '@/features/clinic/ClinicLayout'
 import { requireClinicAuth } from '@/features/clinic/guards/ClinicGuard'
@@ -48,18 +67,31 @@ import { AppointmentsPage } from '@/features/clinic/pages/AppointmentsPage'
 import { NewAppointmentPage } from '@/features/clinic/pages/NewAppointmentPage'
 import { EditAppointmentPage } from '@/features/clinic/pages/EditAppointmentPage'
 import { EditProfessionalPage } from '@/features/clinic/pages/EditProfessionalPage'
-import { PatientProfilePage } from '@/features/clinic/pages/PatientProfilePage'
+import { PatientProfilePage as ClinicPatientProfilePage } from '@/features/clinic/pages/PatientProfilePage'
 import { EditPatientPage } from '@/features/clinic/pages/EditPatientPage'
 import { ProfilePage } from '@/features/clinic/pages/ProfilePage'
 import { ChangePasswordPage } from '@/features/clinic/pages/ChangePasswordPage'
 import { ProceduresPage } from '@/features/clinic/pages/ProceduresPage'
 import { NewProcedurePage } from '@/features/clinic/pages/NewProcedurePage'
 import { EditProcedurePage } from '@/features/clinic/pages/EditProcedurePage'
+import { PatientPortalConfigPage } from '@/features/clinic/pages/PatientPortalConfigPage'
 import { WaitlistPage } from '@/features/clinic/pages/WaitlistPage'
 import { NotificationsPage } from '@/features/clinic/pages/NotificationsPage'
 import { UsersPage } from '@/features/clinic/pages/UsersPage'
 import { WhatsappPage } from '@/features/clinic/pages/WhatsappPage'
 import { FeatureGate } from '@/components/FeatureGate'
+
+// ─── Patient portal section dispatcher ──────────────────────────────────────
+
+function PatientPortalSection() {
+  const { section } = useParams({ strict: false }) as { section?: string }
+  switch (section) {
+    case 'agendamentos': return <PatientAppointmentsPage />
+    case 'perfil':       return <PatientProfilePage />
+    case 'seguranca':    return <PatientSecurityPage />
+    default:             return <PatientDashboardPage />
+  }
+}
 
 // ─── Dispatcher de seção ─────────────────────────────────────────────────────
 // Rota /$section serve dashboard | professionals | patients sem criar N rotas.
@@ -202,7 +234,7 @@ const editProfessionalRoute = createRoute({
 const patientProfileRoute = createRoute({
   getParentRoute: () => clinicRoute,
   path: '/patients/$id',
-  component: PatientProfilePage,
+  component: ClinicPatientProfilePage,
 })
 
 const editPatientRoute = createRoute({
@@ -243,6 +275,14 @@ const editProcedureRoute = createRoute({
   component: EditProcedurePage,
 })
 
+// ── Configurações: Portal do Paciente ────────────────────────────────────────
+
+const patientPortalConfigRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/configuracoes/portal-paciente',
+  component: PatientPortalConfigPage,
+})
+
 // ── Horários de trabalho do profissional ─────────────────────────────────────
 
 const workScheduleRoute = createRoute({
@@ -257,6 +297,54 @@ const publicRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/$slug',
   component: BookingPage,
+})
+
+// ─── Patient Portal — Autenticação (rotas públicas) ───────────────────────────
+//
+// Rotas independentes de /$slug (não aninhadas) — TanStack Router resolve por
+// número de segmentos. /$slug só faz match em 1 segmento; as abaixo têm 3+.
+
+const patientLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$slug/minha-conta/login',
+  component: PatientLoginPage,
+})
+
+const patientForgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$slug/minha-conta/esqueci-senha',
+  component: PatientForgotPasswordPage,
+})
+
+const patientResetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$slug/minha-conta/redefinir-senha',
+  component: PatientResetPasswordPage,
+})
+
+// ─── Patient Portal — Área protegida ─────────────────────────────────────────
+//
+// Rota pai: /$slug/minha-conta  →  PatientPortalLayout (com Outlet)
+// Filhos aninhados são prefixados automaticamente.
+// beforeLoad protege todas as rotas filhas via cascata.
+
+const patientPortalRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$slug/minha-conta',
+  component: PatientPortalLayout,
+  beforeLoad: requirePatientPortalAuth,
+})
+
+const patientPortalIndexRoute = createRoute({
+  getParentRoute: () => patientPortalRoute,
+  path: '/',
+  component: PatientDashboardPage,
+})
+
+const patientPortalSectionRoute = createRoute({
+  getParentRoute: () => patientPortalRoute,
+  path: '/$section',
+  component: PatientPortalSection,
 })
 
 // ─── Route tree ───────────────────────────────────────────────────────────────
@@ -288,9 +376,17 @@ const routeTree = rootRoute.addChildren([
     proceduresRoute,
     newProcedureRoute,
     editProcedureRoute,
+    patientPortalConfigRoute,
     workScheduleRoute,
   ]),
   publicRoute,
+  patientLoginRoute,
+  patientForgotPasswordRoute,
+  patientResetPasswordRoute,
+  patientPortalRoute.addChildren([
+    patientPortalIndexRoute,
+    patientPortalSectionRoute,
+  ]),
 ])
 
 export const router = createRouter({ routeTree })
