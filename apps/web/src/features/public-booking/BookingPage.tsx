@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useParams, Link } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -23,7 +23,7 @@ type Step = 1 | 2 | 3 | 4
 const patientSchema = z.object({
   name: z.string().min(2, 'Nome obrigatório'),
   phone: z.string().min(10, 'Telefone inválido'),
-  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  email: z.string().email('E-mail inválido'),
 })
 type PatientForm = z.infer<typeof patientSchema>
 
@@ -648,9 +648,7 @@ function Step3({
 
         {/* E-mail */}
         <div>
-          <label style={styles.label}>
-            E-mail <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: '#c0b4aa' }}>(opcional)</span>
-          </label>
+          <label style={styles.label}>E-mail</label>
           <input
             type="email"
             placeholder="voce@email.com"
@@ -714,12 +712,16 @@ function Step4({
   procedure,
   date,
   slot,
+  slug,
+  patientEmail,
   onNew,
 }: {
   professional: PublicProfessional
   procedure: PublicProcedure
   date: string
   slot: TimeSlot
+  slug: string
+  patientEmail: string
   onNew: () => void
 }) {
   return (
@@ -836,6 +838,51 @@ function Step4({
       >
         Fazer novo agendamento
       </button>
+
+      {/* CTA portal do paciente */}
+      {patientEmail && (
+        <div style={{
+          marginTop: '16px',
+          padding: '14px 16px',
+          borderRadius: '12px',
+          background: 'color-mix(in srgb, var(--color-primary) 6%, white)',
+          border: '1px solid color-mix(in srgb, var(--color-primary) 18%, transparent)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          textAlign: 'left',
+        }}>
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+            background: 'color-mix(in srgb, var(--color-primary) 14%, white)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="16" height="16" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-primary)', margin: '0 0 2px' }}>
+              Acesse sua conta
+            </p>
+            <p style={{ fontSize: '11px', color: '#8a7f75', margin: 0, lineHeight: 1.5 }}>
+              Enviamos um e-mail para <strong>{patientEmail}</strong> com acesso ao portal.
+            </p>
+          </div>
+          <Link
+            to="/$slug/minha-conta/login"
+            params={{ slug }}
+            style={{
+              padding: '7px 14px', borderRadius: '8px',
+              background: 'var(--color-primary)', color: '#fff',
+              fontSize: '12px', fontWeight: 600,
+              textDecoration: 'none', flexShrink: 0,
+            }}
+          >
+            Entrar
+          </Link>
+        </div>
+      )}
     </div>
   )
 }
@@ -856,6 +903,7 @@ export function BookingPage() {
   const [selectedProc, setSelectedProc] = useState<PublicProcedure | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
+  const [bookedEmail, setBookedEmail] = useState<string>('')
 
   useEffect(() => {
     if (!tenantSlug) return
@@ -894,12 +942,13 @@ export function BookingPage() {
       await publicApi.book(tenantSlug, {
         patientName: patient.name,
         patientPhone: patient.phone,
-        patientEmail: patient.email || undefined,
+        patientEmail: patient.email,
         professionalId: selectedProf.id,
         procedureId: selectedProc.id,
         scheduledDate: selectedDate,
         startTime: selectedSlot.startTime,
       })
+      setBookedEmail(patient.email)
       setStep(4)
     } catch {
       setError('Não foi possível confirmar o agendamento. O horário pode ter sido ocupado. Tente outro.')
@@ -914,6 +963,7 @@ export function BookingPage() {
     setSelectedProc(null)
     setSelectedDate('')
     setSelectedSlot(null)
+    setBookedEmail('')
     setError(null)
   }
 
@@ -948,7 +998,36 @@ export function BookingPage() {
 
       <div style={styles.container}>
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '32px', animation: 'fadeUp 0.4s ease both' }}>
+        <div style={{ marginBottom: '32px', animation: 'fadeUp 0.4s ease both' }}>
+          {/* Botão Minha Conta */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+            <Link
+              to="/$slug/minha-conta/login"
+              params={{ slug: tenantSlug }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: 'var(--color-primary)',
+                textDecoration: 'none',
+                padding: '7px 14px',
+                borderRadius: '20px',
+                background: 'color-mix(in srgb, var(--color-primary) 10%, white)',
+                border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
+                transition: 'all 0.2s',
+                letterSpacing: '0.01em',
+              }}
+            >
+              <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Minha Conta
+            </Link>
+          </div>
+
+          <div style={{ textAlign: 'center' }}>
           <div style={{
             width: '52px', height: '52px',
             borderRadius: '16px',
@@ -979,7 +1058,8 @@ export function BookingPage() {
               /{tenantSlug}
             </p>
           )}
-        </div>
+          </div>{/* /textAlign:center */}
+        </div>{/* /header */}
 
         {/* Card principal */}
         <div style={styles.card}>
@@ -1078,6 +1158,8 @@ export function BookingPage() {
               procedure={selectedProc}
               date={selectedDate}
               slot={selectedSlot}
+              slug={tenantSlug}
+              patientEmail={bookedEmail}
               onNew={handleNew}
             />
           )}
