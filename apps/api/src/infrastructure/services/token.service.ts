@@ -6,6 +6,7 @@ import type {
   ITokenService,
   JwtPayload,
   SuperAdminJwtPayload,
+  PatientJwtPayload,
   TokenPair,
 } from '../../domain/services/token.service.js'
 
@@ -101,6 +102,46 @@ export class TokenService implements ITokenService {
       return {
         sub: decoded['sub'] as string,
         scope: 'super-admin',
+      }
+    } catch (err) {
+      if (err instanceof UnauthorizedError) throw err
+      throw new UnauthorizedError('Token inválido ou expirado')
+    }
+  }
+
+  // ─── Patient ─────────────────────────────────────────────────────────────
+
+  generatePatientTokenPair(payload: PatientJwtPayload): TokenPair {
+    const accessToken = jwt.sign(
+      {
+        sub: payload.sub,
+        tenantId: payload.tenantId,
+        tenantSlug: payload.tenantSlug,
+        role: 'PATIENT',
+      },
+      this.accessSecret,
+      { expiresIn: this.accessExpiresInSec },
+    )
+
+    const refreshToken = this.generateRefreshToken()
+
+    return { accessToken, refreshToken }
+  }
+
+  verifyPatientAccessToken(token: string): PatientJwtPayload {
+    try {
+      const decoded = jwt.verify(token, this.accessSecret) as jwt.JwtPayload
+
+      // Garante que é um token de paciente — rejeita tokens de staff ou super admin
+      if (decoded['role'] !== 'PATIENT') {
+        throw new UnauthorizedError('Token não pertence a um paciente')
+      }
+
+      return {
+        sub:        decoded['sub'] as string,
+        tenantId:   decoded['tenantId'] as string,
+        tenantSlug: decoded['tenantSlug'] as string,
+        role:       'PATIENT',
       }
     } catch (err) {
       if (err instanceof UnauthorizedError) throw err

@@ -4,6 +4,7 @@ import { Gender, NotificationChannel } from '@prisma/client'
 import type {
   IPatientRepository,
   PatientRecord,
+  PatientAuthRecord,
   CreatePatientData,
   UpdatePatientData,
   ListPatientsParams,
@@ -183,5 +184,92 @@ export class PrismaPatientRepository implements IPatientRepository {
       select: patientSelect,
     })
     return toRecord(row as PatientRow)
+  }
+
+  // ─── Auth ─────────────────────────────────────────────────────────────────
+
+  async findByIdWithAuth(id: string): Promise<PatientAuthRecord | null> {
+    const row = await this.prisma.patient.findUnique({
+      where: { id },
+      select: {
+        ...patientSelect,
+        passwordHash: true,
+        passwordResetToken: true,
+        passwordResetExpiresAt: true,
+      },
+    })
+    if (!row) return null
+    return {
+      ...toRecord(row as PatientRow),
+      passwordHash: (row as any).passwordHash as string | null,
+      passwordResetToken: (row as any).passwordResetToken as string | null,
+      passwordResetExpiresAt: (row as any).passwordResetExpiresAt as Date | null,
+    }
+  }
+
+  async findByEmailWithAuth(email: string): Promise<PatientAuthRecord | null> {
+    const row = await this.prisma.patient.findFirst({
+      where: { email, isActive: true },
+      select: {
+        ...patientSelect,
+        passwordHash: true,
+        passwordResetToken: true,
+        passwordResetExpiresAt: true,
+      },
+    })
+    if (!row) return null
+    return {
+      ...toRecord(row as PatientRow),
+      passwordHash: (row as any).passwordHash as string | null,
+      passwordResetToken: (row as any).passwordResetToken as string | null,
+      passwordResetExpiresAt: (row as any).passwordResetExpiresAt as Date | null,
+    }
+  }
+
+  async findByPasswordResetToken(tokenHash: string): Promise<PatientAuthRecord | null> {
+    const row = await this.prisma.patient.findFirst({
+      where: { passwordResetToken: tokenHash },
+      select: {
+        ...patientSelect,
+        passwordHash: true,
+        passwordResetToken: true,
+        passwordResetExpiresAt: true,
+      },
+    })
+    if (!row) return null
+    return {
+      ...toRecord(row as PatientRow),
+      passwordHash: (row as any).passwordHash as string | null,
+      passwordResetToken: (row as any).passwordResetToken as string | null,
+      passwordResetExpiresAt: (row as any).passwordResetExpiresAt as Date | null,
+    }
+  }
+
+  async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
+    await this.prisma.patient.update({
+      where: { id },
+      data: { passwordHash },
+    })
+  }
+
+  async savePasswordResetToken(id: string, tokenHash: string, expiresAt: Date): Promise<void> {
+    await this.prisma.patient.update({
+      where: { id },
+      data: { passwordResetToken: tokenHash, passwordResetExpiresAt: expiresAt },
+    })
+  }
+
+  async clearPasswordResetToken(id: string): Promise<void> {
+    await this.prisma.patient.update({
+      where: { id },
+      data: { passwordResetToken: null, passwordResetExpiresAt: null },
+    })
+  }
+
+  async updateLastLogin(id: string): Promise<void> {
+    await this.prisma.patient.update({
+      where: { id },
+      data: { lastLoginAt: new Date() },
+    })
   }
 }

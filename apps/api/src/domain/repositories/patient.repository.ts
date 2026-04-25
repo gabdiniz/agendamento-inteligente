@@ -63,6 +63,14 @@ export interface PaginatedPatients {
   totalPages: number
 }
 
+// ─── Auth-specific record (inclui passwordHash — nunca exposto na API) ────────
+
+export interface PatientAuthRecord extends PatientRecord {
+  passwordHash: string | null
+  passwordResetToken: string | null
+  passwordResetExpiresAt: Date | null
+}
+
 export interface IPatientRepository {
   create(data: CreatePatientData): Promise<PatientRecord>
   findById(id: string): Promise<PatientRecord | null>
@@ -70,4 +78,20 @@ export interface IPatientRepository {
   list(params: ListPatientsParams): Promise<PaginatedPatients>
   update(id: string, data: UpdatePatientData): Promise<PatientRecord>
   setActive(id: string, isActive: boolean): Promise<PatientRecord>
+
+  // ─── Auth ─────────────────────────────────────────────────────────────────
+  /** Busca paciente pelo ID incluindo campos de auth (passwordHash, etc.) */
+  findByIdWithAuth(id: string): Promise<PatientAuthRecord | null>
+  /** Busca paciente pelo e-mail incluindo campos de auth (passwordHash, etc.) */
+  findByEmailWithAuth(email: string): Promise<PatientAuthRecord | null>
+  /** Busca paciente pelo token de reset de senha (hash SHA-256) */
+  findByPasswordResetToken(tokenHash: string): Promise<PatientAuthRecord | null>
+  /** Atualiza o passwordHash do paciente */
+  updatePasswordHash(id: string, passwordHash: string): Promise<void>
+  /** Salva token de reset de senha (hash) e sua expiração */
+  savePasswordResetToken(id: string, tokenHash: string, expiresAt: Date): Promise<void>
+  /** Limpa token de reset após uso */
+  clearPasswordResetToken(id: string): Promise<void>
+  /** Atualiza lastLoginAt para agora */
+  updateLastLogin(id: string): Promise<void>
 }

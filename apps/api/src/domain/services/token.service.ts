@@ -1,7 +1,7 @@
 // ─── Token Service Interface ───────────────────────────────────────────────
 //
 // Abstração para geração e verificação de JWT e refresh tokens.
-// Suporta dois escopos: Tenant (multi-tenant) e Super Admin (plataforma).
+// Suporta três escopos: Tenant (multi-tenant), Super Admin e Patient.
 // ─────────────────────────────────────────────────────────────────────────
 
 // ─── Tenant JWT ─────────────────────────────────────────────────────────────
@@ -20,6 +20,15 @@ export interface SuperAdminJwtPayload {
   scope: 'super-admin' // distingue de tokens de tenant
 }
 
+// ─── Patient JWT ─────────────────────────────────────────────────────────────
+
+export interface PatientJwtPayload {
+  sub: string          // patientId
+  tenantId: string
+  tenantSlug: string
+  role: 'PATIENT'      // constante — distingue de tokens de staff (roles[])
+}
+
 // ─── Shared ─────────────────────────────────────────────────────────────────
 
 export interface TokenPair {
@@ -28,7 +37,7 @@ export interface TokenPair {
 }
 
 export interface ITokenService {
-  // ─── Tenant ─────────────────────────────────────────────────────────────
+  // ─── Tenant (staff) ─────────────────────────────────────────────────────
   /** Gera o par access + refresh token para usuário de tenant */
   generateTokenPair(payload: JwtPayload): TokenPair
 
@@ -41,6 +50,13 @@ export interface ITokenService {
 
   /** Verifica e decodifica um access token de super admin */
   verifySuperAdminAccessToken(token: string): SuperAdminJwtPayload
+
+  // ─── Patient ─────────────────────────────────────────────────────────────
+  /** Gera o par access + refresh token para paciente */
+  generatePatientTokenPair(payload: PatientJwtPayload): TokenPair
+
+  /** Verifica e decodifica um access token de paciente */
+  verifyPatientAccessToken(token: string): PatientJwtPayload
 
   // ─── Shared ─────────────────────────────────────────────────────────────
   /** Gera um refresh token random (64 bytes hex) */
