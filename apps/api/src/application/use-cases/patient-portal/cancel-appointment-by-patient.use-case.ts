@@ -6,11 +6,11 @@ import type { IAppointmentRepository, AppointmentRecord } from '../../../domain/
 // Defaults usados quando a clínica ainda não configurou o portal.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const DEFAULT_CANCELLATION_CONFIG = {
+export const DEFAULT_CANCELLATION_CONFIG: ClinicCancellationConfig = {
   cancellationAllowed: true,
   cancellationMinHoursInAdvance: 2,
   cancellationAllowedStatuses: ['SCHEDULED'],
-} as const
+}
 
 export interface ClinicCancellationConfig {
   cancellationAllowed: boolean

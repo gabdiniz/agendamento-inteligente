@@ -29,7 +29,7 @@ export const clinicPatientConfigRoutes: FastifyPluginAsync = async (app) => {
 
   // Todas as rotas exigem auth de staff + role GESTOR
   app.addHook('preHandler', requireAuth)
-  app.addHook('preHandler', requireRoles(['GESTOR', 'ADMIN']))
+  app.addHook('preHandler', requireRoles('GESTOR', 'ADMIN'))
 
   // ─── GET / ────────────────────────────────────────────────────────────────
   app.get('/', async (request, reply) => {
