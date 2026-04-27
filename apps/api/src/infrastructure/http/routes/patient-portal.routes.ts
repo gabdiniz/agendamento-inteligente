@@ -15,6 +15,7 @@ import { PrismaProfessionalRepository } from '../../database/repositories/prisma
 import { PrismaProcedureRepository } from '../../database/repositories/prisma-procedure.repository.js'
 import { PrismaWorkScheduleRepository } from '../../database/repositories/prisma-work-schedule.repository.js'
 import { PrismaAppointmentEvaluationRepository } from '../../database/repositories/prisma-appointment-evaluation.repository.js'
+import { PrismaPointsRepository } from '../../database/repositories/prisma-points.repository.js'
 
 // ─── Patient Portal Routes ─────────────────────────────────────────────────────
 //
@@ -71,12 +72,17 @@ export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
 
   // GET /profile
   app.get('/profile', async (request, reply) => {
-    const patientRepo = new PrismaPatientRepository(request.tenantPrisma!)
-    const patient = await patientRepo.findById(request.currentPatient.sub)
+    const prisma      = request.tenantPrisma!
+    const patientId   = request.currentPatient.sub
+    const patientRepo = new PrismaPatientRepository(prisma)
+    const patient     = await patientRepo.findById(patientId)
 
     if (!patient || !patient.isActive) {
       return reply.status(401).send({ success: false, error: 'Paciente nao encontrado' })
     }
+
+    // Busca pontos e tier — retorna defaults se não há registro ainda
+    const loyalty = await new PrismaPointsRepository(prisma).getLoyaltyStats(patientId)
 
     return reply.status(200).send({
       success: true,
@@ -89,6 +95,7 @@ export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
         gender:                  patient.gender,
         city:                    patient.city,
         preferredContactChannel: patient.preferredContactChannel,
+        loyalty,
       },
     })
   })
@@ -207,6 +214,7 @@ export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
     const result = await new SubmitQuickRatingUseCase(
       new PrismaAppointmentRepository(prisma),
       new PrismaAppointmentEvaluationRepository(prisma),
+      new PrismaPointsRepository(prisma),
     ).execute({
       appointmentId: id,
       patientId:     request.currentPatient.sub,

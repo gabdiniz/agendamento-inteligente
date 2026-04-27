@@ -21,6 +21,7 @@ import { PrismaPatientRepository } from '../../database/repositories/prisma-pati
 import { PrismaWorkScheduleRepository } from '../../database/repositories/prisma-work-schedule.repository.js'
 import { PrismaWaitlistRepository } from '../../database/repositories/prisma-waitlist.repository.js'
 import { PrismaNotificationRepository } from '../../database/repositories/prisma-notification.repository.js'
+import { PrismaPointsRepository } from '../../database/repositories/prisma-points.repository.js'
 
 import { requireAuth, requireRoles } from '../middlewares/auth.middleware.js'
 import { prisma } from '@myagendix/database'
@@ -260,7 +261,11 @@ export const appointmentRoutes: FastifyPluginAsync = async (app) => {
         new PrismaNotificationRepository(prisma),
       )
 
-      const appointment = await new UpdateAppointmentStatusUseCase(repo, checkVacancies).execute({
+      const appointment = await new UpdateAppointmentStatusUseCase(
+        repo,
+        checkVacancies,
+        new PrismaPointsRepository(prisma),
+      ).execute({
         appointmentId: id,
         newStatus: body.status,
         changedByUserId: request.currentUser?.sub,

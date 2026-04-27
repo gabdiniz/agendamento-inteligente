@@ -14,6 +14,8 @@ import type {
   IAppointmentEvaluationRepository,
   AppointmentEvaluationRecord,
 } from '../../../domain/repositories/appointment-evaluation.repository.js'
+import type { IPointsRepository } from '../../../domain/repositories/points.repository.js'
+import { AwardPointsUseCase } from './award-points.use-case.js'
 
 // ─── Input ────────────────────────────────────────────────────────────────────
 
@@ -30,6 +32,8 @@ export class SubmitQuickRatingUseCase {
   constructor(
     private readonly appointmentRepo: IAppointmentRepository,
     private readonly evaluationRepo: IAppointmentEvaluationRepository,
+    // Opcional — quando injetado, concede +10 pts na primeira avaliação.
+    private readonly pointsRepo?: IPointsRepository,
   ) {}
 
   async execute(input: SubmitQuickRatingInput): Promise<AppointmentEvaluationRecord> {
@@ -54,13 +58,32 @@ export class SubmitQuickRatingUseCase {
     // 4. Valida razões para avaliações negativas/neutras (máx. 10 por segurança)
     const sanitizedReasons = reasons.slice(0, 10)
 
-    // 5. Upsert — cria ou atualiza a avaliação rápida
-    return this.evaluationRepo.upsertQuickRating({
+    // 5. Verifica se já existe avaliação (para controlar concessão de pontos)
+    const existingEvaluation = await this.evaluationRepo.findByAppointmentId(appointmentId)
+    const isFirstRating = existingEvaluation?.quickRating == null
+
+    // 6. Upsert — cria ou atualiza a avaliação rápida
+    const result = await this.evaluationRepo.upsertQuickRating({
       appointmentId,
       patientId,
       professionalId: appointment.professionalId,
       quickRating,
       reasons: sanitizedReasons,
     })
+
+    // 7. Concede pontos na primeira avaliação (fire-and-forget)
+    if (isFirstRating && this.pointsRepo) {
+      // Garante que não houve concessão anterior (proteção contra race condition)
+      const alreadyAwarded = await this.pointsRepo.hasRatingPoints(patientId, appointmentId)
+      if (!alreadyAwarded) {
+        new AwardPointsUseCase(this.pointsRepo)
+          .execute({ patientId, reason: 'QUICK_RATING_SUBMITTED', appointmentId })
+          .catch((err: unknown) => {
+            console.error('[SubmitQuickRating] Falha ao conceder pontos de avaliação:', err)
+          })
+      }
+    }
+
+    return result
   }
 }

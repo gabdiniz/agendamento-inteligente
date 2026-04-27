@@ -1,6 +1,8 @@
 import type { IAppointmentRepository, AppointmentRecord } from '../../../domain/repositories/appointment.repository.js'
 import { NotFoundError, ValidationError } from '../../../domain/errors/app-error.js'
 import type { CheckVacanciesUseCase } from '../waitlist/check-vacancies.use-case.js'
+import type { IPointsRepository } from '../../../domain/repositories/points.repository.js'
+import { awardAppointmentCompletionPoints } from '../patient-portal/award-points.use-case.js'
 
 // ─── Transições de status válidas ─────────────────────────────────────────────
 //
@@ -31,6 +33,8 @@ export class UpdateAppointmentStatusUseCase {
     // Opcional — quando injetado, dispara verificação de vagas na waitlist
     // automaticamente se a transição for para CANCELED (fire-and-forget).
     private readonly checkVacancies?: CheckVacanciesUseCase,
+    // Opcional — quando injetado, concede pontos de fidelidade ao completar.
+    private readonly pointsRepo?: IPointsRepository,
   ) {}
 
   async execute(input: UpdateStatusInput): Promise<AppointmentRecord> {
@@ -62,6 +66,14 @@ export class UpdateAppointmentStatusUseCase {
         })
         .catch((err: unknown) => {
           console.error('[UpdateAppointmentStatus] Falha ao verificar waitlist após cancelamento:', err)
+        })
+    }
+
+    // ── Concede pontos de fidelidade ao concluir (fire-and-forget) ───────────
+    if (newStatus === 'COMPLETED' && this.pointsRepo) {
+      awardAppointmentCompletionPoints(this.pointsRepo, updated.patientId, appointmentId)
+        .catch((err: unknown) => {
+          console.error('[UpdateAppointmentStatus] Falha ao conceder pontos de fidelidade:', err)
         })
     }
 
