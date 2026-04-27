@@ -84,7 +84,7 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
         procedures: {
           select: {
             procedure: {
-              select: { id: true, name: true, durationMinutes: true, color: true, isActive: true },
+              select: { id: true, name: true, durationMinutes: true, priceCents: true, preparationInstructions: true, color: true, isActive: true },
             },
           },
         },
@@ -106,6 +106,8 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
             id: pp.procedure.id,
             name: pp.procedure.name,
             durationMinutes: pp.procedure.durationMinutes,
+            priceCents: pp.procedure.priceCents,
+            preparationInstructions: pp.procedure.preparationInstructions,
             color: pp.procedure.color,
           })),
       }))
@@ -260,5 +262,26 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
     })
 
     return reply.status(201).send({ success: true, data: entry })
+  })
+
+  // ─── GET /clinic-info ─────────────────────────────────────────
+  //
+  // Retorna informações públicas da clínica (nome, endereço, logo).
+  // Usado na tela de confirmação rica para exibir dados ao paciente.
+  //
+  // 60 req/min — acesso público, baixo custo
+  app.get('/clinic-info', {
+    config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
+    const tenant = await prisma.tenant.findUnique({
+      where:  { id: request.tenantId },
+      select: { name: true, address: true, logoUrl: true },
+    })
+
+    if (!tenant) {
+      return reply.status(404).send({ success: false, error: 'Clínica não encontrada.' })
+    }
+
+    return reply.status(200).send({ success: true, data: tenant })
   })
 }
