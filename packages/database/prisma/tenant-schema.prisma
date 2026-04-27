@@ -83,6 +83,12 @@ enum PatientClassification {
   GOLD
 }
 
+enum PointsReason {
+  APPOINTMENT_COMPLETED   // +30 pts
+  FIRST_APPOINTMENT       // +20 pts bônus
+  QUICK_RATING_SUBMITTED  // +10 pts
+}
+
 enum PatientInterestType {
   PROCEDURE
   AREA
@@ -295,6 +301,7 @@ model Patient {
   interests              PatientInterest[]
   crmMetrics             PatientCrmMetrics?
   refreshTokens          PatientRefreshToken[]
+  pointsTransactions     PointsTransaction[]
 
   @@index([isActive])
   @@index([birthDate])
@@ -353,10 +360,11 @@ model Appointment {
   procedure     Procedure    @relation(fields: [procedureId], references: [id])
   createdByUser User?        @relation("AppointmentCreatedBy", fields: [createdByUserId], references: [id])
 
-  statusHistory AppointmentStatusHistory[]
-  evaluation    AppointmentEvaluation?
-  waitlistEntry WaitlistEntry?
-  notifications Notification[]
+  statusHistory      AppointmentStatusHistory[]
+  evaluation         AppointmentEvaluation?
+  waitlistEntry      WaitlistEntry?
+  notifications      Notification[]
+  pointsTransactions PointsTransaction[]
 
   @@index([professionalId, scheduledDate])
   @@index([patientId])
@@ -470,12 +478,32 @@ model PatientCrmMetrics {
   cancellationCount        Int                   @default(0)
   classification           PatientClassification @default(BRONZE)
   preferredAppointmentHour Int?                  @db.SmallInt
+  loyaltyPoints            Int                   @default(0)  // pontos atuais (podem ser resgatados/expirar no futuro)
+  lifetimePoints           Int                   @default(0)  // pontos históricos totais — nunca diminui
   updatedAt                DateTime              @default(now()) @updatedAt @db.Timestamptz
 
-  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient           Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  pointsTransactions PointsTransaction[]
 
   @@index([classification])
   @@map("patient_crm_metrics")
+}
+
+model PointsTransaction {
+  id          String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patientId   String               @db.Uuid
+  points      Int                  // positivo = ganho, negativo = resgate/expiração
+  reason      PointsReason
+  appointmentId String?            @db.Uuid
+  createdAt   DateTime             @default(now()) @db.Timestamptz
+
+  patient        Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  crmMetrics     PatientCrmMetrics  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  appointment    Appointment?       @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([createdAt])
+  @@map("points_transactions")
 }
 
 model AiConfig {
