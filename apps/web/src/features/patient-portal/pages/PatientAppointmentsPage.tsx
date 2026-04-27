@@ -6,7 +6,7 @@
 // Rota: /:slug/minha-conta/agendamentos
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { patientPortalApi, type PatientAppointment, type QuickRating } from '@/lib/api/patient-auth.api'
 import { QuickRatingCard } from '../components/QuickRatingCard'
@@ -55,12 +55,35 @@ function AppointmentCard({
   const canCancel   = apt.status === 'SCHEDULED'
   const isCanceling = canceling === apt.id
 
-  // Mostra quick-rating para COMPLETED sem avaliação enviada
-  const showRating = apt.status === 'COMPLETED' && apt.evaluation?.quickRating == null
+  // Estado local para controlar visibilidade do QuickRatingCard.
+  // Não usa apt.evaluation diretamente para evitar que uma atualização
+  // no pai desmonte o card antes de exibir o estado "done" (Obrigado).
+  const [localRating, setLocalRating] = useState<QuickRating | null>(
+    apt.evaluation?.quickRating ?? null,
+  )
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Sync externo: se o pai trouxer um apt já avaliado (ex: reload), reflete localmente
+  useEffect(() => {
+    if (apt.evaluation?.quickRating != null && localRating == null) {
+      setLocalRating(apt.evaluation.quickRating)
+    }
+  }, [apt.evaluation?.quickRating]) // eslint-disable-line
+
+  // Limpa o timer ao desmontar para evitar setState em componente desmontado
+  useEffect(() => () => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+  }, [])
+
+  const displayRating = localRating ?? apt.evaluation?.quickRating
+  const showRating    = apt.status === 'COMPLETED' && displayRating == null
 
   async function handleQuickRating(rating: QuickRating, reasons: string[]) {
     await patientPortalApi.submitQuickRating(slug, apt.id, rating, reasons)
+    // Atualiza o pai imediatamente (para o badge aparecer)
     onRated(apt.id, rating)
+    // Esconde o QuickRatingCard após 1.5 s — tempo suficiente para mostrar "Obrigado"
+    hideTimerRef.current = setTimeout(() => setLocalRating(rating), 1500)
   }
 
   return (
@@ -141,15 +164,15 @@ function AppointmentCard({
           )}
 
           {/* Badge: avaliação já enviada */}
-          {apt.status === 'COMPLETED' && apt.evaluation?.quickRating != null && (
+          {apt.status === 'COMPLETED' && displayRating != null && (
             <span style={{
               display: 'flex', alignItems: 'center', gap: '4px',
               fontSize: '11px', color: '#166534', fontWeight: 600,
               background: '#f0fdf4', padding: '4px 10px', borderRadius: '20px',
               flexShrink: 0,
             }}>
-              {apt.evaluation.quickRating === 'POSITIVE' ? '😊'
-                : apt.evaluation.quickRating === 'NEUTRAL' ? '😐'
+              {displayRating === 'POSITIVE' ? '😊'
+                : displayRating === 'NEUTRAL' ? '😐'
                 : '😞'} Avaliado
             </span>
           )}
@@ -316,7 +339,7 @@ export function PatientAppointmentsPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {appointments.map((apt) => (
+          {[...appointments].reverse().map((apt) => (
             <AppointmentCard
               key={apt.id}
               apt={apt}

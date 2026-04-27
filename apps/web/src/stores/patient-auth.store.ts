@@ -24,6 +24,9 @@ interface PatientAuthStore {
     tenantLogoUrl?: string | null,
   ) => void
 
+  /** Atualiza só os dados do paciente sem tocar nos tokens de autenticação */
+  updatePatient: (updates: Partial<PatientUser>) => void
+
   clearPatient: (slug: string) => void
 }
 
@@ -43,6 +46,12 @@ export const usePatientAuthStore = create<PatientAuthStore>((set, get) => ({
       tenantName: tenantName ?? null,
       tenantLogoUrl: tenantLogoUrl ?? null,
     })
+  },
+
+  updatePatient: (updates) => {
+    set((state) => ({
+      patient: state.patient ? { ...state.patient, ...updates } : null,
+    }))
   },
 
   clearPatient: (slug: string) => {

@@ -64,7 +64,7 @@ function Label({ children }: { children: React.ReactNode }) {
 export function PatientProfilePage() {
   const params = useParams({ strict: false }) as { slug?: string }
   const slug = params.slug ?? ''
-  const { patient, setPatient } = usePatientAuthStore()
+  const { patient, updatePatient } = usePatientAuthStore()
 
   const [focused, setFocused] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -113,10 +113,8 @@ export function PatientProfilePage() {
         ...(values.gender    ? { gender: values.gender }       : {}),
         ...(values.city      ? { city: values.city }           : {}),
       })
-      // Atualiza store
-      if (patient) {
-        setPatient({ ...patient, ...updated }, '', '', slug)
-      }
+      // Atualiza só os dados do paciente na store, sem tocar nos tokens
+      updatePatient(updated)
       reset({
         name:      updated.name,
         phone:     updated.phone ?? '',

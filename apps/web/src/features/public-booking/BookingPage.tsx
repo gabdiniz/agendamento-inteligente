@@ -14,6 +14,7 @@ import {
   type PublicProfessional,
   type PublicProcedure,
   type TimeSlot,
+  type ClinicInfo,
 } from '@/lib/api/public.api'
 import { usePatientAuthStore } from '@/stores/patient-auth.store'
 import { patientTokens } from '@/lib/api/patient-client'
@@ -55,6 +56,54 @@ function formatDateLong(iso: string) {
   return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long',
   })
+}
+
+function formatPrice(cents: number): string {
+  return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+// ─── ICS Calendar helpers ─────────────────────────────────────────────────────
+
+function generateICS(params: {
+  summary: string
+  description: string
+  location: string
+  dateStr: string       // "YYYY-MM-DD"
+  startTime: string     // "HH:MM"
+  durationMinutes: number
+}): string {
+  const [y, mo, d] = params.dateStr.split('-').map(Number)
+  const [hh, mm] = params.startTime.split(':').map(Number)
+  const start = new Date(y!, mo! - 1, d!, hh!, mm!, 0)
+  const end   = new Date(start.getTime() + params.durationMinutes * 60_000)
+  const fmt   = (dt: Date) => dt.toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z'
+  const uid   = `${Date.now()}-myagendix@booking`
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//MyAgendix//MyAgendix//PT',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTART:${fmt(start)}`,
+    `DTEND:${fmt(end)}`,
+    `SUMMARY:${params.summary}`,
+    `DESCRIPTION:${params.description}`,
+  ]
+  if (params.location) lines.push(`LOCATION:${params.location}`)
+  lines.push('END:VEVENT', 'END:VCALENDAR')
+  return lines.join('\r\n')
+}
+
+function downloadICS(content: string, filename: string) {
+  const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 // ─── Inline styles ────────────────────────────────────────────────────────────
@@ -597,7 +646,7 @@ function Step3({
   onSubmit: (data: PatientForm) => void
   onBack: () => void
   loading: boolean
-  loggedInPatient?: { name: string; phone: string; email: string | null } | null
+  loggedInPatient?: { name: string; phone: string | null; email: string | null } | null
 }) {
   const locked = !!loggedInPatient
 
@@ -605,7 +654,7 @@ function Step3({
     resolver: zodResolver(patientSchema),
     defaultValues: locked ? {
       name:  loggedInPatient.name,
-      phone: loggedInPatient.phone,
+      phone: loggedInPatient.phone ?? '',
       email: loggedInPatient.email ?? '',
     } : undefined,
   })
@@ -760,7 +809,7 @@ function Step3({
   )
 }
 
-// ─── Step 4 — Sucesso ─────────────────────────────────────────────────────────
+// ─── Step 4 — Confirmação Rica ────────────────────────────────────────────────
 
 function Step4({
   professional,
@@ -769,6 +818,8 @@ function Step4({
   slot,
   slug,
   patientEmail,
+  isLoggedIn,
+  clinicInfo,
   onNew,
 }: {
   professional: PublicProfessional
@@ -777,127 +828,260 @@ function Step4({
   slot: TimeSlot
   slug: string
   patientEmail: string
+  isLoggedIn: boolean
+  clinicInfo: ClinicInfo | null
   onNew: () => void
 }) {
+  const mapsUrl = clinicInfo?.address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(clinicInfo.address)}`
+    : null
+
+  function handleSaveToCalendar() {
+    const ics = generateICS({
+      summary:         `${procedure.name} — ${professional.name}`,
+      description:     `Procedimento: ${procedure.name}\\nProfissional: ${professional.name}${procedure.preparationInstructions ? '\\n\\nPreparo: ' + procedure.preparationInstructions : ''}`,
+      location:        clinicInfo?.address ?? '',
+      dateStr:         date,
+      startTime:       slot.startTime,
+      durationMinutes: procedure.durationMinutes,
+    })
+    downloadICS(ics, `agendamento-${date}.ics`)
+  }
+
   return (
-    <div style={{ padding: '40px 28px', textAlign: 'center', animation: 'scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
-      {/* Ícone de sucesso */}
-      <div style={{
-        width: '64px', height: '64px',
-        borderRadius: '50%',
-        background: 'color-mix(in srgb, var(--color-primary) 12%, white)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        margin: '0 auto 20px',
-      }}>
-        <svg width="28" height="28" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-        </svg>
+    <div style={{ padding: 'clamp(20px, 5vw, 32px)', animation: 'scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+
+      {/* ── Cabeçalho de sucesso ─────────────────────────────────── */}
+      <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+        <div style={{
+          width: '60px', height: '60px', borderRadius: '50%',
+          background: 'color-mix(in srgb, var(--color-primary) 12%, white)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 16px',
+          boxShadow: '0 0 0 8px color-mix(in srgb, var(--color-primary) 6%, white)',
+        }}>
+          <svg width="26" height="26" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: '22px',
+          fontStyle: 'italic',
+          color: '#1a1614',
+          margin: '0 0 4px',
+          lineHeight: 1.2,
+        }}>
+          Agendamento confirmado!
+        </h2>
+        <p style={{ fontSize: '13px', color: '#8a7f75', margin: 0 }}>
+          Tudo certo. Veja os detalhes abaixo.
+        </p>
       </div>
 
-      <h2 style={{
-        fontFamily: 'var(--font-display)',
-        fontSize: '24px',
-        fontStyle: 'italic',
-        color: '#1a1614',
-        marginBottom: '6px',
-        lineHeight: 1.2,
+      {/* ── Card do profissional ──────────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '14px',
+        padding: '14px 16px',
+        background: '#faf8f5',
+        borderRadius: '14px',
+        border: '1.5px solid #ece8e3',
+        marginBottom: '12px',
       }}>
-        Agendamento confirmado!
-      </h2>
-      <p style={{ fontSize: '13px', color: '#8a7f75', marginBottom: '28px' }}>
-        Você receberá uma confirmação em breve.
-      </p>
+        {/* Avatar */}
+        {professional.avatarUrl ? (
+          <img
+            src={professional.avatarUrl}
+            alt={professional.name}
+            style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+          />
+        ) : (
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0,
+            background: professional.color ?? 'color-mix(in srgb, var(--color-primary) 18%, white)',
+            color: 'var(--color-primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '18px', fontWeight: 700,
+          }}>
+            {professional.name.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: '14px', fontWeight: 600, color: '#1a1614', margin: 0 }}>{professional.name}</p>
+          {professional.specialty && (
+            <p style={{ fontSize: '12px', color: '#8a7f75', margin: '2px 0 0' }}>{professional.specialty}</p>
+          )}
+        </div>
+      </div>
 
-      {/* Resumo */}
+      {/* ── Detalhes do agendamento ───────────────────────────────── */}
       <div style={{
         background: '#faf8f5',
         borderRadius: '14px',
         border: '1.5px solid #ece8e3',
         overflow: 'hidden',
-        marginBottom: '24px',
-        textAlign: 'left',
+        marginBottom: '12px',
       }}>
-        {[
-          {
-            icon: (
-              <svg width="16" height="16" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            ),
-            label: 'Profissional',
-            value: professional.name,
-          },
-          {
-            icon: (
-              <svg width="16" height="16" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            ),
-            label: 'Serviço',
-            value: `${procedure.name} · ${procedure.durationMinutes} min`,
-          },
-          {
-            icon: (
-              <svg width="16" height="16" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            ),
-            label: 'Data',
-            value: formatDateLong(date),
-          },
-          {
-            icon: (
-              <svg width="16" height="16" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            ),
-            label: 'Horário',
-            value: slot.startTime,
-          },
-        ].map(({ icon, label, value }, i) => (
-          <div
-            key={label}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '14px 16px',
-              borderBottom: i < 3 ? '1px solid #ece8e3' : 'none',
-            }}
-          >
-            <div style={{
-              width: '32px', height: '32px',
-              borderRadius: '8px',
-              background: 'color-mix(in srgb, var(--color-primary) 10%, white)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              {icon}
-            </div>
+        {/* Serviço + preço */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 16px',
+          borderBottom: '1px solid #ece8e3',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {procedure.color && (
+              <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: procedure.color, flexShrink: 0 }} />
+            )}
             <div>
-              <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#b0a899', margin: 0 }}>{label}</p>
-              <p style={{ fontSize: '13px', fontWeight: 500, color: '#1a1614', margin: '2px 0 0', textTransform: 'capitalize' }}>{value}</p>
+              <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#b0a899', margin: 0 }}>Serviço</p>
+              <p style={{ fontSize: '13px', fontWeight: 500, color: '#1a1614', margin: '2px 0 0' }}>
+                {procedure.name} · {procedure.durationMinutes} min
+              </p>
             </div>
           </div>
-        ))}
+          {procedure.priceCents != null && (
+            <span style={{
+              fontSize: '13px', fontWeight: 700, color: '#1a1614',
+              background: 'color-mix(in srgb, var(--color-primary) 10%, white)',
+              border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
+              padding: '3px 10px', borderRadius: '20px',
+              flexShrink: 0,
+            }}>
+              {formatPrice(procedure.priceCents)}
+            </span>
+          )}
+        </div>
+
+        {/* Data */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderBottom: '1px solid #ece8e3' }}>
+          <div style={{
+            width: '30px', height: '30px', borderRadius: '8px', flexShrink: 0,
+            background: 'color-mix(in srgb, var(--color-primary) 10%, white)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="14" height="14" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#b0a899', margin: 0 }}>Data</p>
+            <p style={{ fontSize: '13px', fontWeight: 500, color: '#1a1614', margin: '2px 0 0', textTransform: 'capitalize' }}>{formatDateLong(date)}</p>
+          </div>
+        </div>
+
+        {/* Horário */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px' }}>
+          <div style={{
+            width: '30px', height: '30px', borderRadius: '8px', flexShrink: 0,
+            background: 'color-mix(in srgb, var(--color-primary) 10%, white)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="14" height="14" fill="none" stroke="var(--color-primary)" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <p style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#b0a899', margin: 0 }}>Horário</p>
+            <p style={{ fontSize: '13px', fontWeight: 500, color: '#1a1614', margin: '2px 0 0' }}>{slot.startTime} — {slot.endTime}</p>
+          </div>
+        </div>
       </div>
 
+      {/* ── Instruções de preparo ─────────────────────────────────── */}
+      {procedure.preparationInstructions && (
+        <div style={{
+          display: 'flex', gap: '12px',
+          padding: '14px 16px',
+          background: '#fffbeb',
+          border: '1.5px solid #fde68a',
+          borderRadius: '12px',
+          marginBottom: '12px',
+        }}>
+          <svg width="18" height="18" fill="none" stroke="#d97706" viewBox="0 0 24 24" style={{ flexShrink: 0, marginTop: '1px' }}>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#d97706', margin: '0 0 4px' }}>
+              Como se preparar
+            </p>
+            <p style={{ fontSize: '13px', color: '#78350f', lineHeight: 1.6, margin: 0 }}>
+              {procedure.preparationInstructions}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Ações rápidas ─────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: mapsUrl ? '1fr 1fr' : '1fr', gap: '8px', marginBottom: '12px' }}>
+        {/* Salvar na agenda */}
+        <button
+          type="button"
+          onClick={handleSaveToCalendar}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+            padding: '12px 14px',
+            borderRadius: '10px',
+            border: '1.5px solid #ece8e3',
+            background: '#faf8f5',
+            color: '#1a1614',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontFamily: 'var(--font-sans)',
+            transition: 'all 0.18s ease',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.background = 'color-mix(in srgb, var(--color-primary) 5%, white)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ece8e3'; e.currentTarget.style.background = '#faf8f5' }}
+        >
+          <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          Salvar na agenda
+        </button>
+
+        {/* Como chegar */}
+        {mapsUrl && (
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+              padding: '12px 14px',
+              borderRadius: '10px',
+              border: '1.5px solid #ece8e3',
+              background: '#faf8f5',
+              color: '#1a1614',
+              fontSize: '12px',
+              fontWeight: 600,
+              textDecoration: 'none',
+              fontFamily: 'var(--font-sans)',
+              transition: 'all 0.18s ease',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.background = 'color-mix(in srgb, var(--color-primary) 5%, white)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#ece8e3'; e.currentTarget.style.background = '#faf8f5' }}
+          >
+            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Como chegar
+          </a>
+        )}
+      </div>
+
+      {/* ── Novo agendamento ──────────────────────────────────────── */}
       <button
         type="button"
         onClick={onNew}
-        style={{ ...styles.btnSecondary, width: '100%', textAlign: 'center' }}
+        style={{ ...styles.btnSecondary, width: '100%', textAlign: 'center', marginBottom: '12px' }}
       >
         Fazer novo agendamento
       </button>
 
-      {/* CTA portal do paciente */}
+      {/* ── CTA portal do paciente ────────────────────────────────── */}
       {patientEmail && (
         <div style={{
-          marginTop: '16px',
           padding: '14px 16px',
           borderRadius: '12px',
           background: 'color-mix(in srgb, var(--color-primary) 6%, white)',
@@ -905,7 +1089,6 @@ function Step4({
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          textAlign: 'left',
         }}>
           <div style={{
             width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
@@ -918,24 +1101,43 @@ function Step4({
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-primary)', margin: '0 0 2px' }}>
-              Acesse sua conta
+              {isLoggedIn ? 'Você está logado' : 'Acesse sua conta'}
             </p>
             <p style={{ fontSize: '11px', color: '#8a7f75', margin: 0, lineHeight: 1.5 }}>
-              Enviamos um e-mail para <strong>{patientEmail}</strong> com acesso ao portal.
+              {isLoggedIn
+                ? 'Acompanhe seus agendamentos na área do paciente.'
+                : <>Enviamos um e-mail para <strong>{patientEmail}</strong> com acesso ao portal.</>
+              }
             </p>
           </div>
-          <Link
-            to="/$slug/minha-conta/login"
-            params={{ slug }}
-            style={{
-              padding: '7px 14px', borderRadius: '8px',
-              background: 'var(--color-primary)', color: '#fff',
-              fontSize: '12px', fontWeight: 600,
-              textDecoration: 'none', flexShrink: 0,
-            }}
-          >
-            Entrar
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              to="/$slug/minha-conta/$section"
+              params={{ slug, section: 'agendamentos' }}
+              style={{
+                padding: '7px 14px', borderRadius: '8px',
+                background: 'var(--color-primary)', color: '#fff',
+                fontSize: '12px', fontWeight: 600,
+                textDecoration: 'none', flexShrink: 0,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Minha área
+            </Link>
+          ) : (
+            <Link
+              to="/$slug/minha-conta/login"
+              params={{ slug }}
+              style={{
+                padding: '7px 14px', borderRadius: '8px',
+                background: 'var(--color-primary)', color: '#fff',
+                fontSize: '12px', fontWeight: 600,
+                textDecoration: 'none', flexShrink: 0,
+              }}
+            >
+              Entrar
+            </Link>
+          )}
         </div>
       )}
     </div>
@@ -955,6 +1157,7 @@ export function BookingPage() {
 
   const [step, setStep] = useState<Step>(1)
   const [professionals, setProfessionals] = useState<PublicProfessional[]>([])
+  const [clinicInfo, setClinicInfo] = useState<ClinicInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [booking, setBooking] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -967,8 +1170,14 @@ export function BookingPage() {
 
   useEffect(() => {
     if (!tenantSlug) return
-    publicApi.getProfessionals(tenantSlug)
-      .then(setProfessionals)
+    Promise.all([
+      publicApi.getProfessionals(tenantSlug),
+      publicApi.getClinicInfo(tenantSlug).catch(() => null),
+    ])
+      .then(([profs, info]) => {
+        setProfessionals(profs)
+        setClinicInfo(info)
+      })
       .catch((err: unknown) => {
         const status = (err as { response?: { status?: number } })?.response?.status
         if (status === 404) {
@@ -1225,6 +1434,8 @@ export function BookingPage() {
               slot={selectedSlot}
               slug={tenantSlug}
               patientEmail={bookedEmail}
+              isLoggedIn={isPatientLoggedIn}
+              clinicInfo={clinicInfo}
               onNew={handleNew}
             />
           )}
