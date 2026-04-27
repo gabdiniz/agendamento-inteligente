@@ -18,6 +18,7 @@ import {
 } from '@/lib/api/public.api'
 import { usePatientAuthStore } from '@/stores/patient-auth.store'
 import { patientTokens } from '@/lib/api/patient-client'
+import { patientPortalApi } from '@/lib/api/patient-auth.api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,16 @@ const patientSchema = z.object({
   phone: z.string().min(10, 'Telefone inválido'),
   email: z.string().email('E-mail inválido'),
 })
+
+// Schema permissivo para modo "locked" (paciente autenticado): campos são
+// somente-leitura e o backend usa os dados reais do paciente, então qualquer
+// valor (inclusive string vazia quando phone é null) passa sem erro.
+const lockedPatientSchema = z.object({
+  name:  z.string(),
+  phone: z.string().optional().default(''),
+  email: z.string(),
+})
+
 type PatientForm = z.infer<typeof patientSchema>
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -651,7 +662,7 @@ function Step3({
   const locked = !!loggedInPatient
 
   const { register, handleSubmit, formState: { errors } } = useForm<PatientForm>({
-    resolver: zodResolver(patientSchema),
+    resolver: zodResolver(locked ? lockedPatientSchema : patientSchema),
     defaultValues: locked ? {
       name:  loggedInPatient.name,
       phone: loggedInPatient.phone ?? '',
@@ -1208,16 +1219,29 @@ export function BookingPage() {
     setBooking(true)
     setError(null)
     try {
-      await publicApi.book(tenantSlug, {
-        patientName: patient.name,
-        patientPhone: patient.phone,
-        patientEmail: patient.email,
-        professionalId: selectedProf.id,
-        procedureId: selectedProc.id,
-        scheduledDate: selectedDate,
-        startTime: selectedSlot.startTime,
-      })
-      setBookedEmail(patient.email)
+      if (loggedInPatient) {
+        // Paciente autenticado: usa a rota do portal (token JWT)
+        // O backend já conhece os dados do paciente pelo token — não precisa repassar phone/email
+        await patientPortalApi.createAppointment(tenantSlug, {
+          professionalId: selectedProf.id,
+          procedureId:    selectedProc.id,
+          scheduledDate:  selectedDate,
+          startTime:      selectedSlot.startTime,
+        })
+        setBookedEmail(loggedInPatient.email ?? '')
+      } else {
+        // Paciente anônimo: usa a rota pública com os dados do formulário
+        await publicApi.book(tenantSlug, {
+          patientName:    patient.name,
+          patientPhone:   patient.phone!,
+          patientEmail:   patient.email,
+          professionalId: selectedProf.id,
+          procedureId:    selectedProc.id,
+          scheduledDate:  selectedDate,
+          startTime:      selectedSlot.startTime,
+        })
+        setBookedEmail(patient.email)
+      }
       setStep(4)
     } catch {
       setError('Não foi possível confirmar o agendamento. O horário pode ter sido ocupado. Tente outro.')
