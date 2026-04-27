@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { usePatientAuthStore } from '@/stores/patient-auth.store'
-import { patientPortalApi, type PatientAppointment } from '@/lib/api/patient-auth.api'
+import { patientPortalApi, type PatientAppointment, type PatientLoyalty, type PatientTier } from '@/lib/api/patient-auth.api'
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -34,24 +34,153 @@ function formatDate(iso: string) {
   })
 }
 
+// ─── Gamificação: helpers de tier ─────────────────────────────────────────────
+
+const TIER_CONFIG: Record<PatientTier, { label: string; emoji: string; color: string; bg: string; border: string }> = {
+  BRONZE: { label: 'Bronze', emoji: '🥉', color: '#92400e', bg: '#fef3c7', border: '#fde68a' },
+  SILVER: { label: 'Prata',  emoji: '🥈', color: '#374151', bg: '#f3f4f6', border: '#d1d5db' },
+  GOLD:   { label: 'Ouro',   emoji: '🥇', color: '#92400e', bg: '#fffbeb', border: '#fcd34d' },
+}
+
+const TIER_THRESHOLDS: Record<PatientTier, number> = { BRONZE: 0, SILVER: 150, GOLD: 400 }
+
+function getTierProgress(tier: PatientTier, lifetimePoints: number) {
+  if (tier === 'GOLD') {
+    return { progress: 100, earned: lifetimePoints, needed: 0, nextTier: null as PatientTier | null }
+  }
+  if (tier === 'SILVER') {
+    const earned = lifetimePoints - 150
+    const needed = 250  // 400 - 150
+    return { progress: Math.min(100, Math.round((earned / needed) * 100)), earned, needed, nextTier: 'GOLD' as PatientTier }
+  }
+  // BRONZE
+  const needed = 150
+  return { progress: Math.min(100, Math.round((lifetimePoints / needed) * 100)), earned: lifetimePoints, needed, nextTier: 'SILVER' as PatientTier }
+}
+
+// ─── LoyaltyCard ──────────────────────────────────────────────────────────────
+
+function LoyaltyCard({ loyalty, justEarned }: { loyalty: PatientLoyalty; justEarned: boolean }) {
+  const tier  = loyalty.tier
+  const cfg   = TIER_CONFIG[tier]
+  const prog  = getTierProgress(tier, loyalty.lifetimePoints)
+
+  return (
+    <div style={{
+      background: '#fff',
+      borderRadius: '16px',
+      border: `1.5px solid ${cfg.border}`,
+      padding: '18px 20px',
+      marginBottom: '28px',
+      position: 'relative' as const,
+      overflow: 'hidden' as const,
+      animation: justEarned ? 'pointsBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' : undefined,
+    }}>
+      {/* Fundo decorativo */}
+      <div aria-hidden style={{
+        position: 'absolute', top: '-20px', right: '-20px',
+        width: '100px', height: '100px', borderRadius: '50%',
+        background: cfg.bg, opacity: 0.6, pointerEvents: 'none',
+      }} />
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px', position: 'relative' as const }}>
+        {/* Badge de tier */}
+        <div style={{
+          width: '48px', height: '48px', borderRadius: '14px', flexShrink: 0,
+          background: cfg.bg, border: `2px solid ${cfg.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '24px',
+        }}>
+          {cfg.emoji}
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+            <span style={{ fontSize: '22px', fontWeight: 800, color: '#1a1614', lineHeight: 1 }}>
+              {loyalty.loyaltyPoints}
+            </span>
+            <span style={{ fontSize: '12px', color: '#8a7f75', fontWeight: 500 }}>pontos</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+            <span style={{
+              fontSize: '11px', fontWeight: 700,
+              letterSpacing: '0.05em', textTransform: 'uppercase' as const,
+              color: cfg.color, background: cfg.bg,
+              padding: '2px 8px', borderRadius: '20px',
+              border: `1px solid ${cfg.border}`,
+            }}>
+              {cfg.label}
+            </span>
+            {prog.nextTier && (
+              <span style={{ fontSize: '11px', color: '#b0a899' }}>
+                faltam {prog.needed - prog.earned} pts para {TIER_CONFIG[prog.nextTier].label}
+              </span>
+            )}
+            {!prog.nextTier && (
+              <span style={{ fontSize: '11px', color: cfg.color, fontWeight: 600 }}>Nível máximo! 🎉</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Barra de progresso */}
+      {prog.nextTier && (
+        <div>
+          <div style={{
+            width: '100%', height: '6px', borderRadius: '20px',
+            background: '#f0ece7', overflow: 'hidden',
+          }}>
+            <div style={{
+              height: '100%', borderRadius: '20px',
+              background: `linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 70%, white))`,
+              width: `${prog.progress}%`,
+              transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+            <span style={{ fontSize: '10px', color: '#b0a899' }}>{TIER_CONFIG[tier].label}</span>
+            <span style={{ fontSize: '10px', color: '#b0a899' }}>{TIER_CONFIG[prog.nextTier].label}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function PatientDashboardPage() {
   const params = useParams({ strict: false }) as { slug?: string }
   const slug = params.slug ?? ''
-  const { patient } = usePatientAuthStore()
+  const { patient, updatePatient } = usePatientAuthStore()
 
-  const [upcoming, setUpcoming] = useState<PatientAppointment[]>([])
-  const [loading, setLoading] = useState(true)
+  const [upcoming, setUpcoming]     = useState<PatientAppointment[]>([])
+  const [loyalty, setLoyalty]       = useState<PatientLoyalty | null>(patient?.loyalty ?? null)
+  const [justEarned, setJustEarned] = useState(false)
+  const [loading, setLoading]       = useState(true)
 
   const firstName = patient?.name?.split(' ')[0] ?? 'Paciente'
 
   useEffect(() => {
     if (!slug) return
-    patientPortalApi.listAppointments(slug, { upcoming: true, limit: 3 })
-      .then((res) => setUpcoming(res.data ?? []))
+
+    // Busca agendamentos e perfil (com loyalty) em paralelo
+    Promise.all([
+      patientPortalApi.listAppointments(slug, { upcoming: true, limit: 3 }),
+      patientPortalApi.getProfile(slug),
+    ])
+      .then(([apts, profile]) => {
+        setUpcoming(apts.data ?? [])
+        if (profile.loyalty) {
+          const prev = loyalty?.loyaltyPoints ?? 0
+          if (profile.loyalty.loyaltyPoints > prev) setJustEarned(true)
+          setLoyalty(profile.loyalty)
+          updatePatient({ loyalty: profile.loyalty })
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug])
 
   return (
@@ -113,6 +242,9 @@ export function PatientDashboardPage() {
           Ver histórico
         </Link>
       </div>
+
+      {/* Loyalty card */}
+      {loyalty && <LoyaltyCard loyalty={loyalty} justEarned={justEarned} />}
 
       {/* Próximos agendamentos */}
       <div>
@@ -233,6 +365,12 @@ export function PatientDashboardPage() {
         @keyframes pulse {
           0%, 100% { opacity: 1 }
           50%       { opacity: 0.5 }
+        }
+        @keyframes pointsBounce {
+          0%   { transform: scale(1) }
+          30%  { transform: scale(1.04) }
+          60%  { transform: scale(0.97) }
+          100% { transform: scale(1) }
         }
       `}</style>
     </div>

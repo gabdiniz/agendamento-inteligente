@@ -10,6 +10,14 @@ import { createPatientClient } from './patient-client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export type PatientTier = 'BRONZE' | 'SILVER' | 'GOLD'
+
+export interface PatientLoyalty {
+  loyaltyPoints:  number
+  lifetimePoints: number
+  tier:           PatientTier
+}
+
 export interface PatientUser {
   id: string
   name: string
@@ -19,6 +27,7 @@ export interface PatientUser {
   gender: string | null
   city: string | null
   preferredContactChannel: string | null
+  loyalty?: PatientLoyalty
 }
 
 export interface PatientMeResponse extends PatientUser {
@@ -100,6 +109,12 @@ export const patientPortalApi = {
   async changePassword(slug: string, currentPassword: string, newPassword: string): Promise<void> {
     const client = createPatientClient(slug)
     await client.patch('/patient-auth/change-password', { currentPassword, newPassword })
+  },
+
+  async getProfile(slug: string): Promise<PatientUser> {
+    const client = createPatientClient(slug)
+    const { data } = await client.get('/patient/profile')
+    return data.data as PatientUser
   },
 
   async updateProfile(slug: string, updates: Partial<{
