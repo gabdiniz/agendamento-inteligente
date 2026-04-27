@@ -20,6 +20,8 @@ export interface PublicProcedure {
   id: string
   name: string
   durationMinutes: number
+  priceCents: number | null
+  preparationInstructions: string | null
   color: string | null
 }
 
@@ -28,7 +30,14 @@ export interface PublicProfessional {
   name: string
   specialty: string | null
   bio: string | null
+  avatarUrl: string | null
   procedures: PublicProcedure[]
+}
+
+export interface ClinicInfo {
+  name: string
+  address: string | null
+  logoUrl: string | null
 }
 
 export interface TimeSlot {
@@ -96,5 +105,11 @@ export const publicApi = {
   /** Entra na lista de espera */
   async joinWaitlist(slug: string, payload: WaitlistPayload): Promise<void> {
     await publicClient.post(`/t/${slug}/public/waitlist`, payload)
+  },
+
+  /** Retorna informações públicas da clínica (nome, endereço, logo) */
+  async getClinicInfo(slug: string): Promise<ClinicInfo> {
+    const { data } = await publicClient.get(`/t/${slug}/public/clinic-info`)
+    return data.data as ClinicInfo
   },
 }
