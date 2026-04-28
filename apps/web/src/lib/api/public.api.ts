@@ -31,6 +31,7 @@ export interface PublicProfessional {
   specialty: string | null
   bio: string | null
   avatarUrl: string | null
+  color: string
   procedures: PublicProcedure[]
 }
 

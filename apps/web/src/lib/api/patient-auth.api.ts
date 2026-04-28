@@ -147,6 +147,18 @@ export const patientPortalApi = {
     return data.data as PatientAppointment
   },
 
+  async createAppointment(slug: string, body: {
+    professionalId: string
+    procedureId: string
+    scheduledDate: string
+    startTime: string
+    notes?: string
+  }): Promise<PatientAppointment> {
+    const client = createPatientClient(slug)
+    const { data } = await client.post('/patient/appointments', body)
+    return data.data as PatientAppointment
+  },
+
   async cancelAppointment(slug: string, id: string, reason?: string): Promise<PatientAppointment> {
     const client = createPatientClient(slug)
     const { data } = await client.post(`/patient/appointments/${id}/cancel`, { reason })
