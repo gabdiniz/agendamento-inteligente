@@ -1,5 +1,5 @@
 # Roteiro de Testes — Portal do Paciente
-**MyAgendix** · Versão do Portal: V1 + M9 (Avaliação Rápida)
+**MyAgendix** · Versão do Portal: V1 + M4 (Confirmação Rica) + M9 (Avaliação Rápida) + M10 (Gamificação)
 
 > **Como usar este roteiro**
 > Cada teste tem um **pré-requisito**, os **passos** e o **resultado esperado**.
@@ -135,7 +135,9 @@
 
 **Esperado:**
 - Step 3 mostra banner "Agendando como [nome]" com dados bloqueados
-- Campos de nome/telefone/e-mail não são editáveis
+- Campos de nome/e-mail não são editáveis
+- Campo de telefone **não exibe erro de validação** mesmo que esteja vazio (paciente pode não ter telefone cadastrado)
+- O agendamento usa a rota autenticada do portal (JWT) — **não re-envia dados pessoais pelo formulário**
 - Step 4 exibe botão **"Minha área"** (não "Entrar")
 - Clicar em "Minha área" leva direto para `/:slug/minha-conta/agendamentos`
 
@@ -386,6 +388,195 @@
 
 ---
 
+## BLOCO 10 — Confirmação Rica (M4)
+
+> Esses testes cobrem o **Step 4** do agendamento público, reescrito para exibir
+> informações detalhadas do profissional, procedimento e preparo.
+
+### T25 — Exibir avatar e informações do profissional
+
+**Pré-requisito:** Profissional com foto (avatarUrl) cadastrada
+
+**Passos:**
+1. Conclua um agendamento (T01 ou T08)
+2. Observe o Step 4
+
+**Esperado:**
+- Avatar circular do profissional aparece no topo do card de confirmação
+- Nome e especialidade visíveis abaixo do avatar
+
+---
+
+### T26 — Exibir badge de preço
+
+**Pré-requisito:** Procedimento com `priceCents` configurado (ex: R$ 150,00)
+
+**Passos:**
+1. Selecione um procedimento com preço e conclua o agendamento
+
+**Esperado:**
+- Badge de preço "R$ 150,00" aparece no Step 4
+- Se o procedimento não tem preço cadastrado, o badge **não aparece**
+
+---
+
+### T27 — Exibir instruções de preparo
+
+**Pré-requisito:** Procedimento com `preparationInstructions` preenchido no painel do gestor
+
+**Passos:**
+1. Selecione esse procedimento e conclua o agendamento
+
+**Esperado:**
+- Callout âmbar "Preparo necessário" exibe as instruções de preparo
+- Se o procedimento não tem instruções, o callout **não aparece**
+
+---
+
+### T28 — Baixar evento .ics ("Salvar na agenda")
+
+**Pré-requisito:** T01 ou T08 concluído
+
+**Passos:**
+1. No Step 4, clique em "Salvar na agenda"
+
+**Esperado:**
+- Download de arquivo `.ics` iniciado imediatamente (sem server-side)
+- Arquivo contém título, data, horário e clínica corretos
+- Importável no Google Calendar, Apple Calendar e Outlook
+
+---
+
+### T29 — Abrir rota no Google Maps ("Como chegar")
+
+**Pré-requisito:** Tenant com endereço (`address`) configurado
+
+**Passos:**
+1. No Step 4, clique em "Como chegar"
+
+**Esperado:**
+- Nova aba abre com o Google Maps usando o endereço da clínica
+- Se a clínica não tem endereço, o botão **não aparece**
+
+---
+
+### T30 — Step 4 sem preço nem preparo (procedimento básico)
+
+**Pré-requisito:** Procedimento sem `priceCents` e sem `preparationInstructions`
+
+**Passos:**
+1. Conclua um agendamento com esse procedimento
+
+**Esperado:**
+- Step 4 exibe normalmente sem badge de preço e sem callout de preparo
+- Nenhum elemento vazio ou espaço em branco desnecessário
+
+---
+
+## BLOCO 11 — Gamificação / Fidelidade (M10)
+
+> Testa o sistema de pontos e tiers exibido no dashboard do paciente.
+
+### T31 — LoyaltyCard aparece no dashboard
+
+**Pré-requisito:** Paciente logado
+
+**Passos:**
+1. Acesse `/:slug/minha-conta` após o login
+
+**Esperado:**
+- Card de fidelidade exibido com tier atual (BRONZE por padrão para novos pacientes)
+- Pontos atuais: 0 (se nenhum evento de pontos ainda ocorreu)
+- Barra de progresso vazia ou com valor proporcional
+- Label do tier visível (ex: "Bronze")
+
+---
+
+### T32 — Pontos concedidos ao concluir agendamento
+
+**Pré-requisito:** Agendamento com status COMPLETED (gestor altera o status para COMPLETED)
+
+**Passos:**
+1. No painel do gestor, altere um agendamento para "Concluído"
+2. Acesse o dashboard do paciente
+
+**Esperado:**
+- Pontos aumentam em +30 (conclusão de agendamento)
+- Barra de progresso avança proporcionalmente
+- Tier permanece BRONZE (0–149 pts) ou avança se atingiu 150
+
+---
+
+### T33 — Bônus de primeiro agendamento concluído
+
+**Pré-requisito:** Paciente com **zero** agendamentos concluídos anteriormente
+
+**Passos:**
+1. Conclua o **primeiro** agendamento do paciente (gestor marca como COMPLETED)
+2. Acesse o dashboard
+
+**Esperado:**
+- Paciente recebe +30 (conclusão) **+ +20 (bônus de primeiro)** = **+50 pontos**
+- O bônus só ocorre uma vez por paciente
+
+---
+
+### T34 — Pontos concedidos ao enviar avaliação rápida
+
+**Pré-requisito:** Agendamento COMPLETED sem avaliação
+
+**Passos:**
+1. Envie uma avaliação rápida (T14, T15 ou T16)
+2. Volte ao dashboard
+
+**Esperado:**
+- Pontos aumentam em **+10** (avaliação rápida)
+- A segunda avaliação do mesmo agendamento **não concede pontos**
+
+---
+
+### T35 — Progressão de tier: BRONZE → SILVER
+
+**Pré-requisito:** Paciente com 140 pontos acumulados
+
+**Passos:**
+1. Conclua mais 1 agendamento para atingir ≥ 150 pontos (≥ lifetime)
+2. Verifique o dashboard
+
+**Esperado:**
+- Tier muda para **SILVER** automaticamente
+- Label atualiza para "Silver" e o ícone/cor do tier refletem a mudança
+- Barra de progresso exibe o progresso em direção ao GOLD (400 pts)
+
+---
+
+### T36 — Progressão de tier: SILVER → GOLD
+
+**Pré-requisito:** Paciente com 380 pontos acumulados
+
+**Passos:**
+1. Conclua agendamentos até atingir ≥ 400 pontos
+2. Verifique o dashboard
+
+**Esperado:**
+- Tier muda para **GOLD**
+- Barra de progresso aparece cheia (ou indica tier máximo)
+
+---
+
+### T37 — Pontos não duplicados em re-avaliação
+
+**Pré-requisito:** Agendamento já avaliado (T14, T15 ou T16)
+
+**Passos:**
+1. Não é possível reavaliar pelo portal — o card some após a avaliação
+2. Verifique via banco que nenhuma segunda transação de `QUICK_RATING_SUBMITTED` existe para o mesmo agendamento
+
+**Esperado:**
+- Apenas **1** registro de `PointsTransaction` com reason `QUICK_RATING_SUBMITTED` por agendamento
+
+---
+
 ## Resumo dos Cenários
 
 | Código | Área | Descrição | Status |
@@ -397,7 +588,7 @@
 | T05 | Auth | Login com senha errada | ☐ |
 | T06 | Auth | Acesso direto sem autenticação | ☐ |
 | T07 | Auth | Recuperação de senha completa | ☐ |
-| T08 | Booking | Agendar estando logado | ☐ |
+| T08 | Booking | Agendar estando logado (sem erro de telefone) | ☐ |
 | T09 | Dashboard | Visualizar dashboard | ☐ |
 | T10 | Agendamentos | Aba Próximos | ☐ |
 | T11 | Agendamentos | Aba Histórico (ordem) | ☐ |
@@ -414,3 +605,16 @@
 | T22 | Gestor | Configurar cancelamento | ☐ |
 | T23 | Gestor | Desativar cancelamento | ☐ |
 | T24 | Gestor | Ver avaliação no agendamento | ☐ |
+| T25 | M4 | Avatar e info do profissional no Step 4 | ☐ |
+| T26 | M4 | Badge de preço no Step 4 | ☐ |
+| T27 | M4 | Instruções de preparo no Step 4 | ☐ |
+| T28 | M4 | Download do arquivo .ics | ☐ |
+| T29 | M4 | Link "Como chegar" (Google Maps) | ☐ |
+| T30 | M4 | Step 4 sem preço nem preparo | ☐ |
+| T31 | M10 | LoyaltyCard no dashboard | ☐ |
+| T32 | M10 | Pontos ao concluir agendamento (+30) | ☐ |
+| T33 | M10 | Bônus de primeiro agendamento (+20) | ☐ |
+| T34 | M10 | Pontos ao avaliar (+10) | ☐ |
+| T35 | M10 | Progressão BRONZE → SILVER (150 pts) | ☐ |
+| T36 | M10 | Progressão SILVER → GOLD (400 pts) | ☐ |
+| T37 | M10 | Pontos não duplicados em re-avaliação | ☐ |
