@@ -8,6 +8,13 @@ import { CreateAppointmentUseCase } from '../../../application/use-cases/appoint
 import { CancelAppointmentByPatientUseCase } from '../../../application/use-cases/patient-portal/cancel-appointment-by-patient.use-case.js'
 import { GetClinicPatientConfigUseCase } from '../../../application/use-cases/patient-portal/get-clinic-patient-config.use-case.js'
 import { SubmitQuickRatingUseCase } from '../../../application/use-cases/patient-portal/submit-quick-rating.use-case.js'
+import {
+  SubmitDetailedRatingUseCase,
+  DetailedRatingNotFoundError,
+  DetailedRatingForbiddenError,
+  DetailedRatingStatusError,
+  DetailedRatingInvalidError,
+} from '../../../application/use-cases/patient-portal/submit-detailed-rating.use-case.js'
 
 import { PrismaPatientRepository } from '../../database/repositories/prisma-patient.repository.js'
 import { PrismaAppointmentRepository } from '../../database/repositories/prisma-appointment.repository.js'
@@ -62,6 +69,11 @@ const cancelSchema = z.object({
 const quickRatingSchema = z.object({
   quickRating: z.enum(['POSITIVE', 'NEUTRAL', 'NEGATIVE']),
   reasons:     z.array(z.string().max(100)).max(10).default([]),
+})
+
+const detailedRatingSchema = z.object({
+  rating:  z.number().int().min(1).max(5),
+  comment: z.string().max(2000).optional(),
 })
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -223,5 +235,32 @@ export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
     })
 
     return reply.status(200).send({ success: true, data: result })
+  })
+
+  // POST /appointments/:id/detailed-rating
+  // M11 — Avaliacao Detalhada: nota 1-5 + comentario opcional. Upsert.
+  app.post('/appointments/:id/detailed-rating', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const body   = detailedRatingSchema.parse(request.body)
+    const prisma = request.tenantPrisma!
+
+    try {
+      const result = await new SubmitDetailedRatingUseCase(
+        new PrismaAppointmentRepository(prisma),
+        new PrismaAppointmentEvaluationRepository(prisma),
+      ).execute({
+        appointmentId: id,
+        patientId:     request.currentPatient.sub,
+        rating:        body.rating,
+        comment:       body.comment,
+      })
+      return reply.status(200).send({ success: true, data: result })
+    } catch (err) {
+      if (err instanceof DetailedRatingNotFoundError)  return reply.status(404).send({ success: false, error: err.message })
+      if (err instanceof DetailedRatingForbiddenError) return reply.status(403).send({ success: false, error: err.message })
+      if (err instanceof DetailedRatingStatusError)    return reply.status(422).send({ success: false, error: err.message })
+      if (err instanceof DetailedRatingInvalidError)   return reply.status(400).send({ success: false, error: err.message })
+      throw err
+    }
   })
 }

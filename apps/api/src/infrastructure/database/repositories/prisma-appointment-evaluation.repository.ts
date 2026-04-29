@@ -9,6 +9,7 @@ import type {
   IAppointmentEvaluationRepository,
   AppointmentEvaluationRecord,
   UpsertQuickRatingData,
+  UpsertDetailedRatingData,
 } from '../../../domain/repositories/appointment-evaluation.repository.js'
 
 // ─── Raw row → domain record ──────────────────────────────────────────────────
@@ -72,6 +73,25 @@ export class PrismaAppointmentEvaluationRepository implements IAppointmentEvalua
       update: {
         quickRating:        data.quickRating as never,
         quickRatingReasons: data.reasons,
+      },
+      select: evaluationSelect,
+    })
+    return toRecord(row as EvaluationRow)
+  }
+
+  async upsertDetailedRating(data: UpsertDetailedRatingData): Promise<AppointmentEvaluationRecord> {
+    const row = await this.prisma.appointmentEvaluation.upsert({
+      where: { appointmentId: data.appointmentId },
+      create: {
+        appointmentId:  data.appointmentId,
+        patientId:      data.patientId,
+        professionalId: data.professionalId,
+        rating:         data.rating,
+        comment:        data.comment ?? null,
+      },
+      update: {
+        rating:  data.rating,
+        comment: data.comment ?? null,
       },
       select: evaluationSelect,
     })

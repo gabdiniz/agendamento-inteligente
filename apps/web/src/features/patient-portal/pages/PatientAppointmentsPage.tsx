@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { patientPortalApi, type PatientAppointment, type QuickRating } from '@/lib/api/patient-auth.api'
 import { QuickRatingCard } from '../components/QuickRatingCard'
+import { DetailedRatingCard } from '../components/DetailedRatingCard'
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -44,46 +45,59 @@ function AppointmentCard({
   onCancel,
   canceling,
   onRated,
+  onDetailedRated,
 }: {
   apt: PatientAppointment
   slug: string
   onCancel: (id: string) => void
   canceling: string | null
   onRated: (id: string, rating: QuickRating) => void
+  onDetailedRated: (id: string, rating: number) => void
 }) {
   const sc = STATUS_COLORS[apt.status] ?? STATUS_COLORS['SCHEDULED']!
   const canCancel   = apt.status === 'SCHEDULED'
   const isCanceling = canceling === apt.id
 
-  // Estado local para controlar visibilidade do QuickRatingCard.
-  // Não usa apt.evaluation diretamente para evitar que uma atualização
-  // no pai desmonte o card antes de exibir o estado "done" (Obrigado).
-  const [localRating, setLocalRating] = useState<QuickRating | null>(
+  // ── Estado local para os dois momentos de avaliação ──────────────────────
+  const [localQuickRating, setLocalQuickRating] = useState<QuickRating | null>(
     apt.evaluation?.quickRating ?? null,
   )
+  const [localDetailedRating, setLocalDetailedRating] = useState<number | null>(
+    apt.evaluation?.rating ?? null,
+  )
+  const [skippedDetailed, setSkippedDetailed] = useState(false)
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Sync externo: se o pai trouxer um apt já avaliado (ex: reload), reflete localmente
+  // Sync externo ao receber atualização do pai
   useEffect(() => {
-    if (apt.evaluation?.quickRating != null && localRating == null) {
-      setLocalRating(apt.evaluation.quickRating)
-    }
-  }, [apt.evaluation?.quickRating]) // eslint-disable-line
+    if (apt.evaluation?.quickRating  != null && localQuickRating   == null) setLocalQuickRating(apt.evaluation.quickRating)
+    if (apt.evaluation?.rating       != null && localDetailedRating == null) setLocalDetailedRating(apt.evaluation.rating)
+  }, [apt.evaluation?.quickRating, apt.evaluation?.rating]) // eslint-disable-line
 
-  // Limpa o timer ao desmontar para evitar setState em componente desmontado
   useEffect(() => () => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
   }, [])
 
-  const displayRating = localRating ?? apt.evaluation?.quickRating
-  const showRating    = apt.status === 'COMPLETED' && displayRating == null
+  const displayQuickRating   = localQuickRating   ?? apt.evaluation?.quickRating
+  const displayDetailedRating = localDetailedRating ?? apt.evaluation?.rating
+
+  // Qual card exibir?
+  const showQuickRating    = apt.status === 'COMPLETED' && displayQuickRating == null
+  const showDetailedRating = apt.status === 'COMPLETED'
+    && displayQuickRating != null
+    && displayDetailedRating == null
+    && !skippedDetailed
 
   async function handleQuickRating(rating: QuickRating, reasons: string[]) {
     await patientPortalApi.submitQuickRating(slug, apt.id, rating, reasons)
-    // Atualiza o pai imediatamente (para o badge aparecer)
     onRated(apt.id, rating)
-    // Esconde o QuickRatingCard após 1.5 s — tempo suficiente para mostrar "Obrigado"
-    hideTimerRef.current = setTimeout(() => setLocalRating(rating), 1500)
+    hideTimerRef.current = setTimeout(() => setLocalQuickRating(rating), 1500)
+  }
+
+  async function handleDetailedRating(rating: number, comment?: string) {
+    await patientPortalApi.submitDetailedRating(slug, apt.id, rating, comment)
+    onDetailedRated(apt.id, rating)
+    hideTimerRef.current = setTimeout(() => setLocalDetailedRating(rating), 1500)
   }
 
   return (
@@ -163,27 +177,48 @@ function AppointmentCard({
             </button>
           )}
 
-          {/* Badge: avaliação já enviada */}
-          {apt.status === 'COMPLETED' && displayRating != null && (
+          {/* Badge: avaliação completa (com nota numérica) */}
+          {apt.status === 'COMPLETED' && displayDetailedRating != null && (
+            <span style={{
+              display: 'flex', alignItems: 'center', gap: '4px',
+              fontSize: '11px', color: '#92400e', fontWeight: 600,
+              background: '#fef3c7', padding: '4px 10px', borderRadius: '20px',
+              flexShrink: 0,
+            }}>
+              ⭐ {displayDetailedRating}/5
+            </span>
+          )}
+
+          {/* Badge: só quick rating enviado (aguardando nota detalhada) */}
+          {apt.status === 'COMPLETED' && displayDetailedRating == null && displayQuickRating != null && skippedDetailed && (
             <span style={{
               display: 'flex', alignItems: 'center', gap: '4px',
               fontSize: '11px', color: '#166534', fontWeight: 600,
               background: '#f0fdf4', padding: '4px 10px', borderRadius: '20px',
               flexShrink: 0,
             }}>
-              {displayRating === 'POSITIVE' ? '😊'
-                : displayRating === 'NEUTRAL' ? '😐'
+              {displayQuickRating === 'POSITIVE' ? '😊'
+                : displayQuickRating === 'NEUTRAL' ? '😐'
                 : '😞'} Avaliado
             </span>
           )}
         </div>
 
-        {/* Quick Rating inline */}
-        {showRating && (
+        {/* Momento 1 — Quick Rating (emoji) */}
+        {showQuickRating && (
           <QuickRatingCard
             appointmentId={apt.id}
             professionalName={apt.professional.name}
             onSubmit={handleQuickRating}
+          />
+        )}
+
+        {/* Momento 2 — Avaliação detalhada (estrelas + comentário) */}
+        {showDetailedRating && (
+          <DetailedRatingCard
+            professionalName={apt.professional.name}
+            onSubmit={handleDetailedRating}
+            onSkip={() => setSkippedDetailed(true)}
           />
         )}
       </div>
@@ -234,7 +269,7 @@ export function PatientAppointmentsPage() {
     }
   }
 
-  // Após avaliação, atualiza o campo evaluation no state local (sem refetch)
+  // Após quick rating, atualiza evaluation no state local (sem refetch)
   function handleRated(id: string, quickRating: QuickRating) {
     setAppointments((prev) =>
       prev.map((a) =>
@@ -242,11 +277,31 @@ export function PatientAppointmentsPage() {
           ? {
               ...a,
               evaluation: {
-                id:                 '',
+                id:                 a.evaluation?.id ?? '',
                 quickRating,
                 quickRatingReasons: [],
-                rating:             null,
-                comment:            null,
+                rating:             a.evaluation?.rating ?? null,
+                comment:            a.evaluation?.comment ?? null,
+              },
+            }
+          : a,
+      ),
+    )
+  }
+
+  // Após avaliação detalhada, atualiza rating no state local
+  function handleDetailedRated(id: string, rating: number) {
+    setAppointments((prev) =>
+      prev.map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              evaluation: {
+                id:                 a.evaluation?.id ?? '',
+                quickRating:        a.evaluation?.quickRating ?? null,
+                quickRatingReasons: a.evaluation?.quickRatingReasons ?? [],
+                rating,
+                comment:            a.evaluation?.comment ?? null,
               },
             }
           : a,
@@ -347,6 +402,7 @@ export function PatientAppointmentsPage() {
               onCancel={(id) => setConfirmId(id)}
               canceling={canceling}
               onRated={handleRated}
+              onDetailedRated={handleDetailedRated}
             />
           ))}
         </div>

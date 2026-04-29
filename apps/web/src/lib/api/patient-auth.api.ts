@@ -13,9 +13,12 @@ import { createPatientClient } from './patient-client'
 export type PatientTier = 'BRONZE' | 'SILVER' | 'GOLD'
 
 export interface PatientLoyalty {
-  loyaltyPoints:  number
-  lifetimePoints: number
-  tier:           PatientTier
+  loyaltyPoints:     number
+  lifetimePoints:    number
+  tier:              PatientTier
+  totalAppointments: number
+  lastAppointmentAt: string | null
+  cancellationCount: number
 }
 
 export interface PatientUser {
@@ -163,6 +166,20 @@ export const patientPortalApi = {
     const client = createPatientClient(slug)
     const { data } = await client.post(`/patient/appointments/${id}/cancel`, { reason })
     return data.data as PatientAppointment
+  },
+
+  async submitDetailedRating(
+    slug: string,
+    appointmentId: string,
+    rating: number,
+    comment?: string,
+  ): Promise<PatientAppointmentEvaluation> {
+    const client = createPatientClient(slug)
+    const { data } = await client.post(`/patient/appointments/${appointmentId}/detailed-rating`, {
+      rating,
+      ...(comment ? { comment } : {}),
+    })
+    return data.data as PatientAppointmentEvaluation
   },
 
   async submitQuickRating(

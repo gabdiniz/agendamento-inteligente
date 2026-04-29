@@ -28,9 +28,18 @@ export interface UpsertQuickRatingData {
   reasons: string[]
 }
 
+export interface UpsertDetailedRatingData {
+  appointmentId: string
+  patientId: string
+  professionalId: string
+  rating: number    // 1–5
+  comment?: string
+}
+
 // ─── Repository interface ─────────────────────────────────────────────────────
 
 export interface IAppointmentEvaluationRepository {
   upsertQuickRating(data: UpsertQuickRatingData): Promise<AppointmentEvaluationRecord>
+  upsertDetailedRating(data: UpsertDetailedRatingData): Promise<AppointmentEvaluationRecord>
   findByAppointmentId(appointmentId: string): Promise<AppointmentEvaluationRecord | null>
 }
