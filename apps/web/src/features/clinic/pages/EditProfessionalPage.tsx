@@ -1,6 +1,6 @@
 // ─── Edit Professional Page ───────────────────────────────────────────────────
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -52,6 +52,13 @@ export function EditProfessionalPage() {
   const [selectedColor,   setSelectedColor]   = useState(PRESET_COLORS[0]!)
   const [selectedProcIds, setSelectedProcIds] = useState<string[]>([])
 
+  // ── Avatar upload ─────────────────────────────────────────────
+  const [avatarPreview,   setAvatarPreview]   = useState<string | null>(null)
+  const [avatarUrl,       setAvatarUrl]       = useState<string | null>(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarError,     setAvatarError]     = useState<string | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+
   const { data: prof, isLoading } = useQuery({
     queryKey: ['professional', id],
     queryFn:  () => professionalsApi.get(id),
@@ -72,8 +79,48 @@ export function EditProfessionalPage() {
       reset({ name: prof.name, specialty: prof.specialty ?? '', bio: prof.bio ?? '' })
       setSelectedColor(prof.color ?? PRESET_COLORS[0]!)
       setSelectedProcIds((prof.procedures ?? []).map((p) => p.id))
+      if (prof.avatarUrl) {
+        const base = import.meta.env.VITE_API_URL as string ?? ''
+        setAvatarPreview(`${base}${prof.avatarUrl}`)
+        setAvatarUrl(prof.avatarUrl)
+      }
     }
   }, [prof, reset])
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError('Arquivo muito grande. Máximo 5 MB.')
+      return
+    }
+    const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+    if (!allowed.includes(file.type)) {
+      setAvatarError('Formato não suportado. Use PNG, JPG, WebP ou GIF.')
+      return
+    }
+
+    setAvatarError(null)
+    setAvatarPreview(URL.createObjectURL(file))
+    setAvatarUploading(true)
+    try {
+      const result = await professionalsApi.uploadAvatar(file)
+      setAvatarUrl(result.url)
+    } catch {
+      setAvatarError('Falha no upload. Tente novamente.')
+      setAvatarPreview(null)
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
+  function handleRemoveAvatar() {
+    setAvatarPreview(null)
+    setAvatarUrl(null)
+    setAvatarError(null)
+    if (avatarInputRef.current) avatarInputRef.current.value = ''
+  }
 
   function toggleProc(procId: string) {
     setSelectedProcIds((prev) =>
@@ -89,6 +136,7 @@ export function EditProfessionalPage() {
         specialty: values.specialty || undefined,
         bio:       values.bio       || undefined,
         color:     selectedColor,
+        avatarUrl: avatarUrl ?? null,
       })
       // Sincroniza procedimentos (substitui todos os vínculos)
       await professionalsApi.linkProcedures(id, selectedProcIds)
@@ -116,6 +164,7 @@ export function EditProfessionalPage() {
 
   return (
     <div className="r-page" style={{ maxWidth: '680px', fontFamily: 'var(--font-sans)' }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
 
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: '28px' }}>
@@ -185,6 +234,102 @@ export function EditProfessionalPage() {
               {serverError}
             </div>
           )}
+
+          {/* ── Foto do profissional ──────────────────────────────── */}
+          <div>
+            <label style={labelStyle}>Foto do profissional (opcional)</label>
+
+            {avatarPreview ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{
+                  width: '72px', height: '72px', borderRadius: '50%',
+                  border: '2px solid #e2e8f0', overflow: 'hidden',
+                  background: '#f8fafc', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <img
+                    src={avatarPreview}
+                    alt="Preview do avatar"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  {avatarUploading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#64748b' }}>
+                      <div style={{ width: '14px', height: '14px', border: '2px solid #e2e8f0', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                      Enviando...
+                    </div>
+                  ) : avatarUrl ? (
+                    <p style={{ margin: '0 0 6px', fontSize: '12.5px', color: '#16a34a', fontWeight: 600 }}>
+                      ✓ Upload concluído
+                    </p>
+                  ) : null}
+                  {avatarError && (
+                    <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#dc2626' }}>{avatarError}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: '12px', color: '#94a3b8', padding: 0,
+                      fontFamily: 'var(--font-sans)',
+                    }}
+                  >
+                    ✕ Remover foto
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label
+                htmlFor="avatar-upload"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: '10px', height: '72px',
+                  border: '1.5px dashed #cbd5e1', borderRadius: '12px',
+                  background: '#f8fafc', cursor: 'pointer',
+                  transition: 'border-color 0.15s, background 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-primary)'
+                  ;(e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--color-primary) 5%, white)'
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = '#cbd5e1'
+                  ;(e.currentTarget as HTMLElement).style.background = '#f8fafc'
+                }}
+              >
+                <svg width="20" height="20" fill="none" stroke="#94a3b8" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <div>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#64748b' }}>
+                    Clique para fazer upload
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#94a3b8' }}>
+                    PNG, JPG, WebP ou GIF · máx. 5 MB
+                  </p>
+                </div>
+              </label>
+            )}
+
+            <input
+              ref={avatarInputRef}
+              id="avatar-upload"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={handleAvatarChange}
+              style={{ display: 'none' }}
+            />
+
+            {avatarError && !avatarPreview && (
+              <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#dc2626' }}>{avatarError}</p>
+            )}
+          </div>
+
+          {/* Divisor */}
+          <div style={{ borderTop: '1px solid #f0f2f5' }} />
 
           {/* Nome */}
           <div>

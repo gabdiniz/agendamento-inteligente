@@ -68,6 +68,7 @@ export const createProfessionalSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .optional(),
   userId: z.string().uuid().optional(),
+  avatarUrl: z.string().optional().nullable(),  // URL relativa (/uploads/avatars/...)
 })
 
 export const updateProfessionalSchema = createProfessionalSchema.partial()

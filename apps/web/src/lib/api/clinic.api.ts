@@ -148,6 +148,7 @@ export interface Professional {
   specialty: string | null
   bio: string | null
   color: string | null
+  avatarUrl: string | null
   isActive: boolean
   userId: string | null
   procedures: Pick<Procedure, 'id' | 'name' | 'durationMinutes' | 'priceCents' | 'color'>[]
@@ -166,6 +167,11 @@ export interface CreateProfessionalPayload {
   specialty?: string
   bio?: string
   color?: string
+  avatarUrl?: string | null
+}
+
+export interface UploadAvatarResult {
+  url: string
 }
 
 export const professionalsApi = {
@@ -209,6 +215,16 @@ export const professionalsApi = {
   /** Substitui todos os procedimentos vinculados ao profissional de uma vez */
   async linkProcedures(id: string, procedureIds: string[]): Promise<void> {
     await apiClient.post(`/professionals/${id}/procedures`, { procedureIds })
+  },
+
+  /** Faz upload de foto de perfil do profissional. Retorna URL relativa. */
+  async uploadAvatar(file: File): Promise<UploadAvatarResult> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await apiClient.post('/upload/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data.data as UploadAvatarResult
   },
 }
 
