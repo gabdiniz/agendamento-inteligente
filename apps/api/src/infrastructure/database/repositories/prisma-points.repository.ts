@@ -105,13 +105,23 @@ export class PrismaPointsRepository implements IPointsRepository {
   async getLoyaltyStats(patientId: string): Promise<PatientLoyaltyStats> {
     const metrics = await this.prisma.patientCrmMetrics.findUnique({
       where:  { patientId },
-      select: { loyaltyPoints: true, lifetimePoints: true, classification: true },
+      select: {
+        loyaltyPoints:     true,
+        lifetimePoints:    true,
+        classification:    true,
+        totalAppointments: true,
+        lastAppointmentAt: true,
+        cancellationCount: true,
+      },
     })
 
     return {
-      loyaltyPoints:  metrics?.loyaltyPoints  ?? 0,
-      lifetimePoints: metrics?.lifetimePoints ?? 0,
-      tier:           (metrics?.classification ?? 'BRONZE') as PatientTier,
+      loyaltyPoints:     metrics?.loyaltyPoints     ?? 0,
+      lifetimePoints:    metrics?.lifetimePoints    ?? 0,
+      tier:              (metrics?.classification   ?? 'BRONZE') as PatientTier,
+      totalAppointments: metrics?.totalAppointments ?? 0,
+      lastAppointmentAt: metrics?.lastAppointmentAt?.toISOString() ?? null,
+      cancellationCount: metrics?.cancellationCount ?? 0,
     }
   }
 }

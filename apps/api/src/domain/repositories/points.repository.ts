@@ -21,9 +21,13 @@ export interface PointsTransactionRecord {
 }
 
 export interface PatientLoyaltyStats {
-  loyaltyPoints:  number
-  lifetimePoints: number
-  tier:           PatientTier
+  loyaltyPoints:      number
+  lifetimePoints:     number
+  tier:               PatientTier
+  // Métricas de visita (do PatientCrmMetrics)
+  totalAppointments:  number
+  lastAppointmentAt:  string | null  // ISO date string ou null
+  cancellationCount:  number
 }
 
 export interface AwardPointsData {

@@ -10,7 +10,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { usePatientAuthStore } from '@/stores/patient-auth.store'
-import { patientPortalApi } from '@/lib/api/patient-auth.api'
+import { patientPortalApi, type PatientLoyalty } from '@/lib/api/patient-auth.api'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,88 @@ const GENDER_LABELS: Record<string, string> = {
   FEMALE:           'Feminino',
   OTHER:            'Outro',
   PREFER_NOT_TO_SAY: 'Prefiro não informar',
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatDateBR(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+// ─── MetricsCard ──────────────────────────────────────────────────────────────
+
+function MetricsCard({ loyalty }: { loyalty?: PatientLoyalty | null }) {
+  const total    = loyalty?.totalAppointments ?? 0
+  const lastVisit = loyalty?.lastAppointmentAt ?? null
+  const canceled = loyalty?.cancellationCount  ?? 0
+
+  const stats = [
+    {
+      icon: (
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      label: 'Consultas realizadas',
+      value: total === 0 ? 'Nenhuma ainda' : `${total} consulta${total !== 1 ? 's' : ''}`,
+    },
+    {
+      icon: (
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      label: 'Última visita',
+      value: formatDateBR(lastVisit),
+    },
+    ...(canceled > 0 ? [{
+      icon: (
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+            d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      ),
+      label: 'Cancelamentos',
+      value: `${canceled}`,
+    }] : []),
+  ]
+
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: `repeat(${stats.length}, 1fr)`,
+      gap: '12px',
+      marginBottom: '24px',
+    }}>
+      {stats.map((s, i) => (
+        <div key={i} style={{
+          background: '#fff',
+          border: '1px solid #ece9e4',
+          borderRadius: '14px',
+          padding: '16px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+        }}>
+          <div style={{ color: 'var(--color-primary)', opacity: 0.8 }}>{s.icon}</div>
+          <div>
+            <p style={{ margin: 0, fontSize: '11px', color: '#8a7f75', fontWeight: 600,
+              textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>
+              {s.label}
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: '15px', fontWeight: 700, color: '#1a1614' }}>
+              {s.value}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 // ─── Input helper ─────────────────────────────────────────────────────────────
@@ -66,9 +148,18 @@ export function PatientProfilePage() {
   const slug = params.slug ?? ''
   const { patient, updatePatient } = usePatientAuthStore()
 
+  const [loyalty, setLoyalty] = useState<PatientLoyalty | null>(null)
   const [focused, setFocused] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+
+  // Carrega métricas do perfil (totalAppointments, lastVisit, etc.)
+  useEffect(() => {
+    if (!slug) return
+    patientPortalApi.getProfile(slug)
+      .then((data) => { if (data.loyalty) setLoyalty(data.loyalty) })
+      .catch(() => {/* silencioso — métricas são complementares */})
+  }, [slug])
 
   const {
     register,
@@ -157,6 +248,9 @@ export function PatientProfilePage() {
           Mantenha seus dados sempre atualizados.
         </p>
       </div>
+
+      {/* Métricas de visita */}
+      <MetricsCard loyalty={loyalty} />
 
       {/* Sucesso */}
       {saved && (
