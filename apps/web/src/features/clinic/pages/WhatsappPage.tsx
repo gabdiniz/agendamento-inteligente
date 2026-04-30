@@ -175,8 +175,10 @@ function ConnectionTab({ config, refetch }: { config: WhatsappConfig; refetch: (
   const [enabled,      setEnabled]      = useState(config.whatsappEnabled)
   const [instanceId,   setInstanceId]   = useState(config.zApiInstanceId ?? '')
   const [token,        setToken]        = useState('')       // nunca exibimos o token real
+  const [clientToken,  setClientToken]  = useState('')      // nunca exibimos o client-token real
   const [reminder,     setReminder]     = useState(config.reminderHoursBefore)
   const [showToken,    setShowToken]    = useState(false)
+  const [showClientToken, setShowClientToken] = useState(false)
   const [testPhone,    setTestPhone]    = useState('')
   const [testResult,   setTestResult]   = useState<{ ok: boolean; msg: string } | null>(null)
   const [dirty,        setDirty]        = useState(false)
@@ -193,12 +195,14 @@ function ConnectionTab({ config, refetch }: { config: WhatsappConfig; refetch: (
     mutationFn: () => whatsappApi.saveConfig({
       whatsappEnabled:     enabled,
       zApiInstanceId:      instanceId || null,
-      zApiToken:           token || undefined,   // só envia se preenchido
+      zApiToken:           token       || undefined,  // só envia se preenchido
+      zApiClientToken:     clientToken || undefined,  // só envia se preenchido
       reminderHoursBefore: reminder,
     }),
     onSuccess: () => {
       setDirty(false)
       setToken('')
+      setClientToken('')
       void queryClient.invalidateQueries({ queryKey: ['whatsapp-config'] })
     },
   })
@@ -250,18 +254,65 @@ function ConnectionTab({ config, refetch }: { config: WhatsappConfig; refetch: (
         <Toggle checked={enabled} onChange={(v) => { setEnabled(v); mark() }} />
       </div>
 
+      {/* ── Aviso: conectar WhatsApp via QR Code ─────────────────────────── */}
+      {enabled && config.hasCredentials && (
+        <div style={{
+          ...cardStyle,
+          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+          border: '1.5px solid #fcd34d',
+        }}>
+          <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+            <div style={{
+              width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
+              background: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="20" height="20" fill="none" stroke="#fff" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: '0 0 6px', fontSize: '14px', fontWeight: 700, color: '#92400e' }}>
+                ⚠️ Conecte seu WhatsApp à instância Z-API
+              </p>
+              <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#78350f', lineHeight: 1.6 }}>
+                As credenciais estão salvas, mas o envio só funciona após vincular um número de WhatsApp à instância.
+                Se a instância aparecer como <strong>"Desconectado"</strong> no Z-API, siga os passos abaixo:
+              </p>
+              <ol style={{ margin: '0 0 12px', padding: '0 0 0 18px', fontSize: '13px', color: '#78350f', lineHeight: 1.8 }}>
+                <li>Acesse{' '}
+                  <a href="https://app.z-api.io" target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#d97706', fontWeight: 700, textDecoration: 'none' }}>
+                    app.z-api.io
+                  </a>
+                  {' '}→ sua instância → aba <strong>Dados da instância web</strong>
+                </li>
+                <li>No lado direito, clique em <strong>"Leia o QR Code"</strong></li>
+                <li>No celular, abra o WhatsApp → toque nos <strong>3 pontos</strong> (menu) → <strong>Aparelhos conectados</strong> → <strong>Conectar um aparelho</strong></li>
+                <li>Escaneie o QR Code com a câmera do celular</li>
+                <li>Aguarde o status mudar para <strong>"Conectado"</strong></li>
+              </ol>
+              <p style={{ margin: 0, fontSize: '12px', color: '#92400e' }}>
+                Após conectar, o envio de mensagens passará a funcionar normalmente.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Credenciais Z-API */}
-      <div style={cardStyle}>
+      <div style={{ ...cardStyle, opacity: enabled ? 1 : 0.5, pointerEvents: enabled ? 'auto' : 'none' }}>
         <h3 style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 700, color: '#1a2530' }}>
           Credenciais Z-API
         </h3>
         <p style={{ margin: '0 0 20px', fontSize: '12.5px', color: '#64748b' }}>
-          Encontre em{' '}
+          Instance ID e Token: em{' '}
           <a href="https://app.z-api.io" target="_blank" rel="noopener noreferrer"
             style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 600 }}>
             app.z-api.io
           </a>
-          {' '}→ sua instância → API.
+          {' '}→ sua instância → aba <strong>Dados da instância web</strong> → Credenciais.
+          <br />
+          Client-Token: menu lateral <strong>Segurança</strong> → <strong>Token de segurança da conta</strong>.
         </p>
 
         <div style={{ display: 'grid', gap: '16px' }}>
@@ -313,6 +364,49 @@ function ConnectionTab({ config, refetch }: { config: WhatsappConfig; refetch: (
           </div>
 
           <div>
+            <label style={labelStyle}>
+              Client-Token (Security Token)
+              {config.hasCredentials && (
+                <span style={{ marginLeft: '8px', color: '#94a3b8', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: '10px' }}>
+                  (atual oculto — preencha apenas para atualizar)
+                </span>
+              )}
+            </label>
+            <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#94a3b8' }}>
+              Encontrado em{' '}
+              <a href="https://app.z-api.io" target="_blank" rel="noopener noreferrer"
+                style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
+                app.z-api.io
+              </a>
+              {' '}→ menu lateral <strong style={{ color: '#64748b' }}>Segurança</strong> → <strong style={{ color: '#64748b' }}>Token de segurança da conta</strong>.
+            </p>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showClientToken ? 'text' : 'password'}
+                value={clientToken}
+                onChange={(e) => { setClientToken(e.target.value); mark() }}
+                style={{ ...inputStyle, paddingRight: '44px' }}
+                placeholder={config.hasCredentials ? '••••••••••••••••' : 'Cole o Security Token aqui...'}
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)' }}
+                onBlur={(e)  => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'none' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowClientToken(!showClientToken)}
+                style={{
+                  position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px',
+                }}
+              >
+                {showClientToken
+                  ? <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                  : <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                }
+              </button>
+            </div>
+          </div>
+
+          <div>
             <label style={labelStyle}>Lembrete — horas antes do agendamento</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <input
@@ -350,7 +444,7 @@ function ConnectionTab({ config, refetch }: { config: WhatsappConfig; refetch: (
       </div>
 
       {/* Teste de conexão */}
-      <div style={cardStyle}>
+      <div style={{ ...cardStyle, opacity: enabled ? 1 : 0.5, pointerEvents: enabled ? 'auto' : 'none' }}>
         <h3 style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 700, color: '#1a2530' }}>
           Testar conexão
         </h3>

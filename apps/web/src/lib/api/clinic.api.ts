@@ -15,10 +15,16 @@ export interface ClinicUser {
   phone: string | null
   avatarUrl: string | null
   roles: string[]
+  /** Nome da clínica */
+  tenantName?: string | null
   /** URL relativa da logo da clínica — ex: /uploads/logos/filename.png */
   tenantLogoUrl?: string | null
   /** Slugs das features do plano do tenant — ex: ['waitlist', 'whatsapp'] */
   tenantFeatures?: string[]
+  /** Cores de branding da clínica (hex #RRGGBB ou null → usa default) */
+  tenantColorPrimary?:   string | null
+  tenantColorSecondary?: string | null
+  tenantColorSidebar?:   string | null
 }
 
 export interface ClinicAuthTokens {
@@ -307,6 +313,14 @@ export const patientsApi = {
 
 // ─── Appointments (dashboard summary) ────────────────────────────────────────
 
+export interface AppointmentStatusEntry {
+  id: string
+  status: string
+  changedAt: string   // ISO string
+  notes: string | null
+  changedByUser: { id: string; name: string } | null
+}
+
 export interface Appointment {
   id: string
   scheduledDate: string
@@ -314,9 +328,12 @@ export interface Appointment {
   endTime: string
   status: string
   notes: string | null
+  cancellationReason: string | null
   patient: { id: string; name: string; phone: string }
   professional: { id: string; name: string; color: string | null; specialty: string | null }
   procedure: { id: string; name: string; durationMinutes: number; color: string | null }
+  /** Preenchido apenas quando buscado via get(id) */
+  statusHistory?: AppointmentStatusEntry[]
 }
 
 export interface PaginatedAppointments {
@@ -754,6 +771,7 @@ export interface WhatsappConfig {
   whatsappEnabled: boolean
   zApiInstanceId: string | null
   zApiToken: string | null
+  zApiClientToken: string | null
   reminderHoursBefore: number
   hasCredentials: boolean
 }
@@ -786,7 +804,7 @@ export const whatsappApi = {
     return data.data as WhatsappConfig
   },
 
-  async saveConfig(payload: Partial<WhatsappConfig> & { zApiInstanceId?: string | null; zApiToken?: string | null }): Promise<void> {
+  async saveConfig(payload: Partial<WhatsappConfig> & { zApiInstanceId?: string | null; zApiToken?: string | null; zApiClientToken?: string | null }): Promise<void> {
     await apiClient.put('/whatsapp/config', payload)
   },
 

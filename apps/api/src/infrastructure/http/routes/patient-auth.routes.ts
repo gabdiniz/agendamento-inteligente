@@ -153,10 +153,10 @@ export const patientAuthRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(401).send({ success: false, error: 'Paciente não encontrado ou desativado' })
     }
 
-    // Busca logo da clínica para exibir no portal
+    // Busca branding da clínica para exibir no portal
     const tenant = await prisma.tenant.findUnique({
       where:  { id: request.tenantId },
-      select: { name: true, logoUrl: true },
+      select: { name: true, logoUrl: true, colorPrimary: true, colorSecondary: true, colorSidebar: true },
     })
 
     return reply.status(200).send({
@@ -169,8 +169,11 @@ export const patientAuthRoutes: FastifyPluginAsync = async (app) => {
         birthDate:   patient.birthDate,
         gender:      patient.gender,
         city:        patient.city,
-        tenantName:  tenant?.name ?? null,
-        tenantLogoUrl: tenant?.logoUrl ?? null,
+        tenantName:       tenant?.name           ?? null,
+        tenantLogoUrl:    tenant?.logoUrl        ?? null,
+        tenantColorPrimary:   tenant?.colorPrimary   ?? null,
+        tenantColorSecondary: tenant?.colorSecondary ?? null,
+        tenantColorSidebar:   tenant?.colorSidebar   ?? null,
       },
     })
   })

@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { superAdminApi, type Tenant, type UpdateTenantPayload, type PlanInfo } from '@/lib/api/super-admin.api'
+import { contrastText, DEFAULT_PRIMARY, DEFAULT_SECONDARY, DEFAULT_SIDEBAR } from '@/lib/theme'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -50,6 +51,80 @@ function TenantAvatar({ name, logoUrl, size = 36 }: { name: string; logoUrl?: st
       fontSize: size * 0.38, fontWeight: 700,
     }}>
       {initial}
+    </div>
+  )
+}
+
+// ─── ColorPickerField ─────────────────────────────────────────────────────────
+
+const fieldLabelStyleColor: React.CSSProperties = {
+  display: 'block', fontSize: '11px', fontWeight: 700,
+  color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em',
+  marginBottom: '4px',
+}
+
+const colorInputStyle: React.CSSProperties = {
+  width: '120px', boxSizing: 'border-box' as const, height: '38px',
+  padding: '0 10px',
+  border: '1.5px solid #e2e8f0', borderRadius: '9px',
+  fontSize: '13px', color: '#1a2530',
+  background: '#fff', outline: 'none',
+  fontFamily: 'var(--font-mono, monospace)',
+}
+
+function ColorPickerField({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string
+  hint: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  const isValid = /^#[0-9A-Fa-f]{6}$/.test(value)
+  const swatch  = isValid ? value : '#e2e8f0'
+
+  return (
+    <div>
+      <label style={fieldLabelStyleColor}>{label}</label>
+      <p style={{ margin: '0 0 7px', fontSize: '11.5px', color: '#b0bec5', fontStyle: 'italic' }}>{hint}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <div style={{
+            width: '38px', height: '38px', borderRadius: '9px',
+            background: swatch, border: '2px solid #e2e8f0',
+            cursor: 'pointer',
+            boxShadow: isValid ? `0 2px 8px ${swatch}55` : 'none',
+            transition: 'box-shadow 0.2s',
+          }} />
+          <input
+            type="color"
+            value={isValid ? value : '#000000'}
+            onChange={(e) => onChange(e.target.value.toUpperCase())}
+            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+          />
+        </div>
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value.toUpperCase())}
+          placeholder="#RRGGBB"
+          maxLength={7}
+          style={{ ...colorInputStyle, borderColor: isValid || value === '' ? '#e2e8f0' : '#fca5a5' }}
+        />
+        {isValid && (
+          <div style={{
+            padding: '5px 12px', borderRadius: '7px',
+            background: swatch, color: contrastText(swatch),
+            fontSize: '12px', fontWeight: 600,
+            border: '1px solid rgba(0,0,0,0.08)',
+            userSelect: 'none',
+          }}>
+            Texto
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -316,6 +391,11 @@ function EditTenantModal({
   const [logoUrl, setLogoUrl] = useState<string | null | undefined>(tenant.logoUrl)
   const [error, setError] = useState<string | null>(null)
 
+  // ── Cores ──────────────────────────────────────────────────────
+  const [colorPrimary,   setColorPrimary]   = useState(tenant.colorPrimary   ?? DEFAULT_PRIMARY.toUpperCase())
+  const [colorSecondary, setColorSecondary] = useState(tenant.colorSecondary ?? DEFAULT_SECONDARY.toUpperCase())
+  const [colorSidebar,   setColorSidebar]   = useState(tenant.colorSidebar   ?? DEFAULT_SIDEBAR.toUpperCase())
+
   // Sync se o tenant mudar (troca de linha)
   useEffect(() => {
     setForm({
@@ -326,6 +406,9 @@ function EditTenantModal({
       planId:  tenant.planId ?? '',
     })
     setLogoUrl(tenant.logoUrl)
+    setColorPrimary(tenant.colorPrimary     ?? DEFAULT_PRIMARY.toUpperCase())
+    setColorSecondary(tenant.colorSecondary ?? DEFAULT_SECONDARY.toUpperCase())
+    setColorSidebar(tenant.colorSidebar     ?? DEFAULT_SIDEBAR.toUpperCase())
     setError(null)
   }, [tenant.id])
 
@@ -339,6 +422,7 @@ function EditTenantModal({
     if (!form.name?.trim()) { setError('Nome é obrigatório.'); return }
     if (!form.email?.trim()) { setError('E-mail é obrigatório.'); return }
 
+    const hexRe = /^#[0-9A-Fa-f]{6}$/
     onSave({
       name:    form.name.trim(),
       email:   form.email.trim(),
@@ -346,6 +430,9 @@ function EditTenantModal({
       address: form.address?.trim() || null,
       planId:  form.planId || null,
       logoUrl: logoUrl ?? null,
+      colorPrimary:   hexRe.test(colorPrimary)   ? colorPrimary   : null,
+      colorSecondary: hexRe.test(colorSecondary) ? colorSecondary : null,
+      colorSidebar:   hexRe.test(colorSidebar)   ? colorSidebar   : null,
     })
   }
 
@@ -481,6 +568,71 @@ function EditTenantModal({
                 placeholder="Rua, número, bairro, cidade"
               />
             </div>
+          </div>
+
+          {/* ── Identidade Visual ─────────────────────────────────── */}
+          <div style={{
+            borderTop: '1px solid #f0f2f5', paddingTop: '18px', marginTop: '4px',
+            display: 'flex', flexDirection: 'column', gap: '16px',
+          }}>
+            <p style={{
+              margin: 0, fontSize: '10px', fontWeight: 700,
+              color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em',
+            }}>
+              Identidade Visual
+            </p>
+
+            {/* Mini preview das cores */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {[
+                { label: 'Primária',   color: colorPrimary,   set: setColorPrimary },
+                { label: 'Secundária', color: colorSecondary, set: setColorSecondary },
+                { label: 'Sidebar',    color: colorSidebar,   set: setColorSidebar },
+              ].map(({ label, color, set }) => {
+                const valid = /^#[0-9A-Fa-f]{6}$/.test(color)
+                return (
+                  <div key={label} style={{ position: 'relative' }}>
+                    <div
+                      title={label}
+                      style={{
+                        width: '32px', height: '32px', borderRadius: '8px',
+                        background: valid ? color : '#e2e8f0',
+                        border: '2px solid rgba(0,0,0,0.08)',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <input
+                      type="color"
+                      value={valid ? color : '#000000'}
+                      onChange={(e) => set(e.target.value.toUpperCase())}
+                      style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                    />
+                    <p style={{ margin: '3px 0 0', fontSize: '10px', color: '#94a3b8', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {label}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+
+            <ColorPickerField
+              label="Cor Primária"
+              hint="Botões e elementos de destaque"
+              value={colorPrimary}
+              onChange={setColorPrimary}
+            />
+            <ColorPickerField
+              label="Cor Secundária"
+              hint="Badges e rótulos de status"
+              value={colorSecondary}
+              onChange={setColorSecondary}
+            />
+            <ColorPickerField
+              label="Cor da Sidebar"
+              hint="Fundo da barra lateral de navegação"
+              value={colorSidebar}
+              onChange={setColorSidebar}
+            />
           </div>
 
           <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>

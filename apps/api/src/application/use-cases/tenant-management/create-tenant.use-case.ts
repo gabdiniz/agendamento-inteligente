@@ -33,6 +33,9 @@ interface CreateTenantInput {
   planType?: string
   planId?: string | null
   logoUrl?: string | null
+  colorPrimary?:   string | null
+  colorSecondary?: string | null
+  colorSidebar?:   string | null
   gestor: GestorInput
 }
 
@@ -63,14 +66,17 @@ export class CreateTenantUseCase {
 
     // 2. Cria o tenant no schema public
     const tenant = await this.tenantRepo.create({
-      name:     input.name,
-      slug:     input.slug,
-      email:    input.email,
-      phone:    input.phone,
-      address:  input.address,
-      planType: input.planType,
-      planId:   input.planId ?? undefined,
-      logoUrl:  input.logoUrl,
+      name:           input.name,
+      slug:           input.slug,
+      email:          input.email,
+      phone:          input.phone,
+      address:        input.address,
+      planType:       input.planType,
+      planId:         input.planId ?? undefined,
+      logoUrl:        input.logoUrl,
+      colorPrimary:   input.colorPrimary,
+      colorSecondary: input.colorSecondary,
+      colorSidebar:   input.colorSidebar,
     })
 
     // 3. Cria o schema PostgreSQL + aplica tabelas

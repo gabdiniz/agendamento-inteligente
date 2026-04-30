@@ -19,6 +19,9 @@ export interface TenantRecord {
   phone: string | null
   logoUrl: string | null
   address: string | null
+  colorPrimary:   string | null
+  colorSecondary: string | null
+  colorSidebar:   string | null
   planType: string          // deprecated — usar planId/plan
   planId: string | null
   plan: PlanInfo | null
@@ -36,6 +39,9 @@ export interface CreateTenantData {
   planType?: string
   planId?: string
   logoUrl?: string | null
+  colorPrimary?:   string | null
+  colorSecondary?: string | null
+  colorSidebar?:   string | null
 }
 
 export interface UpdateTenantData {
@@ -46,6 +52,9 @@ export interface UpdateTenantData {
   planType?: string
   planId?: string | null
   logoUrl?: string | null
+  colorPrimary?:   string | null
+  colorSecondary?: string | null
+  colorSidebar?:   string | null
 }
 
 export interface ListTenantsParams {

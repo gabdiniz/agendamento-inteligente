@@ -25,6 +25,7 @@ const configSchema = z.object({
   whatsappEnabled:     z.boolean(),
   zApiInstanceId:      z.string().max(255).nullable().optional(),
   zApiToken:           z.string().max(255).nullable().optional(),
+  zApiClientToken:     z.string().max(255).nullable().optional(),
   reminderHoursBefore: z.number().int().min(1).max(168).optional(), // max 7 dias
 })
 
@@ -57,6 +58,7 @@ export const whatsappRoutes: FastifyPluginAsync = async (app) => {
         whatsappEnabled:     true,
         zApiInstanceId:      true,
         zApiToken:           true,
+        zApiClientToken:     true,
         reminderHoursBefore: true,
       },
     })
@@ -65,19 +67,19 @@ export const whatsappRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ success: false, error: 'Tenant não encontrado' })
     }
 
-    // Mascara o token por segurança (envia apenas os últimos 6 chars)
-    const maskedToken = tenant.zApiToken
-      ? `${'*'.repeat(Math.max(0, tenant.zApiToken.length - 6))}${tenant.zApiToken.slice(-6)}`
-      : null
+    // Mascara tokens por segurança (envia apenas os últimos 6 chars)
+    const maskToken = (t: string | null) =>
+      t ? `${'*'.repeat(Math.max(0, t.length - 6))}${t.slice(-6)}` : null
 
     return reply.status(200).send({
       success: true,
       data: {
         whatsappEnabled:     tenant.whatsappEnabled,
         zApiInstanceId:      tenant.zApiInstanceId,
-        zApiToken:           maskedToken,
+        zApiToken:           maskToken(tenant.zApiToken),
+        zApiClientToken:     maskToken(tenant.zApiClientToken),
         reminderHoursBefore: tenant.reminderHoursBefore,
-        hasCredentials:      Boolean(tenant.zApiInstanceId && tenant.zApiToken),
+        hasCredentials:      Boolean(tenant.zApiInstanceId && tenant.zApiToken && tenant.zApiClientToken),
       },
     })
   })
@@ -90,8 +92,9 @@ export const whatsappRoutes: FastifyPluginAsync = async (app) => {
       whatsappEnabled: body.whatsappEnabled,
     }
 
-    if (body.zApiInstanceId !== undefined) updateData['zApiInstanceId'] = body.zApiInstanceId
-    if (body.zApiToken !== undefined)      updateData['zApiToken']      = body.zApiToken
+    if (body.zApiInstanceId  !== undefined) updateData['zApiInstanceId']  = body.zApiInstanceId
+    if (body.zApiToken       !== undefined) updateData['zApiToken']       = body.zApiToken
+    if (body.zApiClientToken !== undefined) updateData['zApiClientToken'] = body.zApiClientToken
     if (body.reminderHoursBefore !== undefined) updateData['reminderHoursBefore'] = body.reminderHoursBefore
 
     await prisma.tenant.update({
@@ -154,13 +157,13 @@ export const whatsappRoutes: FastifyPluginAsync = async (app) => {
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: request.tenantId },
-      select: { zApiInstanceId: true, zApiToken: true, name: true },
+      select: { zApiInstanceId: true, zApiToken: true, zApiClientToken: true, name: true },
     })
 
-    if (!tenant?.zApiInstanceId || !tenant?.zApiToken) {
+    if (!tenant?.zApiInstanceId || !tenant?.zApiToken || !tenant?.zApiClientToken) {
       return reply.status(422).send({
         success: false,
-        error: 'Configure o Instance ID e Token do Z-API antes de testar.',
+        error: 'Configure o Instance ID, Token e Client-Token do Z-API antes de testar.',
       })
     }
 
@@ -174,7 +177,7 @@ export const whatsappRoutes: FastifyPluginAsync = async (app) => {
 
     try {
       const zapi = new ZApiClient()
-      await zapi.sendText(tenant.zApiInstanceId, tenant.zApiToken, phone, message)
+      await zapi.sendText(tenant.zApiInstanceId, tenant.zApiToken, tenant.zApiClientToken, phone, message)
       return reply.status(200).send({ success: true, message: 'Mensagem de teste enviada com sucesso.' })
     } catch (err) {
       return reply.status(422).send({

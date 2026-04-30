@@ -58,6 +58,21 @@ const appointmentSelect = {
   },
 }
 
+// Select estendido para findById — inclui histórico de status
+const appointmentDetailSelect = {
+  ...appointmentSelect,
+  statusHistory: {
+    select: {
+      id:           true,
+      status:       true,
+      changedAt:    true,
+      notes:        true,
+      changedByUser: { select: { id: true, name: true } },
+    },
+    orderBy: { changedAt: 'asc' as const },
+  },
+}
+
 // ─── Raw row shape ─────────────────────────────────────────────────────────────
 
 interface AppointmentRow {
@@ -85,6 +100,13 @@ interface AppointmentRow {
     rating: number | null
     comment: string | null
   } | null
+  statusHistory?: Array<{
+    id: string
+    status: string
+    changedAt: Date
+    notes: string | null
+    changedByUser: { id: string; name: string } | null
+  }>
 }
 
 function toRecord(row: AppointmentRow): AppointmentRecord {
@@ -115,6 +137,13 @@ function toRecord(row: AppointmentRow): AppointmentRecord {
           comment:            row.evaluation.comment,
         }
       : null,
+    statusHistory: row.statusHistory?.map((h) => ({
+      id:           h.id,
+      status:       h.status,
+      changedAt:    h.changedAt.toISOString(),
+      notes:        h.notes,
+      changedByUser: h.changedByUser ?? null,
+    })),
   }
 }
 
@@ -149,7 +178,7 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
   async findById(id: string): Promise<AppointmentRecord | null> {
     const row = await this.prisma.appointment.findUnique({
       where:  { id },
-      select: appointmentSelect,
+      select: appointmentDetailSelect,   // inclui statusHistory
     })
     return row ? toRecord(row as AppointmentRow) : null
   }

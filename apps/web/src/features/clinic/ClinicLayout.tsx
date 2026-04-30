@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { clinicAuthApi } from '@/lib/api/clinic.api'
 import { clinicTokens, BASE_URL } from '@/lib/api/client'
 import { useFeature } from '@/hooks/useFeature'
+import { applyTenantTheme } from '@/lib/theme'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -84,21 +85,21 @@ function NavItem({
         display: 'flex', alignItems: 'center', gap: '10px',
         padding: '9px 12px', borderRadius: '10px',
         fontSize: '13.5px', fontWeight: active ? 600 : 500,
-        color: active ? 'var(--color-primary)' : '#4a5568',
-        background: active ? 'color-mix(in srgb, var(--color-primary) 10%, white)' : 'transparent',
+        color: active ? 'var(--color-primary)' : 'color-mix(in srgb, var(--color-sidebar-text, #4a5568) 80%, transparent)',
+        background: active ? 'color-mix(in srgb, var(--color-primary) 12%, var(--color-sidebar, white))' : 'transparent',
         textDecoration: 'none', transition: 'all 0.15s ease',
         position: 'relative', flexShrink: 0,
       }}
       onMouseEnter={(e) => {
         if (!active) {
-          (e.currentTarget as HTMLElement).style.background = '#f5f7fa'
-          ;(e.currentTarget as HTMLElement).style.color = '#2d3748'
+          (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--color-sidebar-text, #4a5568) 8%, var(--color-sidebar, white))'
+          ;(e.currentTarget as HTMLElement).style.color = 'var(--color-sidebar-text, #2d3748)'
         }
       }}
       onMouseLeave={(e) => {
         if (!active) {
           (e.currentTarget as HTMLElement).style.background = 'transparent'
-          ;(e.currentTarget as HTMLElement).style.color = '#4a5568'
+          ;(e.currentTarget as HTMLElement).style.color = 'color-mix(in srgb, var(--color-sidebar-text, #4a5568) 80%, transparent)'
         }
       }}
     >
@@ -219,8 +220,8 @@ function SidebarContent({
           </div>
         )}
         <div style={{ minWidth: 0 }}>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: '#1a2530', margin: 0, letterSpacing: '-0.01em' }}>
-            MyAgendix
+          <p style={{ fontSize: '13px', fontWeight: 700, color: '#1a2530', margin: 0, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {user?.tenantName ?? 'MyAgendix'}
           </p>
           <p style={{ fontSize: '11px', color: '#8a99a6', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             /{slug}
@@ -422,7 +423,7 @@ function SidebarContent({
 // ─── Main Layout ──────────────────────────────────────────────────────────────
 
 export function ClinicLayout() {
-  const { user, clearUser } = useAuthStore()
+  const { user, setUser, clearUser } = useAuthStore()
   const navigate   = useNavigate()
   const location   = useLocation()
   const params     = useParams({ strict: false }) as { slug?: string }
@@ -436,6 +437,32 @@ export function ClinicLayout() {
   // Sidebar aberta por padrão só no desktop
   const [sidebarOpen, setSidebarOpen] = useState(isDesktop)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+
+  // Re-hidrata o usuário a cada montagem (necessário após F5 — Zustand não persiste)
+  useEffect(() => {
+    if (!slug) return
+    clinicAuthApi.me()
+      .then((data) => {
+        const access  = clinicTokens.getAccess()
+        const refresh = clinicTokens.getRefresh()
+        if (access && refresh) {
+          setUser(data, access, refresh, slug)
+        }
+      })
+      .catch(() => {
+        clearUser()
+        void navigate({ to: '/app/$slug/login', params: { slug } })
+      })
+  }, [slug]) // eslint-disable-line
+
+  // Injeta CSS vars de branding da clínica (dispara quando user muda)
+  useEffect(() => {
+    applyTenantTheme({
+      colorPrimary:   user?.tenantColorPrimary,
+      colorSecondary: user?.tenantColorSecondary,
+      colorSidebar:   user?.tenantColorSidebar,
+    })
+  }, [user?.tenantColorPrimary, user?.tenantColorSecondary, user?.tenantColorSidebar])
 
   // Fecha sidebar ao redimensionar para mobile
   useEffect(() => {
@@ -487,8 +514,8 @@ export function ClinicLayout() {
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
-        background: '#ffffff',
-        borderRight: '1px solid #eaecef',
+        background: 'var(--color-sidebar, #ffffff)',
+        borderRight: '1px solid rgba(0,0,0,0.06)',
         boxShadow: sidebarFixed ? '4px 0 24px rgba(0,0,0,0.12)' : '2px 0 8px rgba(0,0,0,0.03)',
         // Em mobile/tablet: sidebar é position fixed e fora do fluxo
         ...(sidebarFixed ? {
@@ -560,8 +587,8 @@ export function ClinicLayout() {
                   M
                 </div>
               )}
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#1a2530' }}>
-                MyAgendix
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#1a2530', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user?.tenantName ?? 'MyAgendix'}
               </span>
             </div>
 

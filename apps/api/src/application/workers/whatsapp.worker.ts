@@ -30,6 +30,7 @@ interface TenantZApiConfig {
   whatsappEnabled:  boolean
   zApiInstanceId:   string | null
   zApiToken:        string | null
+  zApiClientToken:  string | null
   reminderHoursBefore: number
   tenantSchema:     string
   fetchedAt:        number
@@ -50,6 +51,7 @@ async function getTenantConfig(tenantId: string): Promise<TenantZApiConfig | nul
       whatsappEnabled:    true,
       zApiInstanceId:     true,
       zApiToken:          true,
+      zApiClientToken:    true,
       reminderHoursBefore: true,
     },
   })
@@ -60,6 +62,7 @@ async function getTenantConfig(tenantId: string): Promise<TenantZApiConfig | nul
     whatsappEnabled:     tenant.whatsappEnabled,
     zApiInstanceId:      tenant.zApiInstanceId,
     zApiToken:           tenant.zApiToken,
+    zApiClientToken:     tenant.zApiClientToken,
     reminderHoursBefore: tenant.reminderHoursBefore,
     tenantSchema:        `tenant_${tenant.slug.replace(/-/g, '_')}`,
     fetchedAt:           Date.now(),
@@ -78,17 +81,17 @@ async function processBatch(): Promise<void> {
   // Para cada tenant, processamos o lote de jobs do seu schema
   const tenantsWithJobs = await prisma.tenant.findMany({
     where: { whatsappEnabled: true, isActive: true },
-    select: { id: true, slug: true, zApiInstanceId: true, zApiToken: true },
+    select: { id: true, slug: true, zApiInstanceId: true, zApiToken: true, zApiClientToken: true },
   })
 
   for (const tenant of tenantsWithJobs) {
-    if (!tenant.zApiInstanceId || !tenant.zApiToken) continue
+    if (!tenant.zApiInstanceId || !tenant.zApiToken || !tenant.zApiClientToken) continue
 
     const tenantSchema = `tenant_${tenant.slug.replace(/-/g, '_')}`
     const tenantPrisma = createTenantClient(tenantSchema)
 
     try {
-      await processTenantJobs(tenant.id, tenant.zApiInstanceId, tenant.zApiToken, tenantPrisma)
+      await processTenantJobs(tenant.id, tenant.zApiInstanceId, tenant.zApiToken, tenant.zApiClientToken, tenantPrisma)
     } finally {
       await tenantPrisma.$disconnect()
     }
@@ -99,6 +102,7 @@ async function processTenantJobs(
   tenantId: string,
   instanceId: string,
   token: string,
+  clientToken: string,
   tenantPrisma: ReturnType<typeof createTenantClient>,
 ): Promise<void> {
   const now = new Date()
@@ -126,7 +130,7 @@ async function processTenantJobs(
     if (updated.count === 0) continue
 
     try {
-      await zapiClient.sendText(instanceId, token, job.phone, job.message)
+      await zapiClient.sendText(instanceId, token, clientToken, job.phone, job.message)
 
       await (tenantPrisma as any).whatsappJob.update({
         where: { id: job.id },

@@ -48,6 +48,9 @@ export interface Tenant {
   phone: string | null
   address: string | null
   logoUrl: string | null
+  colorPrimary:   string | null
+  colorSecondary: string | null
+  colorSidebar:   string | null
   isActive: boolean
   planType: string       // deprecated
   planId: string | null
@@ -68,6 +71,9 @@ export interface CreateTenantPayload {
   address?: string
   planId?: string
   logoUrl?: string | null
+  colorPrimary?:   string | null
+  colorSecondary?: string | null
+  colorSidebar?:   string | null
   gestor: {
     name: string
     email: string
@@ -83,6 +89,9 @@ export interface UpdateTenantPayload {
   address?: string | null
   planId?: string | null
   logoUrl?: string | null
+  colorPrimary?:   string | null
+  colorSecondary?: string | null
+  colorSidebar?:   string | null
 }
 
 export interface UploadLogoResult {

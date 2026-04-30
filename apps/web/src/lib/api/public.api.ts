@@ -39,6 +39,9 @@ export interface ClinicInfo {
   name: string
   address: string | null
   logoUrl: string | null
+  colorPrimary:   string | null
+  colorSecondary: string | null
+  colorSidebar:   string | null
 }
 
 export interface TimeSlot {

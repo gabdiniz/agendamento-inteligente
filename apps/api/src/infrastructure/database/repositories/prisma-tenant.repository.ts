@@ -27,12 +27,15 @@ export class PrismaTenantRepository implements ITenantRepository {
   async create(data: CreateTenantData): Promise<TenantRecord> {
     return this.prisma.tenant.create({
       data: {
-        name:    data.name,
-        slug:    data.slug,
-        email:   data.email,
-        phone:   data.phone ?? null,
-        address: data.address ?? null,
-        logoUrl: data.logoUrl ?? null,
+        name:           data.name,
+        slug:           data.slug,
+        email:          data.email,
+        phone:          data.phone ?? null,
+        address:        data.address ?? null,
+        logoUrl:        data.logoUrl ?? null,
+        colorPrimary:   data.colorPrimary   ?? null,
+        colorSecondary: data.colorSecondary ?? null,
+        colorSidebar:   data.colorSidebar   ?? null,
         ...(data.planType ? { planType: data.planType as 'BASIC' | 'PRO' } : {}),
         ...(data.planId   ? { planId: data.planId } : {}),
       },
@@ -95,13 +98,16 @@ export class PrismaTenantRepository implements ITenantRepository {
   async update(id: string, data: UpdateTenantData): Promise<TenantRecord> {
     const updateData: Record<string, unknown> = {}
 
-    if (data.name     !== undefined) updateData['name']     = data.name
-    if (data.email    !== undefined) updateData['email']    = data.email
-    if (data.phone    !== undefined) updateData['phone']    = data.phone
-    if (data.address  !== undefined) updateData['address']  = data.address
-    if (data.planType !== undefined) updateData['planType'] = data.planType
-    if (data.planId   !== undefined) updateData['planId']   = data.planId
-    if (data.logoUrl  !== undefined) updateData['logoUrl']  = data.logoUrl
+    if (data.name           !== undefined) updateData['name']           = data.name
+    if (data.email          !== undefined) updateData['email']          = data.email
+    if (data.phone          !== undefined) updateData['phone']          = data.phone
+    if (data.address        !== undefined) updateData['address']        = data.address
+    if (data.planType       !== undefined) updateData['planType']       = data.planType
+    if (data.planId         !== undefined) updateData['planId']         = data.planId
+    if (data.logoUrl        !== undefined) updateData['logoUrl']        = data.logoUrl
+    if (data.colorPrimary   !== undefined) updateData['colorPrimary']   = data.colorPrimary
+    if (data.colorSecondary !== undefined) updateData['colorSecondary'] = data.colorSecondary
+    if (data.colorSidebar   !== undefined) updateData['colorSidebar']   = data.colorSidebar
 
     return this.prisma.tenant.update({
       where:   { id },

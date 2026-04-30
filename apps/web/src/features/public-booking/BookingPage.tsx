@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
+import { applyTenantTheme, resetTenantTheme } from '@/lib/theme'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -1188,6 +1189,13 @@ export function BookingPage() {
       .then(([profs, info]) => {
         setProfessionals(profs)
         setClinicInfo(info)
+        if (info) {
+          applyTenantTheme({
+            colorPrimary:   info.colorPrimary,
+            colorSecondary: info.colorSecondary,
+            colorSidebar:   info.colorSidebar,
+          })
+        }
       })
       .catch((err: unknown) => {
         const status = (err as { response?: { status?: number } })?.response?.status
@@ -1200,6 +1208,7 @@ export function BookingPage() {
         }
       })
       .finally(() => setLoading(false))
+    return () => resetTenantTheme()
   }, [tenantSlug])
 
   function handleSelectService(prof: PublicProfessional, proc: PublicProcedure) {

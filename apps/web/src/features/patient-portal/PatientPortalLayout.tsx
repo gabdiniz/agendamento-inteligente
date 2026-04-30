@@ -10,6 +10,7 @@ import { Outlet, Link, useNavigate, useLocation, useParams } from '@tanstack/rea
 import { usePatientAuthStore } from '@/stores/patient-auth.store'
 import { patientAuthApi, patientPortalApi } from '@/lib/api/patient-auth.api'
 import { patientTokens } from '@/lib/api/patient-client'
+import { applyTenantTheme, resetTenantTheme } from '@/lib/theme'
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
 
@@ -260,19 +261,27 @@ export function PatientPortalLayout() {
     else setSidebarOpen(true)
   }, [isMobile])
 
-  // Busca dados do paciente se ainda não estiverem no store
+  // Busca dados do paciente e aplica o tema da clínica
+  // Sempre executa no mount: garante que as cores cheguem mesmo quando o
+  // paciente já está no store (ex: pós-login, onde me() ainda não foi chamado).
   useEffect(() => {
-    if (patient || !slug) return
+    if (!slug) return
     patientPortalApi.me(slug)
       .then((data) => {
         setPatient(data, patientTokens.getAccess(slug)!, patientTokens.getRefresh(slug)!, slug, data.tenantName, data.tenantLogoUrl)
+        applyTenantTheme({
+          colorPrimary:   data.tenantColorPrimary,
+          colorSecondary: data.tenantColorSecondary,
+          colorSidebar:   data.tenantColorSidebar,
+        })
       })
       .catch(() => {
         // Token inválido — redireciona para login
         clearPatient(slug)
         void navigate({ to: '/$slug/minha-conta/login', params: { slug } })
       })
-  }, [patient, slug]) // eslint-disable-line
+    return () => resetTenantTheme()
+  }, [slug]) // eslint-disable-line
 
   const closeSidebarOnNav = useCallback(() => {
     if (isMobile) setSidebarOpen(false)

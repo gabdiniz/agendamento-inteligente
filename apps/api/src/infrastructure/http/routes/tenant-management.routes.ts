@@ -64,13 +64,17 @@ export const tenantManagementRoutes: FastifyPluginAsync = async (app) => {
     )
 
     const result = await useCase.execute({
-      name:     body.name,
-      slug:     body.slug,
-      email:    body.email,
-      phone:    body.phone,
-      address:  body.address,
-      planType: body.planType,
-      planId:   body.planId ?? undefined,
+      name:           body.name,
+      slug:           body.slug,
+      email:          body.email,
+      phone:          body.phone,
+      address:        body.address,
+      planType:       body.planType,
+      planId:         body.planId ?? undefined,
+      logoUrl:        body.logoUrl,
+      colorPrimary:   body.colorPrimary,
+      colorSecondary: body.colorSecondary,
+      colorSidebar:   body.colorSidebar,
       gestor: {
         name:     body.gestor.name,
         email:    body.gestor.email,

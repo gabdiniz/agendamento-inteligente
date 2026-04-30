@@ -36,6 +36,7 @@ export class ZApiClient {
   async sendText(
     instanceId: string,
     token: string,
+    clientToken: string,
     phone: string,
     message: string,
   ): Promise<ZApiSendResult> {
@@ -45,7 +46,10 @@ export class ZApiClient {
     try {
       response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Client-Token': clientToken,
+        },
         body: JSON.stringify({ phone, message }),
         signal: AbortSignal.timeout(15_000), // 15s timeout
       })

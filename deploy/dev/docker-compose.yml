@@ -46,6 +46,9 @@ services:
       JWT_SECRET:      ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       SUPER_ADMIN_JWT_SECRET: ${SUPER_ADMIN_JWT_SECRET}
+      # E-mail (opcional — sem essas vars a API opera em dry-run)
+      RESEND_API_KEY:  ${RESEND_API_KEY:-}
+      RESEND_FROM:     ${RESEND_FROM:-}
     depends_on:
       postgres:
         condition: service_healthy

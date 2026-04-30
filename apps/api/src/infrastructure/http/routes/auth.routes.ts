@@ -37,16 +37,28 @@ function getFrontendBaseUrl(request: { headers: Record<string, string | string[]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Busca o logoUrl do tenant no schema público. Retorna null se não encontrar. */
-async function getTenantLogoUrl(tenantId: string): Promise<string | null> {
+/** Busca dados de branding do tenant (nome, logo + cores) no schema público. */
+async function getTenantBranding(tenantId: string): Promise<{
+  tenantName:          string | null
+  tenantLogoUrl:       string | null
+  tenantColorPrimary:   string | null
+  tenantColorSecondary: string | null
+  tenantColorSidebar:   string | null
+}> {
   try {
     const tenant = await prisma.tenant.findUnique({
       where:  { id: tenantId },
-      select: { logoUrl: true },
+      select: { name: true, logoUrl: true, colorPrimary: true, colorSecondary: true, colorSidebar: true },
     })
-    return tenant?.logoUrl ?? null
+    return {
+      tenantName:           tenant?.name           ?? null,
+      tenantLogoUrl:        tenant?.logoUrl        ?? null,
+      tenantColorPrimary:   tenant?.colorPrimary   ?? null,
+      tenantColorSecondary: tenant?.colorSecondary ?? null,
+      tenantColorSidebar:   tenant?.colorSidebar   ?? null,
+    }
   } catch {
-    return null
+    return { tenantName: null, tenantLogoUrl: null, tenantColorPrimary: null, tenantColorSecondary: null, tenantColorSidebar: null }
   }
 }
 
@@ -124,8 +136,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       tenantSlug: request.tenantSlug,
     })
 
-    const [tenantLogoUrl, tenantFeatures] = await Promise.all([
-      getTenantLogoUrl(request.tenantId),
+    const [branding, tenantFeatures] = await Promise.all([
+      getTenantBranding(request.tenantId),
       getTenantFeatures(request.tenantId),
     ])
 
@@ -133,7 +145,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       success: true,
       data: {
         ...result,
-        user: { ...result.user, tenantLogoUrl, tenantFeatures },
+        user: { ...result.user, ...branding, tenantFeatures },
       },
     })
   })
@@ -191,8 +203,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       })
     }
 
-    const [tenantLogoUrl, tenantFeatures] = await Promise.all([
-      getTenantLogoUrl(request.tenantId),
+    const [branding, tenantFeatures] = await Promise.all([
+      getTenantBranding(request.tenantId),
       getTenantFeatures(request.tenantId),
     ])
 
@@ -205,7 +217,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         phone: user.phone,
         avatarUrl: user.avatarUrl,
         roles: user.roles.map((r) => r.role),
-        tenantLogoUrl,
+        ...branding,
         tenantFeatures,
       },
     })

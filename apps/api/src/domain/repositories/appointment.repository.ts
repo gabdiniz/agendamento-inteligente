@@ -38,6 +38,16 @@ export interface AppointmentEvaluationData {
   comment: string | null
 }
 
+// ─── Entrada de histórico de status ──────────────────────────────────────────
+
+export interface AppointmentStatusEntry {
+  id: string
+  status: string
+  changedAt: string            // ISO string
+  notes: string | null
+  changedByUser: { id: string; name: string } | null
+}
+
 // ─── AppointmentRecord ────────────────────────────────────────────────────────
 
 export interface AppointmentRecord {
@@ -59,6 +69,8 @@ export interface AppointmentRecord {
   professional: AppointmentProfessional
   procedure: AppointmentProcedure
   evaluation: AppointmentEvaluationData | null
+  /** Histórico de mudanças de status — preenchido apenas no findById */
+  statusHistory?: AppointmentStatusEntry[]
 }
 
 // ─── AppointmentSlim ──────────────────────────────────────────────────────────

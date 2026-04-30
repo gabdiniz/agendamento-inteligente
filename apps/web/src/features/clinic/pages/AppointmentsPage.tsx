@@ -14,7 +14,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import type { DateSelectArg, EventClickArg, DatesSetArg, EventContentArg, EventDropArg } from '@fullcalendar/core'
 import ptBrLocale from '@fullcalendar/core/locales/pt-br'
 
-import { appointmentsApi, professionalsApi, type Appointment } from '@/lib/api/clinic.api'
+import { appointmentsApi, professionalsApi, type Appointment, type AppointmentStatusEntry } from '@/lib/api/clinic.api'
 import { clinicTokens } from '@/lib/api/client'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -71,6 +71,96 @@ const NEXT_ACTIONS: Record<string, Array<{ label: string; status: string; color:
   IN_PROGRESS: [
     { label: 'Concluir', status: 'COMPLETED', color: '#059669' },
   ],
+}
+
+// ─── Status Timeline ──────────────────────────────────────────────────────────
+
+function formatDateTime(iso: string) {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} às ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+const TIMELINE_DOT: Record<string, { bg: string; border: string; icon: string }> = {
+  SCHEDULED:       { bg: '#dbeafe', border: '#3b82f6', icon: '📅' },
+  PATIENT_PRESENT: { bg: '#dcfce7', border: '#22c55e', icon: '🚶' },
+  IN_PROGRESS:     { bg: '#f3e8ff', border: '#a855f7', icon: '⚕️' },
+  COMPLETED:       { bg: '#d1fae5', border: '#10b981', icon: '✓'  },
+  CANCELED:        { bg: '#fee2e2', border: '#ef4444', icon: '✕'  },
+}
+
+function StatusTimeline({ entries, loading }: { entries?: AppointmentStatusEntry[]; loading: boolean }) {
+  if (loading) {
+    return (
+      <div style={{ padding: '12px 0 4px' }}>
+        {[1, 2].map((i) => (
+          <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#f1f5f9', flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ height: '11px', width: '60%', background: '#f1f5f9', borderRadius: '4px', marginBottom: '6px' }} />
+              <div style={{ height: '10px', width: '40%', background: '#f1f5f9', borderRadius: '4px' }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (!entries || entries.length === 0) return null
+
+  return (
+    <div style={{ padding: '4px 0' }}>
+      {entries.map((entry, idx) => {
+        const dot = TIMELINE_DOT[entry.status] ?? { bg: '#f1f5f9', border: '#94a3b8', icon: '•' }
+        const isLast = idx === entries.length - 1
+        return (
+          <div key={entry.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', position: 'relative' }}>
+            {/* Linha vertical conectora */}
+            {!isLast && (
+              <div style={{
+                position: 'absolute',
+                left: '13px', top: '28px',
+                width: '2px', height: 'calc(100% - 4px)',
+                background: '#e2e8f0',
+              }} />
+            )}
+
+            {/* Dot */}
+            <div style={{
+              width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+              background: dot.bg,
+              border: `2px solid ${dot.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '11px', fontWeight: 700, color: dot.border,
+              zIndex: 1,
+            }}>
+              {dot.icon}
+            </div>
+
+            {/* Conteúdo */}
+            <div style={{ flex: 1, paddingBottom: isLast ? 0 : '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#1a2530' }}>
+                  {STATUS_LABEL[entry.status] ?? entry.status}
+                </span>
+                <span style={{ fontSize: '11px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                  {formatDateTime(entry.changedAt)}
+                </span>
+              </div>
+              <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: '#64748b' }}>
+                {entry.changedByUser ? entry.changedByUser.name : 'Sistema'}
+              </p>
+              {entry.notes && (
+                <p style={{ margin: '4px 0 0', fontSize: '11.5px', color: '#78716c', fontStyle: 'italic', lineHeight: 1.4 }}>
+                  "{entry.notes}"
+                </p>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 // ─── Cancel Modal ─────────────────────────────────────────────────────────────
@@ -167,6 +257,13 @@ function EventDetailModal({
   const nextActions = NEXT_ACTIONS[appointment.status] ?? []
   const canCancel = !['COMPLETED', 'CANCELED'].includes(appointment.status)
 
+  // Busca o detalhe completo (com statusHistory) ao abrir o modal
+  const { data: detail, isLoading: detailLoading } = useQuery({
+    queryKey: ['appointment-detail', appointment.id],
+    queryFn:  () => appointmentsApi.get(appointment.id),
+    staleTime: 0,
+  })
+
   return (
     <div
       style={{
@@ -180,8 +277,8 @@ function EventDetailModal({
         background: '#fff', borderRadius: '18px',
         boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
         width: '100%', maxWidth: '420px',
+        maxHeight: '90vh', overflowY: 'auto',
         animation: 'fadeUp 0.2s ease',
-        overflow: 'hidden',
       }}>
         {/* Faixa colorida do procedimento */}
         <div style={{
@@ -256,6 +353,17 @@ function EventDetailModal({
               </p>
             </div>
           )}
+
+          {/* Timeline de status */}
+          <div style={{ marginBottom: '20px' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              Histórico
+            </p>
+            <StatusTimeline
+              entries={detail?.statusHistory}
+              loading={detailLoading}
+            />
+          </div>
 
           {/* Ações */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

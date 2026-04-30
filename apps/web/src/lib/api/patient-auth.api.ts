@@ -35,7 +35,10 @@ export interface PatientUser {
 
 export interface PatientMeResponse extends PatientUser {
   tenantName: string
-  tenantLogoUrl: string | null
+  tenantLogoUrl:        string | null
+  tenantColorPrimary:   string | null
+  tenantColorSecondary: string | null
+  tenantColorSidebar:   string | null
 }
 
 export interface PatientAuthTokens {

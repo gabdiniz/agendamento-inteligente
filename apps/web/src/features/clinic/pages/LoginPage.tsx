@@ -7,9 +7,11 @@
 import { useNavigate, useParams, Link } from '@tanstack/react-router'
 
 import { clinicAuthApi } from '@/lib/api/clinic.api'
+import { publicApi } from '@/lib/api/public.api'
 import { useAuthStore } from '@/stores/auth.store'
+import { applyTenantTheme } from '@/lib/theme'
 import { useForm } from 'react-hook-form'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 
@@ -34,6 +36,22 @@ export function ClinicLoginPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) })
+
+  // Aplica o branding da clínica (cores) antes mesmo do login
+  useEffect(() => {
+    if (!slug) return
+    publicApi.getClinicInfo(slug)
+      .then((info) => {
+        applyTenantTheme({
+          colorPrimary:   info.colorPrimary,
+          colorSecondary: info.colorSecondary,
+          colorSidebar:   info.colorSidebar,
+        })
+      })
+      .catch(() => {
+        // Ignora silenciosamente — fica com o tema padrão
+      })
+  }, [slug])
 
   async function onSubmit(values: FormData) {
     setServerError(null)

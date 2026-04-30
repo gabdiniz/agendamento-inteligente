@@ -22,6 +22,12 @@ export const refreshTokenSchema = z.object({
 
 // ─── Tenant ────────────────────────────────────────────────────────────────
 
+const hexColorSchema = z
+  .string()
+  .regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve estar no formato #RRGGBB')
+  .optional()
+  .nullable()
+
 export const createTenantSchema = z.object({
   name: z.string().min(2).max(255),
   slug: z
@@ -35,6 +41,9 @@ export const createTenantSchema = z.object({
   planType: z.enum(['BASIC', 'PRO']).default('BASIC').optional(),
   planId: z.string().uuid().optional().nullable(),
   logoUrl: z.string().optional().nullable(),  // URL absoluta ou caminho relativo (/uploads/...)
+  colorPrimary:   hexColorSchema,
+  colorSecondary: hexColorSchema,
+  colorSidebar:   hexColorSchema,
 })
 
 /** Schema para criação de tenant via Super Admin (inclui dados do Gestor inicial) */
@@ -55,6 +64,9 @@ export const updateTenantSchema = z.object({
   planType: z.enum(['BASIC', 'PRO']).optional(),
   planId: z.string().uuid().optional().nullable(),
   logoUrl: z.string().optional().nullable(),  // URL absoluta ou caminho relativo (/uploads/...)
+  colorPrimary:   hexColorSchema,
+  colorSecondary: hexColorSchema,
+  colorSidebar:   hexColorSchema,
 })
 
 // ─── Professional ──────────────────────────────────────────────────────────

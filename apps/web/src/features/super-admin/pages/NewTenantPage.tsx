@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { superAdminApi } from '@/lib/api/super-admin.api'
+import { contrastText, DEFAULT_PRIMARY, DEFAULT_SECONDARY, DEFAULT_SIDEBAR } from '@/lib/theme'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,74 @@ const sectionDividerStyle: React.CSSProperties = {
   paddingBottom: '12px', borderBottom: '1px solid #f0f2f5',
 }
 
+// ─── ColorPickerField ─────────────────────────────────────────────────────────
+
+function ColorPickerField({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string
+  hint: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  const isValid = /^#[0-9A-Fa-f]{6}$/.test(value)
+  const swatch  = isValid ? value : '#e2e8f0'
+
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>{hint}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Swatch clicável */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <div style={{
+            width: '42px', height: '42px', borderRadius: '10px',
+            background: swatch, border: '2px solid #e2e8f0',
+            cursor: 'pointer',
+            boxShadow: isValid ? `0 2px 10px ${swatch}55` : 'none',
+            transition: 'box-shadow 0.2s',
+          }} />
+          <input
+            type="color"
+            value={isValid ? value : '#000000'}
+            onChange={(e) => onChange(e.target.value.toUpperCase())}
+            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+          />
+        </div>
+        {/* Input hex */}
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value.toUpperCase())}
+          placeholder="#RRGGBB"
+          maxLength={7}
+          style={{
+            ...inputStyle, width: '130px',
+            fontFamily: 'var(--font-mono, monospace)',
+            fontSize: '13px',
+            borderColor: isValid || value === '' ? '#e2e8f0' : '#fca5a5',
+          }}
+        />
+        {/* Preview de contraste */}
+        {isValid && (
+          <div style={{
+            padding: '6px 14px', borderRadius: '8px',
+            background: swatch,
+            color: contrastText(swatch),
+            fontSize: '12.5px', fontWeight: 600,
+            border: '1px solid rgba(0,0,0,0.08)',
+            userSelect: 'none',
+          }}>
+            Texto
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function NewTenantPage() {
@@ -79,6 +148,11 @@ export function NewTenantPage() {
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoError,     setLogoError]     = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Cores da clínica ───────────────────────────────────────────
+  const [colorPrimary,   setColorPrimary]   = useState(DEFAULT_PRIMARY.toUpperCase())
+  const [colorSecondary, setColorSecondary] = useState(DEFAULT_SECONDARY.toUpperCase())
+  const [colorSidebar,   setColorSidebar]   = useState(DEFAULT_SIDEBAR.toUpperCase())
 
   const { data: plansData } = useQuery({
     queryKey: ['sa-plans-list'],
@@ -140,6 +214,7 @@ export function NewTenantPage() {
   async function onSubmit(values: FormData) {
     setServerError(null)
     try {
+      const hexRe = /^#[0-9A-Fa-f]{6}$/
       await superAdminApi.createTenant({
         name:    values.name,
         slug:    values.slug,
@@ -148,6 +223,9 @@ export function NewTenantPage() {
         address: values.address || undefined,
         planId:  values.planId  || undefined,
         logoUrl: logoUrl || undefined,
+        colorPrimary:   hexRe.test(colorPrimary)   ? colorPrimary   : undefined,
+        colorSecondary: hexRe.test(colorSecondary) ? colorSecondary : undefined,
+        colorSidebar:   hexRe.test(colorSidebar)   ? colorSidebar   : undefined,
         gestor: {
           name:     values.gestorName,
           email:    values.gestorEmail,
@@ -395,6 +473,58 @@ export function NewTenantPage() {
               <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#dc2626' }}>{logoError}</p>
             )}
           </div>
+
+          {/* ── Seção: Identidade Visual ─────────────────────────────── */}
+          <p style={{ ...sectionDividerStyle, marginTop: '6px' }}>Identidade Visual</p>
+
+          {/* Preview rápido das 3 cores */}
+          <div style={{
+            display: 'flex', gap: '10px', flexWrap: 'wrap',
+            padding: '16px', borderRadius: '12px',
+            background: '#fafbfc', border: '1px solid #f0f2f5',
+            marginBottom: '4px',
+          }}>
+            {[
+              { label: 'Primária',   color: colorPrimary },
+              { label: 'Secundária', color: colorSecondary },
+              { label: 'Sidebar',    color: colorSidebar },
+            ].map(({ label, color }) => {
+              const valid = /^#[0-9A-Fa-f]{6}$/.test(color)
+              return (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    width: '28px', height: '28px', borderRadius: '8px',
+                    background: valid ? color : '#e2e8f0',
+                    border: '2px solid rgba(0,0,0,0.08)',
+                    flexShrink: 0,
+                  }} />
+                  <div>
+                    <p style={{ margin: 0, fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{label}</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#374151', fontFamily: 'var(--font-mono, monospace)' }}>{valid ? color : '—'}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <ColorPickerField
+            label="Cor Primária"
+            hint="Botões, links e elementos de destaque."
+            value={colorPrimary}
+            onChange={setColorPrimary}
+          />
+          <ColorPickerField
+            label="Cor Secundária"
+            hint="Badges, rótulos de status e destaques secundários."
+            value={colorSecondary}
+            onChange={setColorSecondary}
+          />
+          <ColorPickerField
+            label="Cor da Sidebar"
+            hint="Fundo da barra de navegação lateral."
+            value={colorSidebar}
+            onChange={setColorSidebar}
+          />
 
           {/* ── Seção: Gestor Inicial ────────────────────────────────── */}
           <p style={{ ...sectionDividerStyle, marginTop: '6px' }}>Gestor Inicial</p>
