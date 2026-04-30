@@ -258,7 +258,7 @@ export function SuperAdminLayout() {
         )}
 
         {/* Conteúdo */}
-        <main style={{ flex: 1, overflow: 'auto', background: 'var(--color-bg-subtle)' }}>
+        <main style={{ flex: 1, overflow: 'auto', background: 'var(--sa-bg)' }}>
           <Outlet />
         </main>
       </div>

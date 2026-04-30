@@ -21,12 +21,12 @@
   /* ── Paleta base — apoio hospitalar (verde pastel) ──────────────────── */
   --admin-50: #f3fbf8;
   --admin-100: #e3f6ef;
-  --admin-200: #c8ecde;
+  --admin-200: #30363d;
   --admin-500: #7fc9ae;
   --admin-600: #63b899;
   --admin-700: #4c9e80;
   --admin-800: #3d8168;
-  --admin-900: #2f6753;
+  --admin-900: #e6edf3;
 
   /* ── Paleta de status ────────────────────────────────────────────────── */
   --success-50: #eefaf4;
@@ -82,12 +82,22 @@
   /* ── Tokens semânticos — Super Admin theme ──────────────────────────── */
   --admin-color-primary: var(--admin-600);
   --admin-color-primary-hover: var(--admin-700);
-  --admin-color-primary-light: var(--admin-50);
-  --admin-color-sidebar-bg: #eaf6f2;
-  --admin-color-sidebar-text: #2f6753;
-  --admin-color-sidebar-muted: #5d8b79;
-  --admin-color-sidebar-active: #d4eee4;
-  --admin-color-sidebar-hover: #def3eb;
+  --admin-color-primary-light: rgba(99, 184, 153, 0.12);
+  --admin-color-sidebar-bg: #0d1117;
+  --admin-color-sidebar-text: #cdd9e5;
+  --admin-color-sidebar-muted: #768390;
+  --admin-color-sidebar-active: rgba(99, 184, 153, 0.16);
+  --admin-color-sidebar-hover: rgba(255, 255, 255, 0.06);
+
+  /* ── Super Admin dark palette ──────────────────────────────────────────── */
+  --sa-bg: #0d1117;
+  --sa-surface: #161b22;
+  --sa-surface-raised: #1c2128;
+  --sa-border: #30363d;
+  --sa-border-muted: #21262d;
+  --sa-text: #e6edf3;
+  --sa-text-secondary: #8b949e;
+  --sa-text-muted: #768390;
 
   /* ── Tipografia ─────────────────────────────────────────────────────── */
   --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
