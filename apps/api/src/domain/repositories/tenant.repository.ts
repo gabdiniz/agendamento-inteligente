@@ -18,6 +18,7 @@ export interface TenantRecord {
   email: string
   phone: string | null
   logoUrl: string | null
+  bannerUrl: string | null
   address: string | null
   colorPrimary:   string | null
   colorSecondary: string | null
@@ -39,6 +40,7 @@ export interface CreateTenantData {
   planType?: string
   planId?: string
   logoUrl?: string | null
+  bannerUrl?: string | null
   colorPrimary?:   string | null
   colorSecondary?: string | null
   colorSidebar?:   string | null
@@ -52,6 +54,7 @@ export interface UpdateTenantData {
   planType?: string
   planId?: string | null
   logoUrl?: string | null
+  bannerUrl?: string | null
   colorPrimary?:   string | null
   colorSecondary?: string | null
   colorSidebar?:   string | null

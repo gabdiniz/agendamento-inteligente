@@ -40,7 +40,8 @@ export const createTenantSchema = z.object({
   address: z.string().optional(),
   planType: z.enum(['BASIC', 'PRO']).default('BASIC').optional(),
   planId: z.string().uuid().optional().nullable(),
-  logoUrl: z.string().optional().nullable(),  // URL absoluta ou caminho relativo (/uploads/...)
+  logoUrl: z.string().optional().nullable(),   // URL absoluta ou caminho relativo (/uploads/...)
+  bannerUrl: z.string().optional().nullable(), // imagem de fundo na tela de login
   colorPrimary:   hexColorSchema,
   colorSecondary: hexColorSchema,
   colorSidebar:   hexColorSchema,
@@ -63,7 +64,8 @@ export const updateTenantSchema = z.object({
   address: z.string().optional().nullable(),
   planType: z.enum(['BASIC', 'PRO']).optional(),
   planId: z.string().uuid().optional().nullable(),
-  logoUrl: z.string().optional().nullable(),  // URL absoluta ou caminho relativo (/uploads/...)
+  logoUrl: z.string().optional().nullable(),   // URL absoluta ou caminho relativo (/uploads/...)
+  bannerUrl: z.string().optional().nullable(), // imagem de fundo na tela de login
   colorPrimary:   hexColorSchema,
   colorSecondary: hexColorSchema,
   colorSidebar:   hexColorSchema,

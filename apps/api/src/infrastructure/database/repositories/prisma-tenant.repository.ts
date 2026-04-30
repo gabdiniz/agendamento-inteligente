@@ -33,6 +33,7 @@ export class PrismaTenantRepository implements ITenantRepository {
         phone:          data.phone ?? null,
         address:        data.address ?? null,
         logoUrl:        data.logoUrl ?? null,
+        bannerUrl:      data.bannerUrl ?? null,
         colorPrimary:   data.colorPrimary   ?? null,
         colorSecondary: data.colorSecondary ?? null,
         colorSidebar:   data.colorSidebar   ?? null,
@@ -102,9 +103,15 @@ export class PrismaTenantRepository implements ITenantRepository {
     if (data.email          !== undefined) updateData['email']          = data.email
     if (data.phone          !== undefined) updateData['phone']          = data.phone
     if (data.address        !== undefined) updateData['address']        = data.address
-    if (data.planType       !== undefined) updateData['planType']       = data.planType
-    if (data.planId         !== undefined) updateData['planId']         = data.planId
+    if (data.planType !== undefined) updateData['planType'] = data.planType
+    // planId é um campo de relação — no update o Prisma exige connect/disconnect
+    if (data.planId !== undefined) {
+      updateData['plan'] = data.planId
+        ? { connect: { id: data.planId } }
+        : { disconnect: true }
+    }
     if (data.logoUrl        !== undefined) updateData['logoUrl']        = data.logoUrl
+    if (data.bannerUrl      !== undefined) updateData['bannerUrl']      = data.bannerUrl
     if (data.colorPrimary   !== undefined) updateData['colorPrimary']   = data.colorPrimary
     if (data.colorSecondary !== undefined) updateData['colorSecondary'] = data.colorSecondary
     if (data.colorSidebar   !== undefined) updateData['colorSidebar']   = data.colorSidebar

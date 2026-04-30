@@ -275,7 +275,7 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
   }, async (request, reply) => {
     const tenant = await prisma.tenant.findUnique({
       where:  { id: request.tenantId },
-      select: { name: true, address: true, logoUrl: true, colorPrimary: true, colorSecondary: true, colorSidebar: true },
+      select: { name: true, address: true, logoUrl: true, bannerUrl: true, colorPrimary: true, colorSecondary: true, colorSidebar: true },
     })
 
     if (!tenant) {

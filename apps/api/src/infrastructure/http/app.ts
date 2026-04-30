@@ -28,6 +28,7 @@ import { patientAuthRoutes } from './routes/patient-auth.routes.js'
 import { patientPortalRoutes } from './routes/patient-portal.routes.js'
 import { clinicPatientConfigRoutes } from './routes/clinic-patient-config.routes.js'
 import { clinicUploadRoutes } from './routes/clinic-upload.routes.js'
+import { clinicSettingsRoutes } from './routes/clinic-settings.routes.js'
 import { startWhatsappWorker } from '../../application/workers/whatsapp.worker.js'
 
 export async function buildApp() {
@@ -91,6 +92,35 @@ export async function buildApp() {
     }
   })
 
+  app.get('/uploads/banners/:filename', async (request, reply) => {
+    const { filename } = request.params as { filename: string }
+
+    if (!/^[\w-]+\.(png|jpg|jpeg|webp|gif)$/i.test(filename)) {
+      return reply.status(400).send({ error: 'Nome de arquivo inválido.' })
+    }
+
+    const filepath = join(process.cwd(), 'uploads', 'banners', filename)
+    const ext = extname(filename).toLowerCase()
+    const contentTypeMap: Record<string, string> = {
+      '.png':  'image/png',
+      '.jpg':  'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.webp': 'image/webp',
+      '.gif':  'image/gif',
+    }
+    const contentType = contentTypeMap[ext] ?? 'application/octet-stream'
+
+    try {
+      const stream = createReadStream(filepath)
+      reply.header('Content-Type', contentType)
+      reply.header('Cache-Control', 'public, max-age=31536000, immutable')
+      reply.header('Cross-Origin-Resource-Policy', 'cross-origin')
+      return reply.send(stream)
+    } catch {
+      return reply.status(404).send({ error: 'Banner não encontrado.' })
+    }
+  })
+
   app.get('/uploads/logos/:filename', async (request, reply) => {
     const { filename } = request.params as { filename: string }
 
@@ -149,6 +179,7 @@ export async function buildApp() {
       await tenantScope.register(patientPortalRoutes, { prefix: '/patient' })
       await tenantScope.register(clinicPatientConfigRoutes, { prefix: '/clinic/patient-config' })
       await tenantScope.register(clinicUploadRoutes, { prefix: '/upload' })
+      await tenantScope.register(clinicSettingsRoutes, { prefix: '/clinic' })
     },
     { prefix: '/t/:slug' },
   )
