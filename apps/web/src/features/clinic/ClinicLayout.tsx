@@ -160,7 +160,7 @@ function SidebarContent({
   onNav?: () => void
   userMenuOpen: boolean
   setUserMenuOpen: (v: boolean) => void
-  user: { name?: string; roles?: string[]; tenantLogoUrl?: string | null } | null
+  user: { name?: string; roles?: string[]; tenantLogoUrl?: string | null; tenantName?: string | null } | null
   initials: string
   handleLogout: () => void
   navigate: ReturnType<typeof useNavigate>
@@ -183,6 +183,9 @@ function SidebarContent({
 
   const portalConfigPath    = `/app/${slug}/configuracoes/portal-paciente`
   const portalConfigActive  = location.pathname.startsWith(portalConfigPath)
+
+  const identityPath   = `/app/${slug}/configuracoes/identidade-visual`
+  const identityActive = location.pathname.startsWith(identityPath)
 
   const usersPath     = `/app/${slug}/usuarios`
   const usersActive   = location.pathname.startsWith(usersPath)
@@ -284,6 +287,21 @@ function SidebarContent({
                 </svg>
               }
               label="Portal do Paciente"
+              onClick={onNav}
+            />
+          )}
+          {isGestor && (
+            <NavItem
+              to="/app/$slug/configuracoes/identidade-visual"
+              params={{ slug }}
+              active={identityActive}
+              icon={
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+              }
+              label="Identidade Visual"
               onClick={onNav}
             />
           )}

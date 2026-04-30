@@ -5,7 +5,7 @@
 // Rota: /:slug/minha-conta/login
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -13,6 +13,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 
 import { patientAuthApi } from '@/lib/api/patient-auth.api'
 import { usePatientAuthStore } from '@/stores/patient-auth.store'
+import { publicApi, type ClinicInfo } from '@/lib/api/public.api'
+import { applyTenantTheme } from '@/lib/theme'
+
+const BASE_URL = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3333'
+function resolveUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  return url.startsWith('http') ? url : `${BASE_URL}${url}`
+}
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -50,6 +58,21 @@ export function PatientLoginPage() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [showPw, setShowPw] = useState(false)
   const [focused, setFocused] = useState<string | null>(null)
+  const [clinicInfo, setClinicInfo] = useState<ClinicInfo | null>(null)
+
+  useEffect(() => {
+    if (!slug) return
+    publicApi.getClinicInfo(slug)
+      .then((info) => {
+        setClinicInfo(info)
+        applyTenantTheme({
+          colorPrimary:   info.colorPrimary,
+          colorSecondary: info.colorSecondary,
+          colorSidebar:   info.colorSidebar,
+        })
+      })
+      .catch(() => { /* usa tema padrão */ })
+  }, [slug])
 
   const {
     register,
@@ -113,16 +136,30 @@ export function PatientLoginPage() {
       }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{
-            width: '52px', height: '52px',
-            borderRadius: '16px',
-            background: 'var(--color-primary)',
-            color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '20px', fontWeight: 700,
-            margin: '0 auto 16px',
-            boxShadow: '0 8px 24px color-mix(in srgb, var(--color-primary) 35%, transparent)',
-          }}>M</div>
+          {resolveUrl(clinicInfo?.logoUrl) ? (
+            <img
+              src={resolveUrl(clinicInfo!.logoUrl)!}
+              alt={clinicInfo?.name ?? 'Logo da clínica'}
+              style={{
+                height: '52px',
+                maxWidth: '160px',
+                objectFit: 'contain',
+                margin: '0 auto 14px',
+                display: 'block',
+              }}
+            />
+          ) : (
+            <div style={{
+              width: '52px', height: '52px',
+              borderRadius: '16px',
+              background: 'var(--color-primary)',
+              color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '20px', fontWeight: 700,
+              margin: '0 auto 14px',
+              boxShadow: '0 8px 24px color-mix(in srgb, var(--color-primary) 35%, transparent)',
+            }}>M</div>
+          )}
 
           <h1 style={{
             fontFamily: 'var(--font-display)',
@@ -132,7 +169,7 @@ export function PatientLoginPage() {
             margin: '0 0 6px',
             lineHeight: 1.2,
           }}>
-            Minha Conta
+            {clinicInfo?.name ? `Olá, ${clinicInfo.name.split(' ')[0]}` : 'Minha Conta'}
           </h1>
           <p style={{ fontSize: '13px', color: '#b0a899', margin: 0, fontWeight: 500 }}>
             Acesse seus agendamentos

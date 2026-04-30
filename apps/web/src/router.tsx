@@ -75,6 +75,7 @@ import { ProceduresPage } from '@/features/clinic/pages/ProceduresPage'
 import { NewProcedurePage } from '@/features/clinic/pages/NewProcedurePage'
 import { EditProcedurePage } from '@/features/clinic/pages/EditProcedurePage'
 import { PatientPortalConfigPage } from '@/features/clinic/pages/PatientPortalConfigPage'
+import { ClinicSettingsPage } from '@/features/clinic/pages/ClinicSettingsPage'
 import { WaitlistPage } from '@/features/clinic/pages/WaitlistPage'
 import { NotificationsPage } from '@/features/clinic/pages/NotificationsPage'
 import { UsersPage } from '@/features/clinic/pages/UsersPage'
@@ -283,6 +284,14 @@ const patientPortalConfigRoute = createRoute({
   component: PatientPortalConfigPage,
 })
 
+// ── Configurações: Identidade Visual ─────────────────────────────────────────
+
+const clinicIdentityRoute = createRoute({
+  getParentRoute: () => clinicRoute,
+  path: '/configuracoes/identidade-visual',
+  component: ClinicSettingsPage,
+})
+
 // ── Horários de trabalho do profissional ─────────────────────────────────────
 
 const workScheduleRoute = createRoute({
@@ -377,6 +386,7 @@ const routeTree = rootRoute.addChildren([
     newProcedureRoute,
     editProcedureRoute,
     patientPortalConfigRoute,
+    clinicIdentityRoute,
     workScheduleRoute,
   ]),
   publicRoute,

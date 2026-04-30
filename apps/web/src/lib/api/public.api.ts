@@ -39,6 +39,7 @@ export interface ClinicInfo {
   name: string
   address: string | null
   logoUrl: string | null
+  bannerUrl: string | null
   colorPrimary:   string | null
   colorSecondary: string | null
   colorSidebar:   string | null

@@ -1330,21 +1330,36 @@ export function BookingPage() {
           </div>
 
           <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '52px', height: '52px',
-            borderRadius: '16px',
-            background: 'var(--color-primary)',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '20px',
-            fontWeight: 700,
-            margin: '0 auto 16px',
-            boxShadow: '0 8px 24px color-mix(in srgb, var(--color-primary) 35%, transparent)',
-          }}>
-            M
-          </div>
+          {(() => {
+            const logoSrc = clinicInfo?.logoUrl
+              ? (clinicInfo.logoUrl.startsWith('http')
+                  ? clinicInfo.logoUrl
+                  : `${import.meta.env['VITE_API_URL'] ?? 'http://localhost:3333'}${clinicInfo.logoUrl}`)
+              : null
+            return logoSrc ? (
+              <img
+                src={logoSrc}
+                alt={clinicInfo?.name ?? 'Logo da clínica'}
+                style={{
+                  height: '52px', maxWidth: '180px',
+                  objectFit: 'contain',
+                  margin: '0 auto 14px',
+                  display: 'block',
+                }}
+              />
+            ) : (
+              <div style={{
+                width: '52px', height: '52px',
+                borderRadius: '16px',
+                background: 'var(--color-primary)',
+                color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '20px', fontWeight: 700,
+                margin: '0 auto 16px',
+                boxShadow: '0 8px 24px color-mix(in srgb, var(--color-primary) 35%, transparent)',
+              }}>M</div>
+            )
+          })()}
           <h1 style={{
             fontFamily: 'var(--font-display)',
             fontSize: '28px',
@@ -1353,7 +1368,7 @@ export function BookingPage() {
             margin: '0 0 6px',
             lineHeight: 1.2,
           }}>
-            Agendar consulta
+            {clinicInfo?.name ? clinicInfo.name : 'Agendar consulta'}
           </h1>
           {tenantSlug && (
             <p style={{ fontSize: '12px', color: '#b0a899', fontWeight: 500, letterSpacing: '0.04em' }}>

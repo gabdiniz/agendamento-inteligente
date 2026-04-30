@@ -153,6 +153,12 @@ export function NewTenantPage() {
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoError,     setLogoError]     = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [bannerPreview,   setBannerPreview]   = useState<string | null>(null)
+  const [bannerUrl,       setBannerUrl]       = useState<string | null>(null)
+  const [bannerUploading, setBannerUploading] = useState(false)
+  const [bannerError,     setBannerError]     = useState<string | null>(null)
+  const [bannerDragging,  setBannerDragging]  = useState(false)
+  const bannerFileRef = useRef<HTMLInputElement>(null)
   const [colorPrimary,   setColorPrimary]   = useState(DEFAULT_PRIMARY.toUpperCase())
   const [colorSecondary, setColorSecondary] = useState(DEFAULT_SECONDARY.toUpperCase())
   const [colorSidebar,   setColorSidebar]   = useState(DEFAULT_SIDEBAR.toUpperCase())
@@ -198,6 +204,29 @@ export function NewTenantPage() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  async function handleBannerFile(file: File) {
+    if (file.size > 5 * 1024 * 1024) { setBannerError('Arquivo muito grande. Máximo 5 MB.'); return }
+    const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+    if (!allowed.includes(file.type)) { setBannerError('Formato não suportado. Use PNG, JPG ou WebP.'); return }
+    setBannerError(null)
+    setBannerPreview(URL.createObjectURL(file))
+    setBannerUploading(true)
+    try {
+      const result = await superAdminApi.uploadBanner(file)
+      setBannerUrl(result.url)
+    } catch {
+      setBannerError('Falha no upload. Tente novamente.')
+      setBannerPreview(null)
+    } finally {
+      setBannerUploading(false)
+    }
+  }
+
+  function handleRemoveBanner() {
+    setBannerPreview(null); setBannerUrl(null); setBannerError(null)
+    if (bannerFileRef.current) bannerFileRef.current.value = ''
+  }
+
   async function onSubmit(values: FormData) {
     setServerError(null)
     try {
@@ -205,7 +234,7 @@ export function NewTenantPage() {
       await superAdminApi.createTenant({
         name: values.name, slug: values.slug, email: values.email,
         phone: values.phone || undefined, address: values.address || undefined,
-        planId: values.planId || undefined, logoUrl: logoUrl || undefined,
+        planId: values.planId || undefined, logoUrl: logoUrl || undefined, bannerUrl: bannerUrl || undefined,
         colorPrimary:   hexRe.test(colorPrimary)   ? colorPrimary   : undefined,
         colorSecondary: hexRe.test(colorSecondary) ? colorSecondary : undefined,
         colorSidebar:   hexRe.test(colorSidebar)   ? colorSidebar   : undefined,
@@ -380,6 +409,78 @@ export function NewTenantPage() {
               accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
               onChange={handleLogoChange} style={{ display: 'none' }} />
             {logoError && !logoPreview && <p style={{ margin: '6px 0 0', fontSize: '12px', color: D.red }}>{logoError}</p>}
+          </div>
+
+          {/* Banner de Login */}
+          <div>
+            <label style={labelStyle}>Banner de login (opcional)</label>
+            <p style={{ margin: '0 0 10px', fontSize: '12px', color: D.textMuted }}>
+              Imagem de fundo exibida na tela de login da clínica. PNG, JPG ou WebP · máx. 5 MB.
+            </p>
+            {bannerPreview ? (
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, height: '90px', borderRadius: '10px', border: `1.5px solid ${D.border}`, overflow: 'hidden', background: D.surfaceUp }}>
+                  <img src={bannerPreview} alt="Preview do banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {bannerUploading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: D.textSec }}>
+                      <div style={{ width: '12px', height: '12px', border: `2px solid ${D.border}`, borderTopColor: D.primary, borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                      Enviando...
+                    </div>
+                  ) : bannerUrl ? (
+                    <p style={{ margin: 0, fontSize: '12px', color: D.green, fontWeight: 600 }}>✓ Upload concluído</p>
+                  ) : null}
+                  {bannerError && <p style={{ margin: 0, fontSize: '11px', color: D.red }}>{bannerError}</p>}
+                  <button type="button" onClick={() => bannerFileRef.current?.click()}
+                    style={{ background: 'none', border: `1px solid ${D.border}`, cursor: 'pointer', fontSize: '11px', color: D.textSec, padding: '4px 10px', borderRadius: '6px', fontFamily: 'var(--font-sans)' }}>
+                    Trocar
+                  </button>
+                  <button type="button" onClick={handleRemoveBanner}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', color: D.textMuted, padding: 0, fontFamily: 'var(--font-sans)' }}>
+                    ✕ Remover
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => bannerFileRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setBannerDragging(true) }}
+                onDragLeave={() => setBannerDragging(false)}
+                onDrop={(e) => { e.preventDefault(); setBannerDragging(false); const f = e.dataTransfer.files[0]; if (f) void handleBannerFile(f) }}
+                style={{
+                  border: `1.5px dashed ${bannerDragging ? D.primary : D.border}`, borderRadius: '12px',
+                  height: '80px', background: bannerDragging ? 'rgba(99,184,153,0.08)' : D.surfaceUp,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                  cursor: bannerUploading ? 'wait' : 'pointer', transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => { if (!bannerDragging) { (e.currentTarget as HTMLElement).style.borderColor = D.primary; (e.currentTarget as HTMLElement).style.background = 'rgba(99,184,153,0.06)' }}}
+                onMouseLeave={(e) => { if (!bannerDragging) { (e.currentTarget as HTMLElement).style.borderColor = D.border; (e.currentTarget as HTMLElement).style.background = D.surfaceUp }}}
+              >
+                {bannerUploading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: D.textSec }}>
+                    <div style={{ width: '14px', height: '14px', border: `2px solid ${D.border}`, borderTopColor: D.primary, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                    Enviando...
+                  </div>
+                ) : (
+                  <>
+                    <svg width="18" height="18" fill="none" stroke={D.textMuted} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: D.textSec }}>Clique ou arraste para upload</p>
+                      <p style={{ margin: '1px 0 0', fontSize: '11px', color: D.textMuted }}>PNG, JPG ou WebP · máx. 5 MB</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            {bannerError && !bannerPreview && <p style={{ margin: '6px 0 0', fontSize: '12px', color: D.red }}>{bannerError}</p>}
+            <input ref={bannerFileRef} type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleBannerFile(f); e.target.value = '' }}
+              style={{ display: 'none' }} />
           </div>
 
           {/* Identidade Visual */}

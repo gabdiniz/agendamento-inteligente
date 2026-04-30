@@ -48,6 +48,7 @@ export interface Tenant {
   phone: string | null
   address: string | null
   logoUrl: string | null
+  bannerUrl: string | null
   colorPrimary:   string | null
   colorSecondary: string | null
   colorSidebar:   string | null
@@ -71,6 +72,7 @@ export interface CreateTenantPayload {
   address?: string
   planId?: string
   logoUrl?: string | null
+  bannerUrl?: string | null
   colorPrimary?:   string | null
   colorSecondary?: string | null
   colorSidebar?:   string | null
@@ -89,6 +91,7 @@ export interface UpdateTenantPayload {
   address?: string | null
   planId?: string | null
   logoUrl?: string | null
+  bannerUrl?: string | null
   colorPrimary?:   string | null
   colorSecondary?: string | null
   colorSidebar?:   string | null
@@ -204,6 +207,15 @@ export const superAdminApi = {
     const formData = new FormData()
     formData.append('file', file)
     const { data } = await saClient.post('/super-admin/upload/logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data.data as UploadLogoResult
+  },
+
+  async uploadBanner(file: File): Promise<UploadLogoResult> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await saClient.post('/super-admin/upload/banner', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     return data.data as UploadLogoResult

@@ -839,6 +839,59 @@ export interface ClinicPatientConfig {
   cancellationAllowedStatuses: string[]
 }
 
+// ─── Clinic Branding / Settings ───────────────────────────────────────────────
+
+export interface ClinicBrandingSettings {
+  id: string
+  name: string
+  slug: string
+  logoUrl: string | null
+  bannerUrl: string | null
+  colorPrimary: string | null
+  colorSecondary: string | null
+  colorSidebar: string | null
+}
+
+export interface UpdateBrandingPayload {
+  logoUrl?: string | null
+  bannerUrl?: string | null
+  colorPrimary?: string | null
+  colorSecondary?: string | null
+  colorSidebar?: string | null
+}
+
+export const clinicBrandingApi = {
+  async getSettings(): Promise<ClinicBrandingSettings> {
+    const { data } = await apiClient.get('/clinic/settings')
+    return data.data as ClinicBrandingSettings
+  },
+
+  async updateSettings(payload: UpdateBrandingPayload): Promise<ClinicBrandingSettings> {
+    const { data } = await apiClient.patch('/clinic/settings', payload)
+    return data.data as ClinicBrandingSettings
+  },
+
+  /** Upload de logo da clínica (GESTOR) */
+  async uploadLogo(file: File): Promise<string> {
+    const form = new FormData()
+    form.append('file', file)
+    const { data } = await apiClient.post('/upload/logo', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return (data.data as { url: string }).url
+  },
+
+  /** Upload de banner de login da clínica (GESTOR) */
+  async uploadBanner(file: File): Promise<string> {
+    const form = new FormData()
+    form.append('file', file)
+    const { data } = await apiClient.post('/upload/banner', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return (data.data as { url: string }).url
+  },
+}
+
 export const clinicPatientConfigApi = {
   async get(): Promise<ClinicPatientConfig> {
     const { data } = await apiClient.get('/clinic/patient-config')

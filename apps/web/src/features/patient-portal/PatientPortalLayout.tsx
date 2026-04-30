@@ -12,6 +12,12 @@ import { patientAuthApi, patientPortalApi } from '@/lib/api/patient-auth.api'
 import { patientTokens } from '@/lib/api/patient-client'
 import { applyTenantTheme, resetTenantTheme } from '@/lib/theme'
 
+const BASE_URL = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3333'
+function resolveUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  return url.startsWith('http') ? url : `${BASE_URL}${url}`
+}
+
 // ─── Nav items ────────────────────────────────────────────────────────────────
 
 const navItems = [
@@ -81,6 +87,7 @@ function Sidebar({
   pathname,
   patient,
   tenantName,
+  tenantLogoUrl,
   onNav,
   onLogout,
 }: {
@@ -88,9 +95,12 @@ function Sidebar({
   pathname: string
   patient: { name?: string; email?: string } | null
   tenantName: string | null
+  tenantLogoUrl?: string | null
   onNav?: () => void
   onLogout: () => void
 }) {
+  const logoUrl = resolveUrl(tenantLogoUrl ?? null)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
@@ -99,13 +109,26 @@ function Sidebar({
         padding: '0 20px', height: '60px', flexShrink: 0,
         borderBottom: '1px solid #ece9e4',
       }}>
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '10px',
-          background: 'var(--color-primary)', color: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '14px', fontWeight: 700, flexShrink: 0,
-          boxShadow: '0 4px 10px color-mix(in srgb, var(--color-primary) 35%, transparent)',
-        }}>M</div>
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={tenantName ?? 'Logo da clínica'}
+            style={{
+              height: '32px',
+              maxWidth: '100px',
+              objectFit: 'contain',
+              flexShrink: 0,
+            }}
+          />
+        ) : (
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '10px',
+            background: 'var(--color-primary)', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '14px', fontWeight: 700, flexShrink: 0,
+            boxShadow: '0 4px 10px color-mix(in srgb, var(--color-primary) 35%, transparent)',
+          }}>M</div>
+        )}
         <div style={{ minWidth: 0 }}>
           <p style={{ fontSize: '13px', fontWeight: 700, color: '#1a1614', margin: 0, letterSpacing: '-0.01em' }}>
             {tenantName ?? 'MyAgendix'}
@@ -338,6 +361,7 @@ export function PatientPortalLayout() {
           pathname={location.pathname}
           patient={patient}
           tenantName={tenantName}
+          tenantLogoUrl={tenantLogoUrl}
           onNav={closeSidebarOnNav}
           onLogout={handleLogout}
         />
@@ -375,12 +399,20 @@ export function PatientPortalLayout() {
               ))}
             </button>
 
-            <div style={{
-              width: '28px', height: '28px', borderRadius: '8px',
-              background: 'var(--color-primary)', color: '#fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '12px', fontWeight: 700, flexShrink: 0,
-            }}>M</div>
+            {resolveUrl(tenantLogoUrl) ? (
+              <img
+                src={resolveUrl(tenantLogoUrl)!}
+                alt={tenantName ?? 'Logo'}
+                style={{ height: '28px', maxWidth: '80px', objectFit: 'contain', flexShrink: 0 }}
+              />
+            ) : (
+              <div style={{
+                width: '28px', height: '28px', borderRadius: '8px',
+                background: 'var(--color-primary)', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '12px', fontWeight: 700, flexShrink: 0,
+              }}>M</div>
+            )}
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#1a1614' }}>
               {tenantName ?? 'Minha Conta'}
             </span>

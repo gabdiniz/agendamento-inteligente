@@ -248,6 +248,114 @@ function LogoUpload({ currentUrl, onChange }: {
   )
 }
 
+// ─── BannerUpload ─────────────────────────────────────────────────────────────
+
+function BannerUpload({ currentUrl, onChange }: {
+  currentUrl?: string | null
+  onChange: (url: string | null) => void
+}) {
+  const [preview, setPreview]     = useState<string | null>(logoSrc(currentUrl))
+  const [uploading, setUploading] = useState(false)
+  const [error, setError]         = useState<string | null>(null)
+  const [dragging, setDragging]   = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function processFile(file: File) {
+    if (file.size > 5 * 1024 * 1024) { setError('Máximo 5 MB.'); return }
+    const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+    if (!allowed.includes(file.type)) { setError('Use PNG, JPG ou WebP.'); return }
+    setError(null)
+    setPreview(URL.createObjectURL(file))
+    setUploading(true)
+    try {
+      const result = await superAdminApi.uploadBanner(file)
+      onChange(result.url)
+    } catch {
+      setError('Falha no upload. Tente novamente.')
+      setPreview(logoSrc(currentUrl))
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault(); setDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) void processFile(file)
+  }
+
+  return (
+    <div>
+      <label style={fieldLabel}>Banner de login</label>
+      <p style={{ margin: '0 0 10px', fontSize: '11px', color: D.textMuted }}>
+        Imagem de fundo exibida na tela de login da clínica. PNG, JPG ou WebP · máx. 5 MB.
+      </p>
+
+      {preview ? (
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+          <div style={{
+            flex: 1, height: '80px', borderRadius: '8px',
+            border: `1px solid ${D.border}`, overflow: 'hidden',
+            background: D.surfaceUp,
+          }}>
+            <img src={preview} alt="Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {uploading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: D.textSec }}>
+                <div style={{ width: '12px', height: '12px', border: `2px solid ${D.border}`, borderTopColor: D.primary, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                Enviando...
+              </div>
+            ) : null}
+            {error && <p style={{ margin: 0, fontSize: '11px', color: D.red }}>{error}</p>}
+            <button type="button" onClick={() => fileRef.current?.click()}
+              style={{ background: 'none', border: `1px solid ${D.border}`, cursor: 'pointer', fontSize: '11px', color: D.textSec, padding: '4px 10px', borderRadius: '6px', fontFamily: 'var(--font-sans)' }}>
+              Trocar
+            </button>
+            <button type="button" onClick={() => { setPreview(null); setError(null); onChange(null); if (fileRef.current) fileRef.current.value = '' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', color: D.textMuted, padding: 0, fontFamily: 'var(--font-sans)' }}>
+              ✕ Remover
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={() => fileRef.current?.click()}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          style={{
+            border: `1.5px dashed ${dragging ? D.primary : D.border}`, borderRadius: '10px',
+            height: '64px', background: dragging ? 'rgba(99,184,153,0.08)' : D.surfaceUp,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+            cursor: uploading ? 'wait' : 'pointer', transition: 'all 0.15s',
+          }}
+        >
+          {uploading ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: D.textSec }}>
+              <div style={{ width: '12px', height: '12px', border: `2px solid ${D.border}`, borderTopColor: D.primary, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              Enviando...
+            </div>
+          ) : (
+            <>
+              <svg width="16" height="16" fill="none" stroke={D.textMuted} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p style={{ margin: 0, fontSize: '12px', color: D.textSec }}>Upload do banner de login</p>
+            </>
+          )}
+        </div>
+      )}
+      {error && !preview && <p style={{ margin: '4px 0 0', fontSize: '11px', color: D.red }}>{error}</p>}
+      <input ref={fileRef} type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void processFile(f); e.target.value = '' }}
+        style={{ display: 'none' }} />
+    </div>
+  )
+}
+
 // ─── Delete Confirm Modal ─────────────────────────────────────────────────────
 
 function DeleteConfirmModal({ tenant, onConfirm, onClose, loading }: {
@@ -327,6 +435,7 @@ function EditTenantModal({ tenant, onSave, onClose, loading, plans }: {
     phone: tenant.phone ?? '', address: tenant.address ?? '', planId: tenant.planId ?? '',
   })
   const [logoUrl, setLogoUrl]           = useState<string | null | undefined>(tenant.logoUrl)
+  const [bannerUrl, setBannerUrl]       = useState<string | null | undefined>(tenant.bannerUrl)
   const [error, setError]               = useState<string | null>(null)
   const [colorPrimary,   setColorPrimary]   = useState(tenant.colorPrimary   ?? DEFAULT_PRIMARY.toUpperCase())
   const [colorSecondary, setColorSecondary] = useState(tenant.colorSecondary ?? DEFAULT_SECONDARY.toUpperCase())
@@ -335,6 +444,7 @@ function EditTenantModal({ tenant, onSave, onClose, loading, plans }: {
   useEffect(() => {
     setForm({ name: tenant.name, email: tenant.email, phone: tenant.phone ?? '', address: tenant.address ?? '', planId: tenant.planId ?? '' })
     setLogoUrl(tenant.logoUrl)
+    setBannerUrl(tenant.bannerUrl)
     setColorPrimary(tenant.colorPrimary     ?? DEFAULT_PRIMARY.toUpperCase())
     setColorSecondary(tenant.colorSecondary ?? DEFAULT_SECONDARY.toUpperCase())
     setColorSidebar(tenant.colorSidebar     ?? DEFAULT_SIDEBAR.toUpperCase())
@@ -354,7 +464,7 @@ function EditTenantModal({ tenant, onSave, onClose, loading, plans }: {
     onSave({
       name: form.name.trim(), email: form.email.trim(),
       phone: form.phone?.trim() || null, address: form.address?.trim() || null,
-      planId: form.planId || null, logoUrl: logoUrl ?? null,
+      planId: form.planId || null, logoUrl: logoUrl ?? null, bannerUrl: bannerUrl ?? null,
       colorPrimary:   hexRe.test(colorPrimary)   ? colorPrimary   : null,
       colorSecondary: hexRe.test(colorSecondary) ? colorSecondary : null,
       colorSidebar:   hexRe.test(colorSidebar)   ? colorSidebar   : null,
@@ -405,8 +515,12 @@ function EditTenantModal({ tenant, onSave, onClose, loading, plans }: {
             </div>
           )}
 
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '16px' }}>
             <LogoUpload currentUrl={logoUrl} onChange={setLogoUrl} />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <BannerUpload currentUrl={bannerUrl} onChange={setBannerUrl} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
