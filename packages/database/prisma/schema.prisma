@@ -172,10 +172,16 @@ model Tenant {
   planId    String?  @db.Uuid
   plan      Plan?    @relation("TenantPlan", fields: [planId], references: [id])
 
+  // ─── Branding / Cores ────────────────────────
+  colorPrimary  String? @db.VarChar(7)   // ex: "#4f46e5"
+  colorSecondary String? @db.VarChar(7)  // ex: "#06b6d4"
+  colorSidebar  String? @db.VarChar(7)   // ex: "#1a2530"
+
   // ─── WhatsApp / Z-API ────────────────────────
   whatsappEnabled     Boolean @default(false)
   zApiInstanceId      String? @db.VarChar(255)
   zApiToken           String? @db.VarChar(255)
+  zApiClientToken     String? @db.VarChar(255)
   reminderHoursBefore Int     @default(24)
 
   // MVP2
