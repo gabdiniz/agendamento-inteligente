@@ -277,7 +277,7 @@ export function PatientPortalLayout() {
   const isMobile = screenWidth < 768
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile)
 
-  const { patient, tenantName, setPatient, clearPatient } = usePatientAuthStore()
+  const { patient, tenantName, tenantLogoUrl, setPatient, clearPatient } = usePatientAuthStore()
 
   useEffect(() => {
     if (isMobile) setSidebarOpen(false)
