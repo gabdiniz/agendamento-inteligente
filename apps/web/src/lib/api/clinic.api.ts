@@ -155,8 +155,11 @@ export interface Professional {
   bio: string | null
   color: string | null
   avatarUrl: string | null
+  birthDate: string | null   // "YYYY-MM-DD"
   isActive: boolean
   userId: string | null
+  rating: number | null      // média das avaliações (1–5)
+  ratingCount: number        // total de avaliações com nota
   procedures: Pick<Procedure, 'id' | 'name' | 'durationMinutes' | 'priceCents' | 'color'>[]
 }
 
@@ -174,6 +177,7 @@ export interface CreateProfessionalPayload {
   bio?: string
   color?: string
   avatarUrl?: string | null
+  birthDate?: string | null
 }
 
 export interface UploadAvatarResult {
@@ -308,6 +312,14 @@ export const patientsApi = {
   async deactivate(id: string): Promise<Patient> {
     const { data } = await apiClient.patch(`/patients/${id}/deactivate`)
     return data.data as Patient
+  },
+
+  async sendInvite(
+    id: string,
+    payload: { channel: 'WHATSAPP' | 'EMAIL'; inviteLink: string; message?: string },
+  ): Promise<{ channel: string; recipient: string; externalId?: string }> {
+    const { data } = await apiClient.post(`/patients/${id}/send-invite`, payload)
+    return data.data as { channel: string; recipient: string; externalId?: string }
   },
 }
 

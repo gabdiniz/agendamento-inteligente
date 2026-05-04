@@ -71,46 +71,69 @@ export const publicBookingRoutes: FastifyPluginAsync = async (app) => {
     // O filtro aninhado em relações explícitas causa erro interno no Prisma:
     // "Cannot read properties of undefined (reading 'professional')".
     // Solução: buscar todos os procedimentos com isActive e filtrar em JS.
-    const rows = await prisma.professional.findMany({
-      where: { isActive: true },
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        specialty: true,
-        bio: true,
-        avatarUrl: true,
-        color: true,
-        procedures: {
-          select: {
-            procedure: {
-              select: { id: true, name: true, durationMinutes: true, priceCents: true, preparationInstructions: true, color: true, isActive: true },
+    const [rows, ratingRows] = await Promise.all([
+      prisma.professional.findMany({
+        where: { isActive: true },
+        orderBy: { name: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          specialty: true,
+          bio: true,
+          avatarUrl: true,
+          color: true,
+          birthDate: true,
+          procedures: {
+            select: {
+              procedure: {
+                select: { id: true, name: true, durationMinutes: true, priceCents: true, preparationInstructions: true, color: true, isActive: true },
+              },
             },
           },
         },
-      },
-    })
+      }),
+      prisma.appointmentEvaluation.groupBy({
+        by: ['professionalId'],
+        _avg: { rating: true },
+        _count: { rating: true },
+        where: { rating: { not: null } },
+      }),
+    ])
+
+    // Mapa: professionalId → { rating, ratingCount }
+    const ratingMap = new Map(
+      ratingRows.map((r) => [
+        r.professionalId,
+        { rating: r._avg.rating, ratingCount: r._count.rating },
+      ]),
+    )
 
     const professionals = rows
-      .map((prof) => ({
-        id: prof.id,
-        name: prof.name,
-        specialty: prof.specialty,
-        bio: prof.bio,
-        avatarUrl: prof.avatarUrl,
-        color: prof.color,
-        // Filtra em JS: só procedures ativas e com dados válidos
-        procedures: prof.procedures
-          .filter((pp) => pp.procedure != null && pp.procedure.isActive)
-          .map((pp) => ({
-            id: pp.procedure.id,
-            name: pp.procedure.name,
-            durationMinutes: pp.procedure.durationMinutes,
-            priceCents: pp.procedure.priceCents,
-            preparationInstructions: pp.procedure.preparationInstructions,
-            color: pp.procedure.color,
-          })),
-      }))
+      .map((prof) => {
+        const ratingData = ratingMap.get(prof.id)
+        return {
+          id: prof.id,
+          name: prof.name,
+          specialty: prof.specialty,
+          bio: prof.bio,
+          avatarUrl: prof.avatarUrl,
+          color: prof.color,
+          birthDate: prof.birthDate ? prof.birthDate.toISOString().slice(0, 10) : null,
+          rating: ratingData?.rating ?? null,
+          ratingCount: ratingData?.ratingCount ?? 0,
+          // Filtra em JS: só procedures ativas e com dados válidos
+          procedures: prof.procedures
+            .filter((pp) => pp.procedure != null && pp.procedure.isActive)
+            .map((pp) => ({
+              id: pp.procedure.id,
+              name: pp.procedure.name,
+              durationMinutes: pp.procedure.durationMinutes,
+              priceCents: pp.procedure.priceCents,
+              preparationInstructions: pp.procedure.preparationInstructions,
+              color: pp.procedure.color,
+            })),
+        }
+      })
       // Exclui profissionais sem procedimento ativo vinculado
       .filter((p) => p.procedures.length > 0)
 

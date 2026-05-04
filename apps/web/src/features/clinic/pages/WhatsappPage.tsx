@@ -183,13 +183,28 @@ function ConnectionTab({ config, refetch }: { config: WhatsappConfig; refetch: (
   const [testResult,   setTestResult]   = useState<{ ok: boolean; msg: string } | null>(null)
   const [dirty,        setDirty]        = useState(false)
 
-  // Sync quando config muda
+  // Sync quando config muda (vindo do servidor)
   useEffect(() => {
     setEnabled(config.whatsappEnabled)
     setInstanceId(config.zApiInstanceId ?? '')
     setReminder(config.reminderHoursBefore)
     setDirty(false)
   }, [config.whatsappEnabled, config.zApiInstanceId, config.reminderHoursBefore])
+
+  // Mutation exclusiva para o toggle — auto-salva ao mudar
+  const toggleMutation = useMutation({
+    mutationFn: (value: boolean) => whatsappApi.saveConfig({
+      whatsappEnabled: value,
+    }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['whatsapp-config'] })
+    },
+  })
+
+  function handleToggle(value: boolean) {
+    setEnabled(value)
+    toggleMutation.mutate(value)
+  }
 
   const saveMutation = useMutation({
     mutationFn: () => whatsappApi.saveConfig({
@@ -251,7 +266,7 @@ function ConnectionTab({ config, refetch }: { config: WhatsappConfig; refetch: (
               : 'Ative o toggle para começar a configurar.'}
           </p>
         </div>
-        <Toggle checked={enabled} onChange={(v) => { setEnabled(v); mark() }} />
+        <Toggle checked={enabled} onChange={handleToggle} disabled={toggleMutation.isPending} />
       </div>
 
       {/* ── Aviso: conectar WhatsApp via QR Code ─────────────────────────── */}
@@ -300,7 +315,7 @@ function ConnectionTab({ config, refetch }: { config: WhatsappConfig; refetch: (
       )}
 
       {/* Credenciais Z-API */}
-      <div style={{ ...cardStyle, opacity: enabled ? 1 : 0.5, pointerEvents: enabled ? 'auto' : 'none' }}>
+      <div style={{ ...cardStyle, opacity: enabled ? 1 : 0.6, pointerEvents: enabled ? 'auto' : 'none' }}>
         <h3 style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 700, color: '#1a2530' }}>
           Credenciais Z-API
         </h3>
@@ -425,22 +440,24 @@ function ConnectionTab({ config, refetch }: { config: WhatsappConfig; refetch: (
           </div>
         </div>
 
-        <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-          <button
-            onClick={() => saveMutation.mutate()}
-            disabled={!dirty || saveMutation.isPending}
-            style={{
-              padding: '9px 20px', borderRadius: '10px', border: 'none',
-              background: dirty ? 'var(--color-primary)' : '#e2e8f0',
-              color: dirty ? '#fff' : '#94a3b8',
-              fontSize: '13.5px', fontWeight: 600, cursor: !dirty ? 'not-allowed' : 'pointer',
-              fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
-              opacity: saveMutation.isPending ? 0.7 : 1,
-            }}
-          >
-            {saveMutation.isPending ? 'Salvando...' : saveMutation.isSuccess && !dirty ? '✓ Salvo' : 'Salvar configuração'}
-          </button>
-        </div>
+      </div>
+
+      {/* Botão salvar credenciais — sempre visível */}
+      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginBottom: '16px' }}>
+        <button
+          onClick={() => saveMutation.mutate()}
+          disabled={!dirty || saveMutation.isPending}
+          style={{
+            padding: '9px 20px', borderRadius: '10px', border: 'none',
+            background: dirty ? 'var(--color-primary)' : '#e2e8f0',
+            color: dirty ? '#fff' : '#94a3b8',
+            fontSize: '13.5px', fontWeight: 600, cursor: !dirty ? 'not-allowed' : 'pointer',
+            fontFamily: 'var(--font-sans)', transition: 'all 0.15s',
+            opacity: saveMutation.isPending ? 0.7 : 1,
+          }}
+        >
+          {saveMutation.isPending ? 'Salvando...' : saveMutation.isSuccess && !dirty ? '✓ Salvo' : 'Salvar credenciais'}
+        </button>
       </div>
 
       {/* Teste de conexão */}

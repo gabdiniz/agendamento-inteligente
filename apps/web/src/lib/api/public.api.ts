@@ -32,6 +32,9 @@ export interface PublicProfessional {
   bio: string | null
   avatarUrl: string | null
   color: string
+  birthDate: string | null   // "YYYY-MM-DD"
+  rating: number | null      // média 1–5
+  ratingCount: number
   procedures: PublicProcedure[]
 }
 

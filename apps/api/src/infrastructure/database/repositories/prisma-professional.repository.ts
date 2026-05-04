@@ -26,6 +26,7 @@ const professionalWithProceduresSelect = {
   bio: true,
   avatarUrl: true,
   color: true,
+  birthDate: true,
   isActive: true,
   createdAt: true,
   updatedAt: true,
@@ -42,6 +43,7 @@ function mapWithProcedures(raw: {
   bio: string | null
   avatarUrl: string | null
   color: string | null
+  birthDate: Date | null
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -55,6 +57,7 @@ function mapWithProcedures(raw: {
     bio: raw.bio,
     avatarUrl: raw.avatarUrl,
     color: raw.color,
+    birthDate: raw.birthDate,
     isActive: raw.isActive,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
@@ -75,6 +78,8 @@ export class PrismaProfessionalRepository implements IProfessionalRepository {
         bio: data.bio ?? null,
         color: data.color ?? null,
         userId: data.userId ?? null,
+        avatarUrl: data.avatarUrl ?? null,
+        birthDate: data.birthDate ? new Date(data.birthDate) : null,
       },
       select: professionalWithProceduresSelect,
     })
@@ -124,11 +129,13 @@ export class PrismaProfessionalRepository implements IProfessionalRepository {
 
   async update(id: string, data: UpdateProfessionalData): Promise<ProfessionalWithProcedures> {
     const updateData: Record<string, unknown> = {}
-    if (data.name !== undefined) updateData['name'] = data.name
+    if (data.name !== undefined)      updateData['name']      = data.name
     if (data.specialty !== undefined) updateData['specialty'] = data.specialty
-    if (data.bio !== undefined) updateData['bio'] = data.bio
-    if (data.color !== undefined) updateData['color'] = data.color
-    if (data.userId !== undefined) updateData['userId'] = data.userId
+    if (data.bio !== undefined)       updateData['bio']       = data.bio
+    if (data.color !== undefined)     updateData['color']     = data.color
+    if (data.userId !== undefined)    updateData['userId']    = data.userId
+    if (data.avatarUrl !== undefined) updateData['avatarUrl'] = data.avatarUrl
+    if (data.birthDate !== undefined) updateData['birthDate'] = data.birthDate ? new Date(data.birthDate) : null
 
     const raw = await this.prisma.professional.update({
       where: { id },
@@ -144,8 +151,8 @@ export class PrismaProfessionalRepository implements IProfessionalRepository {
       data: { isActive },
       select: {
         id: true, userId: true, name: true, specialty: true,
-        bio: true, avatarUrl: true, color: true, isActive: true,
-        createdAt: true, updatedAt: true,
+        bio: true, avatarUrl: true, color: true, birthDate: true,
+        isActive: true, createdAt: true, updatedAt: true,
       },
     })
   }

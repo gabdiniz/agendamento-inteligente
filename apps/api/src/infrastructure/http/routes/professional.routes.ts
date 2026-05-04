@@ -65,9 +65,26 @@ export const professionalRoutes: FastifyPluginAsync = async (app) => {
     const id = uuidSchema.parse(params['id'])
     const repo = new PrismaProfessionalRepository(request.tenantPrisma!)
 
-    const professional = await new GetProfessionalUseCase(repo).execute(id)
+    const [professional, ratingAgg] = await Promise.all([
+      new GetProfessionalUseCase(repo).execute(id),
+      request.tenantPrisma!.appointmentEvaluation.aggregate({
+        where: { professionalId: id, rating: { not: null } },
+        _avg: { rating: true },
+        _count: { rating: true },
+      }),
+    ])
 
-    return reply.status(200).send({ success: true, data: professional })
+    return reply.status(200).send({
+      success: true,
+      data: {
+        ...professional,
+        birthDate: professional.birthDate
+          ? (professional.birthDate as Date).toISOString().slice(0, 10)
+          : null,
+        rating: ratingAgg._avg.rating ?? null,
+        ratingCount: ratingAgg._count.rating,
+      },
+    })
   })
 
   // ─── POST / ───────────────────────────────────────────────

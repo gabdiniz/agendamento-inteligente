@@ -6,8 +6,10 @@ interface CreateProfessionalInput {
   specialty?: string
   bio?: string
   color?: string
-  userId?: string       // vínculo opcional com usuário
-  procedureIds?: string[] // procedures a linkar imediatamente
+  userId?: string          // vínculo opcional com usuário
+  avatarUrl?: string | null
+  birthDate?: string | null
+  procedureIds?: string[]  // procedures a linkar imediatamente
 }
 
 export class CreateProfessionalUseCase {
@@ -15,11 +17,13 @@ export class CreateProfessionalUseCase {
 
   async execute(input: CreateProfessionalInput): Promise<ProfessionalWithProcedures> {
     const professional = await this.professionalRepo.create({
-      name: input.name,
+      name:      input.name,
       specialty: input.specialty,
-      bio: input.bio,
-      color: input.color,
-      userId: input.userId,
+      bio:       input.bio,
+      color:     input.color,
+      userId:    input.userId,
+      avatarUrl: input.avatarUrl ?? null,
+      birthDate: input.birthDate ?? null,
     })
 
     if (input.procedureIds && input.procedureIds.length > 0) {

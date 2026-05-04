@@ -17,7 +17,7 @@ Este documento define exatamente como fazer isso — sem improvisar, sem inventa
 | Item | Valor |
 |---|---|
 | IP local | 192.168.15.232 |
-| IP público | 177.197.222.116 *(dinâmico — confirmar antes de usar)* |
+| IP público | 177.197.219.173 *(dinâmico — confirmar antes de usar)* |
 | Usuário SSH | `newronix` |
 | Autenticação | **Chave SSH apenas** — senha não funciona |
 | Chave privada | `~/.ssh/gabriel` ou conforme configurado |

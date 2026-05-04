@@ -11,6 +11,7 @@ export interface ProfessionalRecord {
   bio: string | null
   avatarUrl: string | null
   color: string | null
+  birthDate: Date | null
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -26,6 +27,8 @@ export interface CreateProfessionalData {
   bio?: string
   color?: string
   userId?: string
+  avatarUrl?: string | null
+  birthDate?: string | null
 }
 
 export interface UpdateProfessionalData {
@@ -34,6 +37,8 @@ export interface UpdateProfessionalData {
   bio?: string | null
   color?: string | null
   userId?: string | null
+  avatarUrl?: string | null
+  birthDate?: string | null
 }
 
 export interface ListProfessionalsParams {

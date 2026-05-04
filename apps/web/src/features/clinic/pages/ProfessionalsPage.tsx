@@ -5,31 +5,51 @@ import { Link, useParams } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { professionalsApi, type Professional } from '@/lib/api/clinic.api'
 import { clinicTokens } from '@/lib/api/client'
+import { ProfessionalProfileModal } from '../components/ProfessionalProfileModal'
 
 function ProfessionalRow({
   prof,
   slug,
   onToggle,
   isToggling,
+  onViewProfile,
 }: {
   prof: Professional
   slug: string
   onToggle: (p: Professional) => void
   isToggling: boolean
+  onViewProfile: (p: Professional) => void
 }) {
+  const base = (import.meta.env.VITE_API_URL as string) ?? ''
+
   return (
-    <tr style={{ borderBottom: '1px solid #f0f2f5' }}>
+    <tr
+      style={{ borderBottom: '1px solid #f0f2f5', cursor: 'pointer' }}
+      onClick={() => onViewProfile(prof)}
+    >
       <td style={{ padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Avatar colorido */}
-          <div style={{
-            width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
-            background: prof.color ?? 'var(--color-primary)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontSize: '14px', fontWeight: 700,
-          }}>
-            {prof.name.charAt(0).toUpperCase()}
-          </div>
+          {/* Avatar */}
+          {prof.avatarUrl ? (
+            <img
+              src={`${base}${prof.avatarUrl}`}
+              alt={prof.name}
+              style={{
+                width: '36px', height: '36px', borderRadius: '50%',
+                objectFit: 'cover', flexShrink: 0,
+                border: '1.5px solid #f0f2f5',
+              }}
+            />
+          ) : (
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+              background: prof.color ?? 'var(--color-primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontSize: '14px', fontWeight: 700,
+            }}>
+              {prof.name.charAt(0).toUpperCase()}
+            </div>
+          )}
           <div>
             <p style={{ margin: '0 0 2px', fontSize: '13px', fontWeight: 600, color: '#1a2530' }}>
               {prof.name}
@@ -50,7 +70,7 @@ function ProfessionalRow({
           {prof.isActive ? 'Ativo' : 'Inativo'}
         </span>
       </td>
-      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+      <td style={{ padding: '14px 16px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
           {/* Horários de trabalho */}
           <Link
@@ -110,6 +130,7 @@ export function ProfessionalsPage() {
   const slug = params.slug ?? clinicTokens.getSlug() ?? ''
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+  const [profileId, setProfileId] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['professionals', { page }],
@@ -216,6 +237,7 @@ export function ProfessionalsPage() {
                     slug={slug}
                     onToggle={(prof) => toggleMutation.mutate(prof)}
                     isToggling={togglingId === p.id}
+                    onViewProfile={(prof) => setProfileId(prof.id)}
                   />
                 ))}
               </tbody>
@@ -261,6 +283,14 @@ export function ProfessionalsPage() {
           </>
         )}
       </div>
+
+      {/* ── Profile Modal ──────────────────────────────────────────────── */}
+      {profileId && (
+        <ProfessionalProfileModal
+          professionalId={profileId}
+          onClose={() => setProfileId(null)}
+        />
+      )}
     </div>
   )
 }

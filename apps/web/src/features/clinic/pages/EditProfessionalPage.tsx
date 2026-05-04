@@ -19,6 +19,7 @@ const PRESET_COLORS = [
 const schema = z.object({
   name:      z.string().min(2, 'Nome obrigatório'),
   specialty: z.string().optional(),
+  birthDate: z.string().optional(),
   bio:       z.string().optional(),
 })
 
@@ -76,7 +77,7 @@ export function EditProfessionalPage() {
 
   useEffect(() => {
     if (prof) {
-      reset({ name: prof.name, specialty: prof.specialty ?? '', bio: prof.bio ?? '' })
+      reset({ name: prof.name, specialty: prof.specialty ?? '', bio: prof.bio ?? '', birthDate: prof.birthDate ?? '' })
       setSelectedColor(prof.color ?? PRESET_COLORS[0]!)
       setSelectedProcIds((prof.procedures ?? []).map((p) => p.id))
       if (prof.avatarUrl) {
@@ -137,6 +138,7 @@ export function EditProfessionalPage() {
         bio:       values.bio       || undefined,
         color:     selectedColor,
         avatarUrl: avatarUrl ?? null,
+        birthDate: values.birthDate || null,
       })
       // Sincroniza procedimentos (substitui todos os vínculos)
       await professionalsApi.linkProcedures(id, selectedProcIds)
@@ -352,6 +354,16 @@ export function EditProfessionalPage() {
             <input
               placeholder="Fisioterapia, Nutrição..."
               {...register('specialty')}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Data de nascimento */}
+          <div>
+            <label style={labelStyle}>Data de nascimento (opcional)</label>
+            <input
+              type="date"
+              {...register('birthDate')}
               style={inputStyle}
             />
           </div>

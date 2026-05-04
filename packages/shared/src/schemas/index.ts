@@ -83,6 +83,7 @@ export const createProfessionalSchema = z.object({
     .optional(),
   userId: z.string().uuid().optional(),
   avatarUrl: z.string().optional().nullable(),  // URL relativa (/uploads/avatars/...)
+  birthDate: z.string().date().optional().nullable(), // "YYYY-MM-DD"
 })
 
 export const updateProfessionalSchema = createProfessionalSchema.partial()

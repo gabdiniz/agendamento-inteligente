@@ -226,9 +226,6 @@ function SidebarContent({
           <p style={{ fontSize: '13px', fontWeight: 700, color: '#1a2530', margin: 0, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user?.tenantName ?? 'MyAgendix'}
           </p>
-          <p style={{ fontSize: '11px', color: '#8a99a6', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            /{slug}
-          </p>
         </div>
       </div>
 
@@ -690,3 +687,4 @@ export function ClinicLayout() {
     </div>
   )
 }
+                                                                                                                                                                               

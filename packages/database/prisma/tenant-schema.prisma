@@ -179,16 +179,17 @@ model RefreshToken {
 }
 
 model Professional {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String?  @unique @db.Uuid
-  name      String   @db.VarChar(255)
-  specialty String?  @db.VarChar(255)
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?   @unique @db.Uuid
+  name      String    @db.VarChar(255)
+  specialty String?   @db.VarChar(255)
   bio       String?
   avatarUrl String?
-  color     String?  @db.VarChar(7)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+  color     String?   @db.VarChar(7)
+  birthDate DateTime? @db.Date
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  updatedAt DateTime  @updatedAt @db.Timestamptz
 
   user User? @relation(fields: [userId], references: [id])
 

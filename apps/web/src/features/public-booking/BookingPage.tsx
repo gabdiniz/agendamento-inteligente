@@ -20,6 +20,7 @@ import {
 import { usePatientAuthStore } from '@/stores/patient-auth.store'
 import { patientTokens } from '@/lib/api/patient-client'
 import { patientPortalApi } from '@/lib/api/patient-auth.api'
+import { ProfessionalDetailModal } from './ProfessionalDetailModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -307,6 +308,8 @@ function Step1({
   onSelect: (prof: PublicProfessional, proc: PublicProcedure) => void
 }) {
   const [selectedProf, setSelectedProf] = useState<string | null>(null)
+  const [detailProf, setDetailProf]     = useState<PublicProfessional | null>(null)
+  const base = (import.meta.env.VITE_API_URL as string) ?? ''
 
   if (loading) {
     return (
@@ -367,36 +370,64 @@ function Step1({
               }}
             >
               {/* Cabeçalho do profissional */}
-              <button
-                type="button"
-                onClick={() => setSelectedProf(isOpen ? null : prof.id)}
+              <div
                 style={{
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '14px',
                   padding: '14px 16px',
-                  background: 'transparent',
-                  border: 'none',
                   cursor: 'pointer',
-                  textAlign: 'left',
                 }}
+                onClick={() => setSelectedProf(isOpen ? null : prof.id)}
               >
-                <div style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '50%',
-                  background: `color-mix(in srgb, var(--color-primary) 15%, white)`,
-                  color: 'var(--color-primary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '16px',
-                  fontWeight: 700,
-                  flexShrink: 0,
-                }}>
-                  {prof.name.charAt(0).toUpperCase()}
-                </div>
+                {/* Avatar — clique abre o modal de perfil */}
+                {prof.avatarUrl ? (
+                  <img
+                    src={`${base}${prof.avatarUrl}`}
+                    alt={prof.name}
+                    title="Ver perfil"
+                    onClick={(e) => { e.stopPropagation(); setDetailProf(prof) }}
+                    style={{
+                      width: '42px', height: '42px', borderRadius: '50%',
+                      objectFit: 'cover', flexShrink: 0,
+                      border: '2px solid #ece9e4', cursor: 'pointer',
+                      transition: 'transform 0.15s, box-shadow 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.07)'
+                      e.currentTarget.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)'
+                      e.currentTarget.style.boxShadow = 'none'
+                    }}
+                  />
+                ) : (
+                  <div
+                    title="Ver perfil"
+                    onClick={(e) => { e.stopPropagation(); setDetailProf(prof) }}
+                    style={{
+                      width: '42px', height: '42px', borderRadius: '50%',
+                      background: `color-mix(in srgb, var(--color-primary) 15%, white)`,
+                      color: 'var(--color-primary)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '16px', fontWeight: 700, flexShrink: 0,
+                      cursor: 'pointer',
+                      transition: 'transform 0.15s, box-shadow 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.transform = 'scale(1.07)'
+                      ;(e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent)'
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.transform = 'scale(1)'
+                      ;(e.currentTarget as HTMLElement).style.boxShadow = 'none'
+                    }}
+                  >
+                    {prof.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: '14px', fontWeight: 600, color: '#1a1614', margin: 0 }}>{prof.name}</p>
                   {prof.specialty && (
@@ -415,7 +446,7 @@ function Step1({
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
-              </button>
+              </div>
 
               {/* Procedimentos */}
               {isOpen && (
@@ -481,6 +512,14 @@ function Step1({
           )
         })}
       </div>
+
+      {/* ── Professional detail modal ────────────────────────────────── */}
+      {detailProf && (
+        <ProfessionalDetailModal
+          prof={detailProf}
+          onClose={() => setDetailProf(null)}
+        />
+      )}
     </div>
   )
 }
@@ -1341,7 +1380,7 @@ export function BookingPage() {
                 src={logoSrc}
                 alt={clinicInfo?.name ?? 'Logo da clínica'}
                 style={{
-                  height: '52px', maxWidth: '180px',
+                  height: '88px', maxWidth: '260px',
                   objectFit: 'contain',
                   margin: '0 auto 14px',
                   display: 'block',
@@ -1370,11 +1409,7 @@ export function BookingPage() {
           }}>
             {clinicInfo?.name ? clinicInfo.name : 'Agendar consulta'}
           </h1>
-          {tenantSlug && (
-            <p style={{ fontSize: '12px', color: '#b0a899', fontWeight: 500, letterSpacing: '0.04em' }}>
-              /{tenantSlug}
-            </p>
-          )}
+          {/* slug oculto intencionalmente */}
           </div>{/* /textAlign:center */}
         </div>{/* /header */}
 
@@ -1497,3 +1532,4 @@ export function BookingPage() {
     </div>
   )
 }
+                                                                                                                                               

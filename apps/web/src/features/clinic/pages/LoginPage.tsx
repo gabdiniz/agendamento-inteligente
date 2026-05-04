@@ -136,8 +136,8 @@ export function ClinicLoginPage() {
               src={logoUrl}
               alt={`Logo ${clinicInfo?.name ?? ''}`}
               style={{
-                height: '56px',
-                maxWidth: '180px',
+                height: '88px',
+                maxWidth: '260px',
                 objectFit: 'contain',
                 margin: '0 auto 14px',
                 display: 'block',
@@ -166,16 +166,7 @@ export function ClinicLoginPage() {
           }}>
             {clinicInfo?.name ? clinicInfo.name : 'Bem-vindo de volta'}
           </h1>
-          {slug && (
-            <p style={{
-              fontSize: '12px',
-              color: bannerUrl ? 'rgba(255,255,255,0.65)' : '#8a99a6',
-              fontWeight: 500,
-              letterSpacing: '0.04em',
-            }}>
-              /{slug}
-            </p>
-          )}
+          {/* slug oculto intencionalmente */}
         </div>
 
         {/* Mensagem de erro */}
@@ -201,12 +192,14 @@ export function ClinicLoginPage() {
 
         {/* Card formulário */}
         <div style={{
-          background: '#fff',
+          background: bannerUrl ? 'rgba(255,255,255,0.82)' : '#fff',
+          backdropFilter: bannerUrl ? 'blur(12px)' : 'none',
+          WebkitBackdropFilter: bannerUrl ? 'blur(12px)' : 'none',
           borderRadius: '18px',
-          border: '1px solid #e2e8ed',
+          border: bannerUrl ? '1px solid rgba(255,255,255,0.4)' : '1px solid #e2e8ed',
           padding: '28px',
           boxShadow: bannerUrl
-            ? '0 20px 60px rgba(0,0,0,0.35)'
+            ? '0 20px 60px rgba(0,0,0,0.3)'
             : '0 4px 24px rgba(0,0,0,0.08)',
         }}>
           <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -369,3 +362,4 @@ export function ClinicLoginPage() {
     </div>
   )
 }
+                         

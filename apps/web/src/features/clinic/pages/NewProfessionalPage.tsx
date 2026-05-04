@@ -19,6 +19,7 @@ const PRESET_COLORS = [
 const schema = z.object({
   name:      z.string().min(2, 'Nome obrigatório'),
   specialty: z.string().optional(),
+  birthDate: z.string().optional(),
   bio:       z.string().optional(),
 })
 
@@ -117,6 +118,7 @@ export function NewProfessionalPage() {
         bio:       values.bio       || undefined,
         color:     selectedColor,
         avatarUrl: avatarUrl ?? undefined,
+        birthDate: values.birthDate || null,
       })
       // Vincula procedimentos selecionados (se houver)
       if (selectedProcIds.length > 0) {
@@ -292,6 +294,16 @@ export function NewProfessionalPage() {
             <input
               placeholder="Fisioterapia, Nutrição..."
               {...register('specialty')}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Data de nascimento */}
+          <div>
+            <label style={labelStyle}>Data de nascimento (opcional)</label>
+            <input
+              type="date"
+              {...register('birthDate')}
               style={inputStyle}
             />
           </div>
