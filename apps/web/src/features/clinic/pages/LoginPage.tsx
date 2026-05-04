@@ -192,7 +192,7 @@ export function ClinicLoginPage() {
 
         {/* Card formulário */}
         <div style={{
-          background: bannerUrl ? 'rgba(255,255,255,0.72)' : '#fff',
+          background: bannerUrl ? 'rgba(255,255,255,0.60)' : '#fff',
           backdropFilter: bannerUrl ? 'blur(18px) saturate(0.15)' : 'none',
           WebkitBackdropFilter: bannerUrl ? 'blur(18px) saturate(0.15)' : 'none',
           borderRadius: '18px',

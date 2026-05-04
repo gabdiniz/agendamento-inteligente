@@ -1441,7 +1441,7 @@ export function BookingPage() {
         {/* Card principal */}
         <div style={bannerUrl ? {
           ...styles.card,
-          background: 'rgba(255,255,255,0.72)',
+          background: 'rgba(255,255,255,0.60)',
           backdropFilter: 'blur(18px) saturate(0.15)',
           WebkitBackdropFilter: 'blur(18px) saturate(0.15)',
           border: '1px solid rgba(255,255,255,0.4)',
