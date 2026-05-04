@@ -1219,6 +1219,11 @@ export function BookingPage() {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
   const [bookedEmail, setBookedEmail] = useState<string>('')
 
+  const BASE_URL = (import.meta.env['VITE_API_URL'] as string) ?? 'http://localhost:3333'
+  const bannerUrl = clinicInfo?.bannerUrl
+    ? (clinicInfo.bannerUrl.startsWith('http') ? clinicInfo.bannerUrl : `${BASE_URL}${clinicInfo.bannerUrl}`)
+    : null
+
   useEffect(() => {
     if (!tenantSlug) return
     Promise.all([
@@ -1309,11 +1314,28 @@ export function BookingPage() {
   }
 
   return (
-    <div style={styles.page}>
+    <div style={{
+      ...styles.page,
+      background: bannerUrl
+        ? `url("${bannerUrl}") center/cover no-repeat`
+        : '#faf8f5',
+    }}>
+      {/* Overlay escuro sobre o banner */}
+      {bannerUrl && (
+        <div aria-hidden style={{
+          position: 'fixed' as const,
+          inset: 0,
+          background: 'rgba(0,0,0,0.45)',
+          backdropFilter: 'blur(1px)',
+          zIndex: 0,
+        }} />
+      )}
+
       {/* Grain texture overlay */}
       <div style={styles.grain} aria-hidden />
 
-      {/* Decoração de fundo — círculos suaves */}
+      {/* Decoração de fundo — círculos suaves (apenas sem banner) */}
+      {!bannerUrl && (<>
       <div aria-hidden style={{
         position: 'fixed',
         top: '-120px',
@@ -1336,6 +1358,7 @@ export function BookingPage() {
         pointerEvents: 'none',
         zIndex: 0,
       }} />
+      </>)}
 
       <div style={styles.container}>
         {/* Header */}
@@ -1380,10 +1403,11 @@ export function BookingPage() {
                 src={logoSrc}
                 alt={clinicInfo?.name ?? 'Logo da clínica'}
                 style={{
-                  height: '88px', maxWidth: '260px',
+                  height: '108px', maxWidth: '260px',
                   objectFit: 'contain',
                   margin: '0 auto 14px',
                   display: 'block',
+                  filter: bannerUrl ? 'drop-shadow(0 2px 8px rgba(0,0,0,0.35))' : 'none',
                 }}
               />
             ) : (
@@ -1401,11 +1425,12 @@ export function BookingPage() {
           })()}
           <h1 style={{
             fontFamily: 'var(--font-display)',
-            fontSize: '28px',
+            fontSize: '26px',
             fontStyle: 'italic',
-            color: '#1a1614',
+            color: bannerUrl ? '#fff' : '#1a1614',
             margin: '0 0 6px',
             lineHeight: 1.2,
+            textShadow: bannerUrl ? '0 1px 4px rgba(0,0,0,0.4)' : 'none',
           }}>
             {clinicInfo?.name ? clinicInfo.name : 'Agendar consulta'}
           </h1>
@@ -1414,7 +1439,14 @@ export function BookingPage() {
         </div>{/* /header */}
 
         {/* Card principal */}
-        <div style={styles.card}>
+        <div style={bannerUrl ? {
+          ...styles.card,
+          background: 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255,255,255,0.4)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        } : styles.card}>
           {step < 4 && <StepBar current={step} />}
 
           {/* Resumo da seleção — steps 2 e 3 */}
@@ -1499,37 +1531,3 @@ export function BookingPage() {
               procedureId={selectedProc.id}
               onSelect={handleSelectSlot}
               onBack={() => setStep(1)}
-            />
-          )}
-          {step === 3 && selectedProf && selectedProc && selectedSlot && (
-            <Step3
-              onSubmit={handleConfirm}
-              onBack={() => setStep(2)}
-              loading={booking}
-              loggedInPatient={loggedInPatient}
-            />
-          )}
-          {step === 4 && selectedProf && selectedProc && selectedSlot && (
-            <Step4
-              professional={selectedProf}
-              procedure={selectedProc}
-              date={selectedDate}
-              slot={selectedSlot}
-              slug={tenantSlug}
-              patientEmail={bookedEmail}
-              isLoggedIn={isPatientLoggedIn}
-              clinicInfo={clinicInfo}
-              onNew={handleNew}
-            />
-          )}
-        </div>
-
-        {/* Footer */}
-        <p style={{ textAlign: 'center', fontSize: '11px', color: '#c0b4aa', marginTop: '24px', letterSpacing: '0.03em' }}>
-          Powered by <strong style={{ color: '#8a7f75' }}>MyAgendix</strong>
-        </p>
-      </div>
-    </div>
-  )
-}
-                                                                                                                                               

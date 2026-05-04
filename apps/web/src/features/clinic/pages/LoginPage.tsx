@@ -136,7 +136,7 @@ export function ClinicLoginPage() {
               src={logoUrl}
               alt={`Logo ${clinicInfo?.name ?? ''}`}
               style={{
-                height: '88px',
+                height: '108px',
                 maxWidth: '260px',
                 objectFit: 'contain',
                 margin: '0 auto 14px',
@@ -158,7 +158,7 @@ export function ClinicLoginPage() {
           )}
           <h1 style={{
             fontFamily: 'var(--font-display)',
-            fontSize: '22px',
+            fontSize: '26px',
             fontStyle: 'italic',
             color: bannerUrl ? '#fff' : '#1a2530',
             margin: '0 0 4px',
@@ -192,7 +192,7 @@ export function ClinicLoginPage() {
 
         {/* Card formulário */}
         <div style={{
-          background: bannerUrl ? 'rgba(255,255,255,0.82)' : '#fff',
+          background: bannerUrl ? 'rgba(255,255,255,0.88)' : '#fff',
           backdropFilter: bannerUrl ? 'blur(12px)' : 'none',
           WebkitBackdropFilter: bannerUrl ? 'blur(12px)' : 'none',
           borderRadius: '18px',
@@ -362,4 +362,4 @@ export function ClinicLoginPage() {
     </div>
   )
 }
-                         
+                        

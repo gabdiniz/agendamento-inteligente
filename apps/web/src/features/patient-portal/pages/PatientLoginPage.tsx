@@ -60,6 +60,8 @@ export function PatientLoginPage() {
   const [focused, setFocused] = useState<string | null>(null)
   const [clinicInfo, setClinicInfo] = useState<ClinicInfo | null>(null)
 
+  const bannerUrl = resolveUrl(clinicInfo?.bannerUrl)
+
   useEffect(() => {
     if (!slug) return
     publicApi.getClinicInfo(slug)
@@ -94,7 +96,9 @@ export function PatientLoginPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#faf8f5',
+      background: bannerUrl
+        ? `url("${bannerUrl}") center/cover no-repeat`
+        : '#faf8f5',
       fontFamily: 'var(--font-sans)',
       display: 'flex',
       alignItems: 'center',
@@ -103,6 +107,17 @@ export function PatientLoginPage() {
       position: 'relative' as const,
       overflow: 'hidden' as const,
     }}>
+      {/* Overlay escuro sobre o banner */}
+      {bannerUrl && (
+        <div aria-hidden style={{
+          position: 'fixed' as const,
+          inset: 0,
+          background: 'rgba(0,0,0,0.45)',
+          backdropFilter: 'blur(1px)',
+          zIndex: 0,
+        }} />
+      )}
+
       {/* Grain texture */}
       <div aria-hidden style={{
         position: 'fixed' as const,
@@ -112,7 +127,8 @@ export function PatientLoginPage() {
         zIndex: 0,
       }} />
 
-      {/* Círculos decorativos */}
+      {/* Círculos decorativos (apenas sem banner) */}
+      {!bannerUrl && (<>
       <div aria-hidden style={{
         position: 'fixed' as const, top: '-120px', right: '-120px',
         width: '400px', height: '400px', borderRadius: '50%',
@@ -125,6 +141,7 @@ export function PatientLoginPage() {
         background: 'color-mix(in srgb, var(--color-primary) 4%, transparent)',
         pointerEvents: 'none' as const, zIndex: 0,
       }} />
+      </>)}
 
       {/* Conteúdo */}
       <div style={{
@@ -141,11 +158,12 @@ export function PatientLoginPage() {
               src={resolveUrl(clinicInfo!.logoUrl)!}
               alt={clinicInfo?.name ?? 'Logo da clínica'}
               style={{
-                height: '52px',
-                maxWidth: '160px',
+                height: '108px',
+                maxWidth: '260px',
                 objectFit: 'contain',
                 margin: '0 auto 14px',
                 display: 'block',
+                filter: bannerUrl ? 'drop-shadow(0 2px 8px rgba(0,0,0,0.35))' : 'none',
               }}
             />
           ) : (
@@ -165,20 +183,17 @@ export function PatientLoginPage() {
             fontFamily: 'var(--font-display)',
             fontSize: '26px',
             fontStyle: 'italic',
-            color: '#1a1614',
+            color: bannerUrl ? '#fff' : '#1a1614',
             margin: '0 0 6px',
             lineHeight: 1.2,
+            textShadow: bannerUrl ? '0 1px 4px rgba(0,0,0,0.4)' : 'none',
           }}>
-            {clinicInfo?.name ? `Olá, ${clinicInfo.name.split(' ')[0]}` : 'Minha Conta'}
+            {clinicInfo?.name ? clinicInfo.name : 'Minha Conta'}
           </h1>
-          <p style={{ fontSize: '13px', color: '#b0a899', margin: 0, fontWeight: 500 }}>
+          <p style={{ fontSize: '13px', color: bannerUrl ? 'rgba(255,255,255,0.8)' : '#b0a899', margin: 0, fontWeight: 500 }}>
             Acesse seus agendamentos
           </p>
-          {slug && (
-            <p style={{ fontSize: '11px', color: '#c8c0b8', fontWeight: 500, letterSpacing: '0.04em', marginTop: '4px' }}>
-              /{slug}
-            </p>
-          )}
+          {/* slug oculto intencionalmente */}
         </div>
 
         {/* Erro de servidor */}
@@ -204,11 +219,13 @@ export function PatientLoginPage() {
 
         {/* Card formulário */}
         <div style={{
-          background: '#ffffff',
+          background: bannerUrl ? 'rgba(255,255,255,0.88)' : '#ffffff',
+          backdropFilter: bannerUrl ? 'blur(12px)' : 'none',
+          WebkitBackdropFilter: bannerUrl ? 'blur(12px)' : 'none',
           borderRadius: '20px',
-          border: '1px solid #ece9e4',
+          border: bannerUrl ? '1px solid rgba(255,255,255,0.4)' : '1px solid #ece9e4',
           padding: '28px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.07)',
+          boxShadow: bannerUrl ? '0 20px 60px rgba(0,0,0,0.3)' : '0 2px 4px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.07)',
         }}>
           <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* E-mail */}
@@ -343,29 +360,4 @@ export function PatientLoginPage() {
             to="/$slug"
             params={{ slug }}
             style={{
-              fontSize: '13px',
-              color: '#8a7f75',
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Voltar para agendamento
-          </Link>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(12px) }
-          to   { opacity: 1; transform: translateY(0) }
-        }
-        @keyframes spin { to { transform: rotate(360deg) } }
-      `}</style>
-    </div>
-  )
-}
+              fo
