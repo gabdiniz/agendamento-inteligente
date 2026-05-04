@@ -231,14 +231,21 @@ ssh -i "$SSH_KEY" $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
     sleep 5
   done
 
-  # Rodar migrations via container da API
-  # O runner image instala prisma globalmente — usa direto
+  # 1. Migrations do schema global (Tenant, Plan, SuperAdminUser, etc.)
   sudo docker exec \
     -w /app \
     myagendix-dev-api \
     prisma migrate deploy \
       --schema /app/packages/database/prisma/schema.prisma \
-  || echo 'Migrations: verifique manualmente se necessário'
+  || echo 'Migrations globais: verifique manualmente se necessário'
+
+  # 2. Atualiza schemas de TODOS os tenants (tenant-schema.prisma via db push)
+  #    Necessário sempre que um modelo tenant ganhar campos novos (ex: birthDate)
+  sudo docker exec \
+    -e PRISMA_BIN=prisma \
+    myagendix-dev-api \
+    node /app/packages/database/dist/migrate-tenant-schemas.js \
+  || echo 'Tenant schema migrations: verifique manualmente se necessário'
 "
 
 # ── Validar nginx e recarregar ────────────────────────────────────────────────
@@ -311,11 +318,4 @@ echo ""
 echo -e "${GREEN}${BOLD}════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}${BOLD}  ✅  Deploy DEV concluído com sucesso!${NC}"
 echo -e "${GREEN}${BOLD}════════════════════════════════════════════════════${NC}"
-echo ""
-echo -e "  🌐 URL:   ${BOLD}http://${APP_DOMAIN}${NC}"
-echo -e "  🖥  API:   http://192.168.15.232:3334"
-echo -e "  🔑 Admin: http://${APP_DOMAIN}/super-admin/login"
-echo ""
-echo -e "  ${YELLOW}Logs:${NC} ssh -i ~/.ssh/gabriel newronix@192.168.15.232"
-echo -e "         sudo docker compose -f $REMOTE_DIR/docker-compose.yml logs -f"
-echo ""
+ech
