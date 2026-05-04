@@ -219,13 +219,13 @@ export function PatientLoginPage() {
 
         {/* Card formulário */}
         <div style={{
-          background: bannerUrl ? 'rgba(255,255,255,0.88)' : '#ffffff',
-          backdropFilter: bannerUrl ? 'blur(12px)' : 'none',
-          WebkitBackdropFilter: bannerUrl ? 'blur(12px)' : 'none',
+          background: bannerUrl ? 'rgba(255,255,255,0.72)' : '#ffffff',
+          backdropFilter: bannerUrl ? 'blur(18px) saturate(0.15)' : 'none',
+          WebkitBackdropFilter: bannerUrl ? 'blur(18px) saturate(0.15)' : 'none',
           borderRadius: '20px',
-          border: bannerUrl ? '1px solid rgba(255,255,255,0.4)' : '1px solid #ece9e4',
+          border: bannerUrl ? '1px solid rgba(255,255,255,0.5)' : '1px solid #ece9e4',
           padding: '28px',
-          boxShadow: bannerUrl ? '0 20px 60px rgba(0,0,0,0.3)' : '0 2px 4px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.07)',
+          boxShadow: bannerUrl ? '0 20px 60px rgba(0,0,0,0.25)' : '0 2px 4px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.07)',
         }}>
           <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* E-mail */}
@@ -359,5 +359,4 @@ export function PatientLoginPage() {
           <Link
             to="/$slug"
             params={{ slug }}
-            style={{
-              fo
+      

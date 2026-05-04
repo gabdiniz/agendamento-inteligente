@@ -192,9 +192,9 @@ export function ClinicLoginPage() {
 
         {/* Card formulário */}
         <div style={{
-          background: bannerUrl ? 'rgba(255,255,255,0.88)' : '#fff',
-          backdropFilter: bannerUrl ? 'blur(12px)' : 'none',
-          WebkitBackdropFilter: bannerUrl ? 'blur(12px)' : 'none',
+          background: bannerUrl ? 'rgba(255,255,255,0.72)' : '#fff',
+          backdropFilter: bannerUrl ? 'blur(18px) saturate(0.15)' : 'none',
+          WebkitBackdropFilter: bannerUrl ? 'blur(18px) saturate(0.15)' : 'none',
           borderRadius: '18px',
           border: bannerUrl ? '1px solid rgba(255,255,255,0.4)' : '1px solid #e2e8ed',
           padding: '28px',
@@ -360,6 +360,3 @@ export function ClinicLoginPage() {
         @keyframes spin { to { transform: rotate(360deg) } }
       `}</style>
     </div>
-  )
-}
-                        

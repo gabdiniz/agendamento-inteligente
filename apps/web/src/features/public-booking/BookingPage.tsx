@@ -1441,9 +1441,9 @@ export function BookingPage() {
         {/* Card principal */}
         <div style={bannerUrl ? {
           ...styles.card,
-          background: 'rgba(255,255,255,0.88)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          background: 'rgba(255,255,255,0.72)',
+          backdropFilter: 'blur(18px) saturate(0.15)',
+          WebkitBackdropFilter: 'blur(18px) saturate(0.15)',
           border: '1px solid rgba(255,255,255,0.4)',
           boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
         } : styles.card}>
@@ -1530,4 +1530,4 @@ export function BookingPage() {
               professionalId={selectedProf.id}
               procedureId={selectedProc.id}
               onSelect={handleSelectSlot}
-              onBack={() => setStep(1)}
+          
