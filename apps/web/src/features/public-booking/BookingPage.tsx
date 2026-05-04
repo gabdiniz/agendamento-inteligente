@@ -883,6 +883,7 @@ function Step4({
   clinicInfo: ClinicInfo | null
   onNew: () => void
 }) {
+  const base = (import.meta.env.VITE_API_URL as string) ?? ''
   const mapsUrl = clinicInfo?.address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(clinicInfo.address)}`
     : null
@@ -942,7 +943,7 @@ function Step4({
         {/* Avatar */}
         {professional.avatarUrl ? (
           <img
-            src={professional.avatarUrl}
+            src={`${base}${professional.avatarUrl}`}
             alt={professional.name}
             style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
           />
@@ -1528,6 +1529,4 @@ export function BookingPage() {
             <Step2
               slug={tenantSlug}
               professionalId={selectedProf.id}
-              procedureId={selectedProc.id}
-              onSelect={handleSelectSlot}
-          
+              procedur
