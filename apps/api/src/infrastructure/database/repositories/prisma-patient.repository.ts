@@ -272,4 +272,47 @@ export class PrismaPatientRepository implements IPatientRepository {
       data: { lastLoginAt: new Date() },
     })
   }
+
+  // ─── OTP ──────────────────────────────────────────────────────────────────
+
+  async saveOtpCode(phone: string, codeHash: string, expiresAt: Date): Promise<void> {
+    await this.prisma.patientOtpCode.create({
+      data: { phone, codeHash, expiresAt },
+    })
+  }
+
+  async findLatestOtpByPhone(phone: string): Promise<{
+    id: string
+    codeHash: string
+    expiresAt: Date
+    usedAt: Date | null
+    attempts: number
+  } | null> {
+    const row = await this.prisma.patientOtpCode.findFirst({
+      where: { phone },
+      orderBy: { createdAt: 'desc' },
+    })
+    if (!row) return null
+    return {
+      id:        row.id,
+      codeHash:  row.codeHash,
+      expiresAt: row.expiresAt,
+      usedAt:    row.usedAt,
+      attempts:  row.attempts,
+    }
+  }
+
+  async markOtpUsed(id: string): Promise<void> {
+    await this.prisma.patientOtpCode.update({
+      where: { id },
+      data: { usedAt: new Date() },
+    })
+  }
+
+  async incrementOtpAttempts(id: string): Promise<void> {
+    await this.prisma.patientOtpCode.update({
+      where: { id },
+      data: { attempts: { increment: 1 } },
+    })
+  }
 }

@@ -1,74 +1,61 @@
-// ─── Patient Repository ───────────────────────────────────────────────────────
-//
-// Opera no schema do tenant via tenantPrisma.
-// phone é o identificador único do paciente (deduplicação no cadastro).
-// birthDate é sempre "YYYY-MM-DD" no domínio e na resposta da API.
-// O repositório converte Date do Prisma para string antes de retornar.
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── IPatientRepository ───────────────────────────────────────────────────────
 
 export interface PatientRecord {
-  id: string
-  name: string
-  phone: string                         // único por tenant
-  email: string | null
-  birthDate: string | null              // "YYYY-MM-DD"
-  gender: string | null                 // MALE | FEMALE | OTHER | PREFER_NOT_TO_SAY
-  city: string | null
-  preferredContactChannel: string | null // WHATSAPP | SMS | EMAIL
-  marketingOptIn: boolean
-  notes: string | null
-  source: string                        // MANUAL | PUBLIC_PAGE | INVITE
-  isActive: boolean
-  createdAt: Date
-  updatedAt: Date
+  id:          string
+  name:        string
+  email:       string | null
+  phone:       string | null
+  birthDate:   Date | null
+  gender:      string | null
+  city:        string | null
+  cpf:         string | null
+  notes:       string | null
+  isActive:    boolean
+  createdAt:   Date
+  updatedAt:   Date
+}
+
+export interface PatientAuthRecord extends PatientRecord {
+  passwordHash:           string | null
+  passwordResetToken:     string | null
+  passwordResetExpiresAt: Date | null
 }
 
 export interface CreatePatientData {
-  name: string
-  phone: string
-  email?: string
-  birthDate?: string    // "YYYY-MM-DD"
-  gender?: string
-  city?: string
-  preferredContactChannel?: string
-  marketingOptIn?: boolean
-  notes?: string
-  source?: string
+  name:      string
+  email?:    string | null
+  phone?:    string | null
+  birthDate?: Date | null
+  gender?:   string | null
+  city?:     string | null
+  cpf?:      string | null
+  notes?:    string | null
 }
 
 export interface UpdatePatientData {
-  name?: string
-  phone?: string
-  email?: string | null
-  birthDate?: string | null
-  gender?: string | null
-  city?: string | null
-  preferredContactChannel?: string | null
-  marketingOptIn?: boolean
-  notes?: string | null
+  name?:      string
+  email?:     string | null
+  phone?:     string | null
+  birthDate?: Date | null
+  gender?:    string | null
+  city?:      string | null
+  cpf?:       string | null
+  notes?:     string | null
+  isActive?:  boolean
 }
 
 export interface ListPatientsParams {
-  page: number
-  limit: number
-  search?: string     // busca em name, phone, email
+  search?:   string
+  page?:     number
+  limit?:    number
   isActive?: boolean
 }
 
 export interface PaginatedPatients {
-  data: PatientRecord[]
+  data:  PatientRecord[]
   total: number
-  page: number
+  page:  number
   limit: number
-  totalPages: number
-}
-
-// ─── Auth-specific record (inclui passwordHash — nunca exposto na API) ────────
-
-export interface PatientAuthRecord extends PatientRecord {
-  passwordHash: string | null
-  passwordResetToken: string | null
-  passwordResetExpiresAt: Date | null
 }
 
 export interface IPatientRepository {
@@ -94,4 +81,14 @@ export interface IPatientRepository {
   clearPasswordResetToken(id: string): Promise<void>
   /** Atualiza lastLoginAt para agora */
   updateLastLogin(id: string): Promise<void>
+
+  // ─── OTP ──────────────────────────────────────────────────────────────────
+  /** Salva código OTP (hash SHA-256) para o telefone */
+  saveOtpCode(phone: string, codeHash: string, expiresAt: Date): Promise<void>
+  /** Busca o código OTP mais recente para o telefone */
+  findLatestOtpByPhone(phone: string): Promise<{ id: string; codeHash: string; expiresAt: Date; usedAt: Date | null; attempts: number } | null>
+  /** Marca o OTP como usado */
+  markOtpUsed(id: string): Promise<void>
+  /** Incrementa contador de tentativas do OTP */
+  incrementOtpAttempts(id: string): Promise<void>
 }

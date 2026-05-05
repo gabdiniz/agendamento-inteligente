@@ -674,3 +674,16 @@ model WhatsappJob {
   @@index([status, scheduledAt])
   @@map("whatsapp_jobs")
 }
+
+model PatientOtpCode {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phone     String    @db.VarChar(20)
+  codeHash  String    @db.VarChar(255)
+  expiresAt DateTime  @db.Timestamptz
+  usedAt    DateTime? @db.Timestamptz
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  @@index([phone, createdAt])
+  @@map("patient_otp_codes")
+}
