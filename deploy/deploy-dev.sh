@@ -211,8 +211,20 @@ step "Subindo containers"
 
 ssh -i "$SSH_KEY" $SSH_OPTS "$REMOTE_USER@$REMOTE_HOST" "
   cd $REMOTE_DIR
-  sudo docker compose down --remove-orphans 2>/dev/null || true
-  sudo docker compose up -d
+
+  # Verifica se os containers já existem antes de decidir o que fazer.
+  # 'down' recria volumes se o compose mudou estruturalmente — usar só
+  # quando necessário para não perder dados do banco.
+  API_EXISTS=\$(sudo docker ps -a --filter name=myagendix-dev-api --format '{{.Names}}' 2>/dev/null)
+
+  if [ -n \"\$API_EXISTS\" ]; then
+    echo 'Containers existem — fazendo restart suave (sem recriar volumes)...'
+    sudo docker compose up -d --remove-orphans
+  else
+    echo 'Primeira execução — criando containers e volumes...'
+    sudo docker compose up -d
+  fi
+
   sudo docker compose ps
 "
 success "Containers rodando"
