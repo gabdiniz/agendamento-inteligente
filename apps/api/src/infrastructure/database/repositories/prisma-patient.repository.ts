@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
-import { Gender, NotificationChannel } from '@prisma/client'
+import { Gender, NotificationChannel, PatientSource } from '@prisma/client'
 
 import type {
   IPatientRepository,
@@ -96,7 +96,7 @@ export class PrismaPatientRepository implements IPatientRepository {
         preferredContactChannel: (data.preferredContactChannel as NotificationChannel | undefined) ?? null,
         marketingOptIn: data.marketingOptIn ?? false,
         notes: data.notes ?? null,
-        source: data.source ?? 'MANUAL',
+        source: (data.source as PatientSource | undefined) ?? PatientSource.MANUAL,
       },
       select: patientSelect,
     })
