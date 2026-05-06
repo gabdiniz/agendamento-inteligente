@@ -36,21 +36,20 @@ services:
     image: myagendix-api:dev
     container_name: myagendix-dev-api
     ports:
-      - "3334:3333"       # host:container — nginx fará proxy para 3334
+      - "127.0.0.1:3334:3333"   # só localhost — nginx fará proxy para 3334
     volumes:
       - uploads-data:/app/uploads   # persiste logos, banners e avatars entre deploys
     environment:
-      NODE_ENV:        development
-      PORT:            3333
-      HOST:            0.0.0.0
-      DATABASE_URL:    postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?schema=public
-      APP_URL:         http://${APP_DOMAIN}
-      JWT_SECRET:      ${JWT_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      NODE_ENV:               development
+      PORT:                   3333
+      HOST:                   0.0.0.0
+      DATABASE_URL:           postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?schema=public
+      APP_URL:                http://${APP_DOMAIN}
+      JWT_SECRET:             ${JWT_SECRET}
+      JWT_REFRESH_SECRET:     ${JWT_REFRESH_SECRET}
       SUPER_ADMIN_JWT_SECRET: ${SUPER_ADMIN_JWT_SECRET}
-      # E-mail (opcional — sem essas vars a API opera em dry-run)
-      RESEND_API_KEY:  ${RESEND_API_KEY:-}
-      RESEND_FROM:     ${RESEND_FROM:-}
+      RESEND_API_KEY:         ${RESEND_API_KEY:-}
+      RESEND_FROM:            ${RESEND_FROM:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,4 +68,17 @@ services:
     image: myagendix-web:dev
     container_name: myagendix-dev-web
     ports:
-      - "3335:80"         # host:container — nginx fará proxy para
+      - "127.0.0.1:3335:80"    # só localhost — nginx fará proxy para 3335
+    networks:
+      - app-net
+    restart: unless-stopped
+
+# ── Volumes persistentes ──────────────────────────────────────────────────────
+volumes:
+  postgres-data:
+  uploads-data:
+
+# ── Redes ─────────────────────────────────────────────────────────────────────
+networks:
+  app-net:
+    driver: bridge
