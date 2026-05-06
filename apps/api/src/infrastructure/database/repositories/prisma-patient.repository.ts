@@ -96,7 +96,7 @@ export class PrismaPatientRepository implements IPatientRepository {
         preferredContactChannel: (data.preferredContactChannel as NotificationChannel | undefined) ?? null,
         marketingOptIn: data.marketingOptIn ?? false,
         notes: data.notes ?? null,
-        source: (data.source as never) ?? 'MANUAL',
+        source: data.source ?? 'MANUAL',
       },
       select: patientSelect,
     })
@@ -120,8 +120,10 @@ export class PrismaPatientRepository implements IPatientRepository {
   }
 
   async list(params: ListPatientsParams): Promise<PaginatedPatients> {
-    const { page, limit, search, isActive } = params
-    const skip = (page - 1) * limit
+    const { search, isActive } = params
+    const page  = params.page  ?? 1
+    const limit = params.limit ?? 20
+    const skip  = (page - 1) * limit
 
     const where: Record<string, unknown> = {}
     if (isActive !== undefined) where['isActive'] = isActive
@@ -275,8 +277,15 @@ export class PrismaPatientRepository implements IPatientRepository {
 
   // ─── OTP ──────────────────────────────────────────────────────────────────
 
+  // ─── OTP — usa cast para `any` porque `patientOtpCode` pertence ao
+  // tenant-schema.prisma, mas o tipo gerado pelo `prisma generate` reflete
+  // apenas o schema.prisma (público). Em runtime o client recebe o schema
+  // correto via `?schema=tenant_...` na DATABASE_URL.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private get otp(): any { return (this.prisma as any).patientOtpCode }
+
   async saveOtpCode(phone: string, codeHash: string, expiresAt: Date): Promise<void> {
-    await this.prisma.patientOtpCode.create({
+    await this.otp.create({
       data: { phone, codeHash, expiresAt },
     })
   }
@@ -288,7 +297,7 @@ export class PrismaPatientRepository implements IPatientRepository {
     usedAt: Date | null
     attempts: number
   } | null> {
-    const row = await this.prisma.patientOtpCode.findFirst({
+    const row = await this.otp.findFirst({
       where: { phone },
       orderBy: { createdAt: 'desc' },
     })
@@ -303,14 +312,14 @@ export class PrismaPatientRepository implements IPatientRepository {
   }
 
   async markOtpUsed(id: string): Promise<void> {
-    await this.prisma.patientOtpCode.update({
+    await this.otp.update({
       where: { id },
       data: { usedAt: new Date() },
     })
   }
 
   async incrementOtpAttempts(id: string): Promise<void> {
-    await this.prisma.patientOtpCode.update({
+    await this.otp.update({
       where: { id },
       data: { attempts: { increment: 1 } },
     })

@@ -1,18 +1,20 @@
 // ─── IPatientRepository ───────────────────────────────────────────────────────
 
 export interface PatientRecord {
-  id:          string
-  name:        string
-  email:       string | null
-  phone:       string | null
-  birthDate:   Date | null
-  gender:      string | null
-  city:        string | null
-  cpf:         string | null
-  notes:       string | null
-  isActive:    boolean
-  createdAt:   Date
-  updatedAt:   Date
+  id:                      string
+  name:                    string
+  email:                   string | null
+  phone:                   string | null
+  birthDate:               string | null   // "YYYY-MM-DD" — convertido no repositório
+  gender:                  string | null
+  city:                    string | null
+  notes:                   string | null
+  preferredContactChannel: string | null
+  marketingOptIn:          boolean
+  source:                  string
+  isActive:                boolean
+  createdAt:               Date
+  updatedAt:               Date
 }
 
 export interface PatientAuthRecord extends PatientRecord {
@@ -22,26 +24,29 @@ export interface PatientAuthRecord extends PatientRecord {
 }
 
 export interface CreatePatientData {
-  name:      string
-  email?:    string | null
-  phone?:    string | null
-  birthDate?: Date | null
-  gender?:   string | null
-  city?:     string | null
-  cpf?:      string | null
-  notes?:    string | null
+  name:                     string
+  phone:                    string          // obrigatório — único por tenant
+  email?:                   string | null
+  birthDate?:               string | null   // "YYYY-MM-DD"
+  gender?:                  string | null
+  city?:                    string | null
+  notes?:                   string | null
+  preferredContactChannel?: string | null
+  marketingOptIn?:          boolean
+  source?:                  string
 }
 
 export interface UpdatePatientData {
-  name?:      string
-  email?:     string | null
-  phone?:     string | null
-  birthDate?: Date | null
-  gender?:    string | null
-  city?:      string | null
-  cpf?:       string | null
-  notes?:     string | null
-  isActive?:  boolean
+  name?:                    string
+  email?:                   string | null
+  phone?:                   string | null
+  birthDate?:               string | null   // "YYYY-MM-DD"
+  gender?:                  string | null
+  city?:                    string | null
+  notes?:                   string | null
+  isActive?:                boolean
+  preferredContactChannel?: string | null
+  marketingOptIn?:          boolean
 }
 
 export interface ListPatientsParams {
@@ -52,10 +57,11 @@ export interface ListPatientsParams {
 }
 
 export interface PaginatedPatients {
-  data:  PatientRecord[]
-  total: number
-  page:  number
-  limit: number
+  data:       PatientRecord[]
+  total:      number
+  page:       number
+  limit:      number
+  totalPages: number
 }
 
 export interface IPatientRepository {

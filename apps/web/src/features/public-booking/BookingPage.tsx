@@ -868,6 +868,8 @@ function Step4({
   clinicInfo: ClinicInfo | null
   onNew: () => void
 }) {
+  const base = (import.meta.env['VITE_API_URL'] as string) ?? ''
+
   const mapsUrl = clinicInfo?.address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(clinicInfo.address)}`
     : null
@@ -927,7 +929,7 @@ function Step4({
         {/* Avatar */}
         {professional.avatarUrl ? (
           <img
-            src={professional.avatarUrl}
+            src={professional.avatarUrl.startsWith('http') ? professional.avatarUrl : `${base}${professional.avatarUrl}`}
             alt={professional.name}
             style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
           />
