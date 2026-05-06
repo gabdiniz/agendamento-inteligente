@@ -7,6 +7,8 @@ import { PatientLogoutUseCase } from '../../../application/use-cases/patient-aut
 import { PatientForgotPasswordUseCase } from '../../../application/use-cases/patient-auth/forgot-password.use-case.js'
 import { PatientResetPasswordUseCase } from '../../../application/use-cases/patient-auth/reset-password.use-case.js'
 import { PatientChangePasswordUseCase } from '../../../application/use-cases/patient-auth/change-password.use-case.js'
+import { SendPatientOtpUseCase } from '../../../application/use-cases/patient-auth/send-otp.use-case.js'
+import { VerifyPatientOtpUseCase } from '../../../application/use-cases/patient-auth/verify-otp.use-case.js'
 
 import { PrismaPatientRepository } from '../../database/repositories/prisma-patient.repository.js'
 import { PrismaPatientRefreshTokenRepository } from '../../database/repositories/prisma-patient-refresh-token.repository.js'
@@ -57,6 +59,15 @@ const resetPasswordSchema = z.object({
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Senha atual é obrigatória'),
   newPassword:     z.string().min(8, 'A nova senha deve ter pelo menos 8 caracteres'),
+})
+
+const sendOtpSchema = z.object({
+  phone: z.string().min(10, 'Telefone inválido'),
+})
+
+const verifyOtpSchema = z.object({
+  phone: z.string().min(10, 'Telefone inválido'),
+  code:  z.string().length(6, 'Código deve ter 6 dígitos'),
 })
 
 // ─── Patient Auth Routes ──────────────────────────────────────────────────────
@@ -247,6 +258,82 @@ export const patientAuthRoutes: FastifyPluginAsync = async (app) => {
       success: true,
       message: 'Senha redefinida com sucesso. Faça login com sua nova senha.',
     })
+  })
+
+  // ─── POST /send-otp ───────────────────────────────────────────────────────
+  // Gera e envia código OTP via WhatsApp (Z-API)
+  app.post('/send-otp', {
+    config: {
+      rateLimit: {
+        max: 5,
+        timeWindow: '15 minutes',
+        errorResponseBuilder: () => ({
+          success: false,
+          error: 'Muitas tentativas. Aguarde 15 minutos.',
+        }),
+      },
+    },
+  }, async (request, reply) => {
+    const { phone } = sendOtpSchema.parse(request.body)
+
+    const tenant = await prisma.tenant.findUnique({
+      where:  { id: request.tenantId },
+      select: { name: true, whatsappEnabled: true, zApiInstanceId: true, zApiToken: true, zApiClientToken: true },
+    })
+
+    const patientRepo = new PrismaPatientRepository(request.tenantPrisma!)
+    const useCase = new SendPatientOtpUseCase(patientRepo)
+
+    await useCase.execute({
+      phone,
+      tenantName:      tenant?.name            ?? 'MyAgendix',
+      whatsappEnabled: tenant?.whatsappEnabled  ?? false,
+      zApiInstanceId:  tenant?.zApiInstanceId  ?? null,
+      zApiToken:       tenant?.zApiToken        ?? null,
+      zApiClientToken: tenant?.zApiClientToken  ?? null,
+    })
+
+    // Sempre retorna 200 — não revela se paciente existe
+    return reply.status(200).send({
+      success: true,
+      message: 'Se este número estiver cadastrado, você receberá um código em breve.',
+    })
+  })
+
+  // ─── POST /verify-otp ─────────────────────────────────────────────────────
+  // Valida o código OTP e retorna par de tokens JWT
+  app.post('/verify-otp', {
+    config: {
+      rateLimit: {
+        max: 10,
+        timeWindow: '15 minutes',
+        errorResponseBuilder: () => ({
+          success: false,
+          error: 'Muitas tentativas. Aguarde 15 minutos.',
+        }),
+      },
+    },
+  }, async (request, reply) => {
+    const body = verifyOtpSchema.parse(request.body)
+
+    const patientRepo      = new PrismaPatientRepository(request.tenantPrisma!)
+    const refreshTokenRepo = new PrismaPatientRefreshTokenRepository(request.tenantPrisma!)
+
+    const useCase = new VerifyPatientOtpUseCase(
+      patientRepo,
+      refreshTokenRepo,
+      hashService,
+      tokenService,
+    )
+
+    const result = await useCase.execute({
+      phone:      body.phone,
+      code:       body.code,
+      tenantId:   request.tenantId,
+      tenantSlug: request.tenantSlug,
+    })
+
+    return reply.status(200).send({ success: true, data: result })
   })
 
   // ─── PATCH /password ──────────────────────────────────────────────────────

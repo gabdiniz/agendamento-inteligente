@@ -34,8 +34,8 @@ export class PatientForgotPasswordUseCase {
 
     await this.patientRepo.savePasswordResetToken(patient.id, hash, expiresAt)
 
-    // Monta link: /:slug/redefinir-senha?token=<raw>
-    const resetLink = `${input.baseUrl}/${input.tenantSlug}/redefinir-senha?token=${raw}`
+    // Monta link: /:slug/minha-conta/redefinir-senha?token=<raw>
+    const resetLink = `${input.baseUrl}/${input.tenantSlug}/minha-conta/redefinir-senha?token=${raw}`
 
     await this.emailAdapter.send({
       to:      patient.email!,

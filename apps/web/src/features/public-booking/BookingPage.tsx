@@ -20,6 +20,7 @@ import {
 import { usePatientAuthStore } from '@/stores/patient-auth.store'
 import { patientTokens } from '@/lib/api/patient-client'
 import { patientPortalApi } from '@/lib/api/patient-auth.api'
+import { ProfessionalDetailModal } from './ProfessionalDetailModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -307,6 +308,8 @@ function Step1({
   onSelect: (prof: PublicProfessional, proc: PublicProcedure) => void
 }) {
   const [selectedProf, setSelectedProf] = useState<string | null>(null)
+  const [detailProf, setDetailProf] = useState<PublicProfessional | null>(null)
+  const base = (import.meta.env['VITE_API_URL'] as string) ?? ''
 
   if (loading) {
     return (
@@ -382,20 +385,37 @@ function Step1({
                   textAlign: 'left',
                 }}
               >
-                <div style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '50%',
-                  background: `color-mix(in srgb, var(--color-primary) 15%, white)`,
-                  color: 'var(--color-primary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '16px',
-                  fontWeight: 700,
-                  flexShrink: 0,
-                }}>
-                  {prof.name.charAt(0).toUpperCase()}
+                <div
+                  onClick={(e) => { e.stopPropagation(); setDetailProf(prof) }}
+                  title="Ver perfil"
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
+                    background: `color-mix(in srgb, var(--color-primary) 15%, white)`,
+                    color: 'var(--color-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    flexShrink: 0,
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    transition: 'opacity 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '0.75' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1' }}
+                >
+                  {prof.avatarUrl ? (
+                    <img
+                      src={prof.avatarUrl.startsWith('http') ? prof.avatarUrl : `${base}${prof.avatarUrl}`}
+                      alt={prof.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    prof.name.charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: '14px', fontWeight: 600, color: '#1a1614', margin: 0 }}>{prof.name}</p>
@@ -481,6 +501,10 @@ function Step1({
           )
         })}
       </div>
+
+      {detailProf && (
+        <ProfessionalDetailModal prof={detailProf} onClose={() => setDetailProf(null)} />
+      )}
     </div>
   )
 }
@@ -1180,6 +1204,14 @@ export function BookingPage() {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
   const [bookedEmail, setBookedEmail] = useState<string>('')
 
+  const BASE_URL = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3333'
+  const bannerUrl = clinicInfo?.bannerUrl
+    ? (clinicInfo.bannerUrl.startsWith('http') ? clinicInfo.bannerUrl : `${BASE_URL}${clinicInfo.bannerUrl}`)
+    : null
+  const logoSrc = clinicInfo?.logoUrl
+    ? (clinicInfo.logoUrl.startsWith('http') ? clinicInfo.logoUrl : `${BASE_URL}${clinicInfo.logoUrl}`)
+    : null
+
   useEffect(() => {
     if (!tenantSlug) return
     Promise.all([
@@ -1270,33 +1302,20 @@ export function BookingPage() {
   }
 
   return (
-    <div style={styles.page}>
+    <div style={{
+      ...styles.page,
+      background: bannerUrl ? `url("${bannerUrl}") center/cover no-repeat` : '#faf8f5',
+    }}>
+      {/* Banner overlay */}
+      {bannerUrl && (
+        <div aria-hidden style={{
+          position: 'fixed' as const, inset: 0,
+          background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(1px)', zIndex: 0,
+        }} />
+      )}
+
       {/* Grain texture overlay */}
       <div style={styles.grain} aria-hidden />
-
-      {/* Decoração de fundo — círculos suaves */}
-      <div aria-hidden style={{
-        position: 'fixed',
-        top: '-120px',
-        right: '-120px',
-        width: '400px',
-        height: '400px',
-        borderRadius: '50%',
-        background: 'color-mix(in srgb, var(--color-primary) 6%, transparent)',
-        pointerEvents: 'none',
-        zIndex: 0,
-      }} />
-      <div aria-hidden style={{
-        position: 'fixed',
-        bottom: '-80px',
-        left: '-80px',
-        width: '280px',
-        height: '280px',
-        borderRadius: '50%',
-        background: 'color-mix(in srgb, var(--color-primary) 4%, transparent)',
-        pointerEvents: 'none',
-        zIndex: 0,
-      }} />
 
       <div style={styles.container}>
         {/* Header */}
@@ -1312,12 +1331,12 @@ export function BookingPage() {
                 gap: '6px',
                 fontSize: '12px',
                 fontWeight: 600,
-                color: 'var(--color-primary)',
+                color: bannerUrl ? '#fff' : 'var(--color-primary)',
                 textDecoration: 'none',
                 padding: '7px 14px',
                 borderRadius: '20px',
-                background: 'color-mix(in srgb, var(--color-primary) 10%, white)',
-                border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
+                background: bannerUrl ? 'rgba(255,255,255,0.18)' : 'color-mix(in srgb, var(--color-primary) 10%, white)',
+                border: bannerUrl ? '1px solid rgba(255,255,255,0.3)' : '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
                 transition: 'all 0.2s',
                 letterSpacing: '0.01em',
               }}
@@ -1330,21 +1349,16 @@ export function BookingPage() {
           </div>
 
           <div style={{ textAlign: 'center' }}>
-          {(() => {
-            const logoSrc = clinicInfo?.logoUrl
-              ? (clinicInfo.logoUrl.startsWith('http')
-                  ? clinicInfo.logoUrl
-                  : `${import.meta.env['VITE_API_URL'] ?? 'http://localhost:3333'}${clinicInfo.logoUrl}`)
-              : null
-            return logoSrc ? (
+            {logoSrc ? (
               <img
                 src={logoSrc}
                 alt={clinicInfo?.name ?? 'Logo da clínica'}
                 style={{
-                  height: '52px', maxWidth: '180px',
+                  height: '108px', maxWidth: '260px',
                   objectFit: 'contain',
                   margin: '0 auto 14px',
                   display: 'block',
+                  filter: bannerUrl ? 'drop-shadow(0 2px 8px rgba(0,0,0,0.35))' : 'none',
                 }}
               />
             ) : (
@@ -1358,28 +1372,30 @@ export function BookingPage() {
                 margin: '0 auto 16px',
                 boxShadow: '0 8px 24px color-mix(in srgb, var(--color-primary) 35%, transparent)',
               }}>M</div>
-            )
-          })()}
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '28px',
-            fontStyle: 'italic',
-            color: '#1a1614',
-            margin: '0 0 6px',
-            lineHeight: 1.2,
-          }}>
-            {clinicInfo?.name ? clinicInfo.name : 'Agendar consulta'}
-          </h1>
-          {tenantSlug && (
-            <p style={{ fontSize: '12px', color: '#b0a899', fontWeight: 500, letterSpacing: '0.04em' }}>
-              /{tenantSlug}
-            </p>
-          )}
+            )}
+            <h1 style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '28px',
+              fontStyle: 'italic',
+              color: bannerUrl ? '#fff' : '#1a1614',
+              margin: '0 0 6px',
+              lineHeight: 1.2,
+              textShadow: bannerUrl ? '0 1px 4px rgba(0,0,0,0.4)' : 'none',
+            }}>
+              {clinicInfo?.name ? clinicInfo.name : 'Agendar consulta'}
+            </h1>
           </div>{/* /textAlign:center */}
         </div>{/* /header */}
 
         {/* Card principal */}
-        <div style={styles.card}>
+        <div style={{
+          ...styles.card,
+          background: bannerUrl ? 'rgba(255,255,255,0.40)' : '#ffffff',
+          backdropFilter: bannerUrl ? 'blur(18px) saturate(0.15)' : 'none',
+          WebkitBackdropFilter: bannerUrl ? 'blur(18px) saturate(0.15)' : 'none',
+          border: bannerUrl ? '1px solid rgba(255,255,255,0.2)' : '1px solid #ece9e4',
+          boxShadow: bannerUrl ? '0 20px 60px rgba(0,0,0,0.25)' : '0 2px 4px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.07)',
+        }}>
           {step < 4 && <StepBar current={step} />}
 
           {/* Resumo da seleção — steps 2 e 3 */}

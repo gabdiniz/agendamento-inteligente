@@ -16,6 +16,8 @@ import type { IPatientRefreshTokenRepository } from '../../../domain/repositorie
 import type { IHashService } from '../../../domain/services/hash.service.js'
 import type { ITokenService, PatientJwtPayload } from '../../../domain/services/token.service.js'
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 // ─── Input / Output ───────────────────────────────────────────────────────────
 
 export interface VerifyPatientOtpInput {
@@ -66,6 +68,12 @@ export class VerifyPatientOtpUseCase {
 
     if (!otp) throw invalidError
 
+    if (otp.usedAt !== null) throw invalidError
+
+    if (otp.expiresAt < new Date()) {
+      throw new AppError('Código expirado. Solicite um novo código.', 400)
+    }
+
     if (otp.attempts >= MAX_ATTEMPTS) {
       throw new AppError(
         'Número de tentativas excedido. Solicite um novo código.',
@@ -94,12 +102,13 @@ export class VerifyPatientOtpUseCase {
 
     const tokenPair = this.tokenService.generatePatientTokenPair(jwtPayload)
 
-    const tokenHash = createHash('sha256').update(tokenPair.refreshToken).digest('hex')
+    const tokenHash = this.hashService.hashToken(tokenPair.refreshToken)
+    const expiresAt = new Date(Date.now() + this.tokenService.refreshExpiresInMs)
 
     await this.refreshTokenRepo.create({
       patientId: patient.id,
       tokenHash,
-      expiresAt: tokenPair.refreshTokenExpiresAt,
+      expiresAt,
     })
 
     await this.patientRepo.updateLastLogin(patient.id)

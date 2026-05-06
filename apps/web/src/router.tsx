@@ -41,6 +41,7 @@ import { WorkSchedulePage } from '@/features/clinic/pages/WorkSchedulePage'
 
 // ── Patient Portal (auth — públicas) ─────────────────────────────────────────
 import { PatientLoginPage } from '@/features/patient-portal/pages/PatientLoginPage'
+import { PatientOtpLoginPage } from '@/features/patient-portal/pages/PatientOtpLoginPage'
 import { PatientForgotPasswordPage } from '@/features/patient-portal/pages/PatientForgotPasswordPage'
 import { PatientResetPasswordPage } from '@/features/patient-portal/pages/PatientResetPasswordPage'
 
@@ -313,9 +314,17 @@ const publicRoute = createRoute({
 // Rotas independentes de /$slug (não aninhadas) — TanStack Router resolve por
 // número de segmentos. /$slug só faz match em 1 segmento; as abaixo têm 3+.
 
+// WhatsApp OTP é o login padrão
 const patientLoginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/$slug/minha-conta/login',
+  component: PatientOtpLoginPage,
+})
+
+// E-mail/senha é a opção secundária
+const patientEmailLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$slug/minha-conta/login-email',
   component: PatientLoginPage,
 })
 
@@ -391,6 +400,7 @@ const routeTree = rootRoute.addChildren([
   ]),
   publicRoute,
   patientLoginRoute,
+  patientEmailLoginRoute,
   patientForgotPasswordRoute,
   patientResetPasswordRoute,
   patientPortalRoute.addChildren([

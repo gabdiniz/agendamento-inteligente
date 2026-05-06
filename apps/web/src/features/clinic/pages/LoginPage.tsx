@@ -78,14 +78,14 @@ export function ClinicLoginPage() {
 
   const inputBase: React.CSSProperties = {
     width: '100%',
-    padding: '13px 14px',
+    padding: '12px 14px',
     borderRadius: '10px',
     fontSize: '14px',
     outline: 'none',
     transition: 'all 0.2s',
-    background: '#f8fafb',
-    border: '1.5px solid #e2e8ed',
-    color: '#1a2530',
+    background: '#faf8f5',
+    border: '1.5px solid #e5e1db',
+    color: '#1a1614',
     fontFamily: 'var(--font-sans)',
     letterSpacing: '0.01em',
     boxSizing: 'border-box' as const,
@@ -103,27 +103,34 @@ export function ClinicLoginPage() {
       fontFamily: 'var(--font-sans)',
       position: 'relative' as const,
       overflow: 'hidden' as const,
-      // Fundo: banner da clínica ou gradiente padrão
+      padding: '24px 16px',
       background: bannerUrl
         ? `url("${bannerUrl}") center/cover no-repeat`
-        : 'linear-gradient(135deg, #f4f8fb 0%, #e8f0f7 100%)',
+        : '#faf8f5',
     }}>
 
-      {/* Overlay escuro sobre o banner para legibilidade */}
+      {/* Overlay escuro sobre o banner */}
       {bannerUrl && (
-        <div style={{
-          position: 'absolute' as const,
+        <div aria-hidden style={{
+          position: 'fixed' as const,
           inset: 0,
           background: 'rgba(0,0,0,0.45)',
           backdropFilter: 'blur(1px)',
+          zIndex: 0,
         }} />
       )}
+
+      {/* Grain */}
+      <div aria-hidden style={{
+        position: 'fixed' as const, inset: 0,
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E")`,
+        pointerEvents: 'none' as const, zIndex: 0,
+      }} />
 
       {/* Card do formulário */}
       <div style={{
         width: '100%',
-        maxWidth: '420px',
-        padding: '32px 24px',
+        maxWidth: '400px',
         position: 'relative' as const,
         zIndex: 1,
         animation: 'fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both',
@@ -136,8 +143,8 @@ export function ClinicLoginPage() {
               src={logoUrl}
               alt={`Logo ${clinicInfo?.name ?? ''}`}
               style={{
-                height: '56px',
-                maxWidth: '180px',
+                height: '108px',
+                maxWidth: '260px',
                 objectFit: 'contain',
                 margin: '0 auto 14px',
                 display: 'block',
@@ -147,35 +154,29 @@ export function ClinicLoginPage() {
           ) : (
             <div style={{
               width: '52px', height: '52px',
-              borderRadius: '14px',
+              borderRadius: '16px',
               background: 'var(--color-primary)',
               color: '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '20px', fontWeight: 700,
               margin: '0 auto 14px',
-              boxShadow: '0 8px 20px color-mix(in srgb, var(--color-primary) 30%, transparent)',
+              boxShadow: '0 8px 24px color-mix(in srgb, var(--color-primary) 35%, transparent)',
             }}>M</div>
           )}
           <h1 style={{
             fontFamily: 'var(--font-display)',
-            fontSize: '22px',
+            fontSize: '26px',
             fontStyle: 'italic',
-            color: bannerUrl ? '#fff' : '#1a2530',
-            margin: '0 0 4px',
+            color: bannerUrl ? '#fff' : '#1a1614',
+            margin: '0 0 6px',
+            lineHeight: 1.2,
             textShadow: bannerUrl ? '0 1px 4px rgba(0,0,0,0.4)' : 'none',
           }}>
             {clinicInfo?.name ? clinicInfo.name : 'Bem-vindo de volta'}
           </h1>
-          {slug && (
-            <p style={{
-              fontSize: '12px',
-              color: bannerUrl ? 'rgba(255,255,255,0.65)' : '#8a99a6',
-              fontWeight: 500,
-              letterSpacing: '0.04em',
-            }}>
-              /{slug}
-            </p>
-          )}
+          <p style={{ fontSize: '13px', color: bannerUrl ? 'rgba(255,255,255,0.8)' : '#b0a899', margin: 0, fontWeight: 500 }}>
+            Acesse o painel da clínica
+          </p>
         </div>
 
         {/* Mensagem de erro */}
@@ -201,15 +202,17 @@ export function ClinicLoginPage() {
 
         {/* Card formulário */}
         <div style={{
-          background: '#fff',
-          borderRadius: '18px',
-          border: '1px solid #e2e8ed',
+          background: bannerUrl ? 'rgba(255,255,255,0.40)' : '#ffffff',
+          backdropFilter: bannerUrl ? 'blur(18px) saturate(0.15)' : 'none',
+          WebkitBackdropFilter: bannerUrl ? 'blur(18px) saturate(0.15)' : 'none',
+          borderRadius: '20px',
+          border: bannerUrl ? '1px solid rgba(255,255,255,0.2)' : '1px solid #ece9e4',
           padding: '28px',
           boxShadow: bannerUrl
-            ? '0 20px 60px rgba(0,0,0,0.35)'
-            : '0 4px 24px rgba(0,0,0,0.08)',
+            ? '0 20px 60px rgba(0,0,0,0.25)'
+            : '0 2px 4px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.07)',
         }}>
-          <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {/* E-mail */}
             <div>
               <label style={{
@@ -218,7 +221,7 @@ export function ClinicLoginPage() {
                 fontWeight: 600,
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase' as const,
-                color: '#5a6b78',
+                color: '#8a7f75',
                 marginBottom: '7px',
               }}>
                 E-mail
@@ -230,7 +233,7 @@ export function ClinicLoginPage() {
                 {...register('email')}
                 style={{
                   ...inputBase,
-                  borderColor: errors.email ? '#fca5a5' : focused === 'email' ? 'var(--color-primary)' : '#e2e8ed',
+                  borderColor: errors.email ? '#fca5a5' : focused === 'email' ? 'var(--color-primary)' : '#e5e1db',
                   boxShadow: focused === 'email' ? '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'none',
                 }}
                 onFocus={() => setFocused('email')}
@@ -249,7 +252,7 @@ export function ClinicLoginPage() {
                 fontWeight: 600,
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase' as const,
-                color: '#5a6b78',
+                color: '#8a7f75',
                 marginBottom: '7px',
               }}>
                 Senha
@@ -263,7 +266,7 @@ export function ClinicLoginPage() {
                   style={{
                     ...inputBase,
                     paddingRight: '44px',
-                    borderColor: errors.password ? '#fca5a5' : focused === 'password' ? 'var(--color-primary)' : '#e2e8ed',
+                    borderColor: errors.password ? '#fca5a5' : focused === 'password' ? 'var(--color-primary)' : '#e5e1db',
                     boxShadow: focused === 'password' ? '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)' : 'none',
                   }}
                   onFocus={() => setFocused('password')}
@@ -280,7 +283,7 @@ export function ClinicLoginPage() {
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    color: '#8a99a6',
+                    color: '#b0a899',
                     padding: '4px',
                   }}
                 >
@@ -334,12 +337,10 @@ export function ClinicLoginPage() {
                 opacity: isSubmitting ? 0.75 : 1,
                 transition: 'all 0.2s',
                 fontFamily: 'var(--font-sans)',
-                letterSpacing: '0.01em',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                marginTop: '4px',
               }}
             >
               {isSubmitting ? (

@@ -40,10 +40,8 @@ export class PatientResetPasswordUseCase {
     // 2. Atualiza senha, limpa token e revoga todas as sessões em paralelo
     const newHash = await this.hashService.hashPassword(input.newPassword)
 
-    await Promise.all([
-      this.patientRepo.updatePasswordHash(patient.id, newHash),
-      this.patientRepo.clearPasswordResetToken(patient.id),
-      this.refreshTokenRepo.revokeAllByPatientId(patient.id),
-    ])
+    await this.patientRepo.updatePasswordHash(patient.id, newHash)
+    await this.patientRepo.clearPasswordResetToken(patient.id)
+    await this.refreshTokenRepo.revokeAllByPatientId(patient.id)
   }
 }

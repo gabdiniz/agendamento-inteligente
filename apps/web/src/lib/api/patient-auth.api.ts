@@ -97,6 +97,15 @@ export const patientAuthApi = {
     await axios.post(`${BASE_URL}/t/${slug}/patient-auth/reset-password`, { token, newPassword })
   },
 
+  async sendOtp(slug: string, phone: string): Promise<void> {
+    await axios.post(`${BASE_URL}/t/${slug}/patient-auth/send-otp`, { phone })
+  },
+
+  async verifyOtp(slug: string, phone: string, code: string): Promise<PatientAuthTokens & { tenantSlug: string }> {
+    const { data } = await axios.post(`${BASE_URL}/t/${slug}/patient-auth/verify-otp`, { phone, code })
+    return { ...data.data, tenantSlug: slug }
+  },
+
   async logout(slug: string, refreshToken: string): Promise<void> {
     const client = createPatientClient(slug)
     await client.post('/patient-auth/logout', { refreshToken })

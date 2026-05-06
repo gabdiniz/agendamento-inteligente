@@ -13,7 +13,7 @@
 import { randomInt, createHash } from 'node:crypto'
 import { AppError } from '../../../domain/errors/app-error.js'
 import type { IPatientRepository } from '../../../domain/repositories/patient.repository.js'
-import { ZApiClient } from '../../../infrastructure/external/zapi.client.js'
+import { ZApiClient, ZApiError } from '../../../infrastructure/external/zapi.client.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -69,20 +69,30 @@ export class SendPatientOtpUseCase {
     const codeHash = createHash('sha256').update(code).digest('hex')
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS)
 
-    await this.patientRepo.invalidatePreviousOtps(phone)
-    await this.patientRepo.createOtp({ phone, codeHash, expiresAt })
+    await this.patientRepo.saveOtpCode(phone, codeHash, expiresAt)
 
     const message =
       `Olá! Seu código de acesso ao portal ${input.tenantName} é:\n\n` +
       `*${code}*\n\n` +
       `Válido por 10 minutos. Não compartilhe com ninguém.`
 
-    await this.zapiClient.sendText({
-      instanceId:  input.zApiInstanceId,
-      token:       input.zApiToken,
-      clientToken: input.zApiClientToken,
-      phone:       input.phone,
-      message,
-    })
+    // Envia via Z-API — parâmetros posicionais
+    try {
+      await this.zapiClient.sendText(
+        input.zApiInstanceId,
+        input.zApiToken,
+        input.zApiClientToken,
+        input.phone,  // formato com DDI: ex. 5531999999999
+        message,
+      )
+    } catch (err) {
+      if (err instanceof ZApiError) {
+        throw new AppError(
+          'Não foi possível enviar o código via WhatsApp. Verifique se o número está correto ou tente o login por e-mail.',
+          400,
+        )
+      }
+      throw err
+    }
   }
 }
