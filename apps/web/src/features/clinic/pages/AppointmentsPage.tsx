@@ -15,6 +15,7 @@ import type { DateSelectArg, EventClickArg, DatesSetArg, EventContentArg, EventD
 import ptBrLocale from '@fullcalendar/core/locales/pt-br'
 
 import { appointmentsApi, professionalsApi, type Appointment, type AppointmentStatusEntry } from '@/lib/api/clinic.api'
+import { DayColumnsView } from '../components/DayColumnsView'
 import { clinicTokens } from '@/lib/api/client'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -570,7 +571,7 @@ function CalendarEventContent({ eventInfo }: { eventInfo: EventContentArg }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type ViewMode = 'list' | 'calendar'
+type ViewMode = 'list' | 'calendar' | 'day'
 
 export function AppointmentsPage() {
   const params   = useParams({ strict: false }) as { slug?: string }
@@ -592,6 +593,9 @@ export function AppointmentsPage() {
   // ── Estado do calendário ──────────────────────────────────────────────────
   const [calRange, setCalRange] = useState(() => isoToWeekRange(todayISO()))
   const calRef = useRef<InstanceType<typeof FullCalendar>>(null)
+
+  // ── Estado da visao de dia ────────────────────────────────────────────
+  const [dayDate, setDayDate] = useState(todayISO)
 
   // ── Modais ────────────────────────────────────────────────────────────────
   const [cancelTarget,      setCancelTarget]      = useState<Appointment | null>(null)
@@ -634,6 +638,14 @@ export function AppointmentsPage() {
       page: 1,
     }),
     enabled: viewMode === 'calendar',
+    placeholderData: (prev) => prev,
+  })
+
+  // Query para a visao de dia (todos os agendamentos do dia, todos profissionais)
+  const { data: dayData, isLoading: dayLoading } = useQuery({
+    queryKey: ['appointments-day', slug, dayDate, profFilter],
+    queryFn: () => appointmentsApi.list({ scheduledDate: dayDate, professionalId: profFilter || undefined, limit: 500, page: 1 }),
+    enabled: viewMode === 'day',
     placeholderData: (prev) => prev,
   })
 
@@ -873,6 +885,11 @@ export function AppointmentsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               ), label: 'Agenda' },
+      { key: 'day', icon: (
+                <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
+                </svg>
+              ), label: 'Dia' },
             ] as const).map(({ key, icon, label }) => (
               <button
                 key={key}
@@ -1104,7 +1121,7 @@ export function AppointmentsPage() {
             headerToolbar={{
               left: 'prev,next today',
               center: 'title',
-              right: 'dayGridMonth,timeGridWeek,timeGridDay',
+              right: 'dayGridMonth,timeGridWeek',
             }}
             buttonText={{
               today: 'Hoje',
@@ -1135,6 +1152,27 @@ export function AppointmentsPage() {
             noEventsText="Nenhum agendamento neste período"
           />
         </div>
+      )}
+
+      {/* ────────────────────────────────────────────────────────────────── */}
+      {/*  VIEW: DIA (multi-coluna por profissional)                         */}
+      {/* ────────────────────────────────────────────────────────────────── */}
+      {viewMode === 'day' && (
+        <DayColumnsView
+          date={dayDate}
+          professionals={professionals.filter((p) => p.isActive && (!profFilter || p.id === profFilter))}
+          appointments={dayData?.data ?? []}
+          loading={dayLoading}
+          onDateChange={setDayDate}
+          onAppointmentClick={setDetailAppointment}
+          onNewAppointment={(d, time, professionalId) => {
+            void navigate({
+              to: '/app/$slug/appointments/new',
+              params: { slug },
+              search: { date: d, time, professionalId } as Record<string, string>,
+            })
+          }}
+        />
       )}
 
       {/* ── Modal cancelar (lista) ────────────────────────────────────────── */}
