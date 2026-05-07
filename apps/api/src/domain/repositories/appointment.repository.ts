@@ -63,6 +63,7 @@ export interface AppointmentRecord {
   canceledBy: string | null
   notes: string | null
   createdByUserId: string | null
+  rescheduledToId: string | null
   createdAt: Date
   updatedAt: Date
   patient: AppointmentPatient
@@ -135,4 +136,6 @@ export interface IAppointmentRepository {
     canceledBy: 'PATIENT' | 'STAFF',
     changedByUserId?: string,
   ): Promise<AppointmentRecord>
+  /** Marca rescheduledToId no agendamento original apontando para o novo. */
+  setRescheduled(originalId: string, newAppointmentId: string): Promise<AppointmentRecord>
 }

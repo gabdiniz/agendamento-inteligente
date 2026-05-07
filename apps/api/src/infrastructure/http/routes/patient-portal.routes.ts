@@ -7,6 +7,7 @@ import { ListAppointmentsUseCase } from '../../../application/use-cases/appointm
 import { CreateAppointmentUseCase } from '../../../application/use-cases/appointment/create-appointment.use-case.js'
 import { GetAvailableSlotsUseCase } from '../../../application/use-cases/public-booking/get-available-slots.use-case.js'
 import { CancelAppointmentByPatientUseCase } from '../../../application/use-cases/patient-portal/cancel-appointment-by-patient.use-case.js'
+import { RescheduleAppointmentByPatientUseCase } from '../../../application/use-cases/patient-portal/reschedule-appointment-by-patient.use-case.js'
 import { GetClinicPatientConfigUseCase } from '../../../application/use-cases/patient-portal/get-clinic-patient-config.use-case.js'
 import { SubmitQuickRatingUseCase } from '../../../application/use-cases/patient-portal/submit-quick-rating.use-case.js'
 import {
@@ -68,6 +69,11 @@ const newAppointmentSchema = z.object({
   scheduledDate:  z.string().date(),
   startTime:      z.string().regex(/^([0-1]\d|2[0-3]):[0-5]\d$/),
   notes:          z.string().max(1000).optional(),
+})
+
+const rescheduleSchema = z.object({
+  scheduledDate: z.string().date(),
+  startTime:     z.string().regex(/^([0-1]\d|2[0-3]):[0-5]\d$/),
 })
 
 const cancelSchema = z.object({
@@ -251,6 +257,29 @@ export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
     })
 
     return reply.status(200).send({ success: true, data: canceled })
+  })
+
+  // POST /appointments/:id/reschedule
+  // Remarca um agendamento cancelado para nova data/hora (mesmo profissional e procedimento)
+  app.post('/appointments/:id/reschedule', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const body   = rescheduleSchema.parse(request.body)
+    const prisma = request.tenantPrisma!
+
+    const newAppointment = await new RescheduleAppointmentByPatientUseCase(
+      new PrismaAppointmentRepository(prisma),
+      new PrismaProfessionalRepository(prisma),
+      new PrismaProcedureRepository(prisma),
+      new PrismaPatientRepository(prisma),
+      new PrismaWorkScheduleRepository(prisma),
+    ).execute({
+      appointmentId:  id,
+      patientId:      request.currentPatient.sub,
+      scheduledDate:  body.scheduledDate,
+      startTime:      body.startTime,
+    })
+
+    return reply.status(201).send({ success: true, data: newAppointment })
   })
 
   // POST /appointments/:id/quick-rating

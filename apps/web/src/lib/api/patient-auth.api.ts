@@ -68,6 +68,7 @@ export interface PatientAppointment {
   professional: { id: string; name: string; specialty: string | null; avatarUrl: string | null }
   procedure: { id: string; name: string; durationMinutes: number }
   evaluation: PatientAppointmentEvaluation | null
+  rescheduledToId: string | null
 }
 
 export interface PatientAppointmentListResult {
@@ -206,5 +207,24 @@ export const patientPortalApi = {
       reasons,
     })
     return data.data as PatientAppointmentEvaluation
+  },
+
+  async getAvailableSlots(slug: string, params: {
+    professionalId: string
+    procedureId: string
+    date: string
+  }): Promise<{ startTime: string; endTime: string }[]> {
+    const client = createPatientClient(slug)
+    const { data } = await client.get('/patient/slots', { params })
+    return (data.data?.slots ?? []) as { startTime: string; endTime: string }[]
+  },
+
+  async rescheduleAppointment(slug: string, appointmentId: string, body: {
+    scheduledDate: string
+    startTime: string
+  }): Promise<PatientAppointment> {
+    const client = createPatientClient(slug)
+    const { data } = await client.post(`/patient/appointments/${appointmentId}/reschedule`, body)
+    return data.data as PatientAppointment
   },
 }

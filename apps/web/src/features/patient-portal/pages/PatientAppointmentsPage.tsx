@@ -11,6 +11,7 @@ import { useParams } from '@tanstack/react-router'
 import { patientPortalApi, type PatientAppointment, type QuickRating } from '@/lib/api/patient-auth.api'
 import { QuickRatingCard } from '../components/QuickRatingCard'
 import { DetailedRatingCard } from '../components/DetailedRatingCard'
+import { RescheduleModal } from '../components/RescheduleModal'
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -53,10 +54,13 @@ function AppointmentCard({
   canceling: string | null
   onRated: (id: string, rating: QuickRating) => void
   onDetailedRated: (id: string, rating: number) => void
+  onReschedule: (apt: PatientAppointment) => void
 }) {
   const sc = STATUS_COLORS[apt.status] ?? STATUS_COLORS['SCHEDULED']!
-  const canCancel   = apt.status === 'SCHEDULED'
-  const isCanceling = canceling === apt.id
+  const canCancel      = apt.status === 'SCHEDULED'
+  const canReschedule  = apt.status === 'CANCELED' && !apt.rescheduledToId
+  const wasRescheduled = apt.status === 'CANCELED' && !!apt.rescheduledToId
+  const isCanceling    = canceling === apt.id
 
   // ── Estado local para os dois momentos de avaliação ──────────────────────
   const [localQuickRating, setLocalQuickRating] = useState<QuickRating | null>(
@@ -177,6 +181,38 @@ function AppointmentCard({
             </button>
           )}
 
+          {/* Botao remarcar (apenas para cancelados nao remarcados) */}
+          {canReschedule && (
+            <button
+              onClick={() => onReschedule(apt)}
+              style={{
+                padding: '7px 14px', borderRadius: '8px',
+                background: 'transparent',
+                border: '1.5px solid color-mix(in srgb, var(--color-primary) 40%, transparent)',
+                color: 'var(--color-primary)',
+                fontSize: '12px', fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                transition: 'all 0.2s', flexShrink: 0,
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--color-primary) 8%, white)' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+            >
+              Remarcar
+            </button>
+          )}
+
+          {/* Badge remarcado */}
+          {wasRescheduled && (
+            <span style={{
+              display: 'flex', alignItems: 'center', gap: '4px',
+              fontSize: '11px', color: '#0369a1', fontWeight: 600,
+              background: '#e0f2fe', padding: '4px 10px', borderRadius: '20px',
+              flexShrink: 0,
+            }}>
+              ✓ Remarcado
+            </span>
+          )}
+
           {/* Badge: avaliação completa (com nota numérica) */}
           {apt.status === 'COMPLETED' && displayDetailedRating != null && (
             <span style={{
@@ -238,7 +274,9 @@ export function PatientAppointmentsPage() {
   const [loading, setLoading]   = useState(true)
   const [canceling, setCanceling] = useState<string | null>(null)
   const [cancelError, setCancelError] = useState<string | null>(null)
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [confirmId, setConfirmId]         = useState<string | null>(null)
+  const [rescheduleTarget, setRescheduleTarget] = useState<PatientAppointment | null>(null)
+  const [justCanceledId, setJustCanceledId]     = useState<string | null>(null)
 
   function loadAppointments(t: Tab) {
     setLoading(true)
@@ -261,6 +299,7 @@ export function PatientAppointmentsPage() {
     try {
       const updated = await patientPortalApi.cancelAppointment(slug, id)
       setAppointments((prev) => prev.map((a) => (a.id === id ? updated : a)))
+      setJustCanceledId(id)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setCancelError(msg ?? 'Não foi possível cancelar. Tente novamente.')
@@ -403,6 +442,7 @@ export function PatientAppointmentsPage() {
               canceling={canceling}
               onRated={handleRated}
               onDetailedRated={handleDetailedRated}
+              onReschedule={(apt) => setRescheduleTarget(apt)}
             />
           ))}
         </div>
@@ -469,6 +509,74 @@ export function PatientAppointmentsPage() {
         </>
       )}
 
+      {/* Prompt "deseja remarcar?" exibido logo apos um cancelamento */}
+      {justCanceledId && !rescheduleTarget && (() => {
+        const apt = appointments.find((a) => a.id === justCanceledId)
+        if (!apt) return null
+        return (
+          <div style={{
+            position: 'fixed', bottom: '24px', left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#1a2530', color: '#fff',
+            borderRadius: '14px', padding: '14px 20px',
+            display: 'flex', alignItems: 'center', gap: '12px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+            zIndex: 200, maxWidth: 'calc(100vw - 32px)',
+            animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1) both',
+          }}>
+            <span style={{ fontSize: '13px', lineHeight: 1.4 }}>
+              Agendamento cancelado. Deseja remarcar?
+            </span>
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              <button
+                onClick={() => setJustCanceledId(null)}
+                style={{
+                  padding: '7px 12px', borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.12)', border: 'none',
+                  color: '#fff', fontSize: '12px', fontWeight: 500,
+                  cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                }}
+              >
+                Nao
+              </button>
+              <button
+                onClick={() => { setRescheduleTarget(apt); setJustCanceledId(null) }}
+                style={{
+                  padding: '7px 14px', borderRadius: '8px',
+                  background: 'var(--color-primary)', border: 'none',
+                  color: '#fff', fontSize: '12px', fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                }}
+              >
+                Remarcar
+              </button>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Modal de reagendamento */}
+      {rescheduleTarget && (
+        <RescheduleModal
+          slug={slug}
+          appointment={rescheduleTarget}
+          onClose={() => setRescheduleTarget(null)}
+          onSuccess={(newApt) => {
+            // Marca o original como remarcado e adiciona o novo na lista
+            setAppointments((prev) => {
+              const updated = prev.map((a) =>
+                a.id === rescheduleTarget.id
+                  ? { ...a, rescheduledToId: newApt.id }
+                  : a
+              )
+              // Adiciona o novo agendamento no topo (upcoming)
+              return [newApt, ...updated]
+            })
+            setRescheduleTarget(null)
+          }}
+        />
+      )}
+
       <style>{`
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(10px) }
@@ -476,6 +584,10 @@ export function PatientAppointmentsPage() {
         }
         @keyframes pulse {
           0%, 100% { opacity: 1 } 50% { opacity: 0.5 }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateX(-50%) translateY(20px) }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0) }
         }
         @keyframes scaleIn {
           from { opacity: 0; transform: translate(-50%, -50%) scale(0.92) }

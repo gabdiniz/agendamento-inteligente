@@ -42,6 +42,7 @@ const appointmentSelect = {
   canceledBy: true,
   notes: true,
   createdByUserId: true,
+  rescheduledToId: true,
   createdAt: true,
   updatedAt: true,
   patient:      { select: { id: true, name: true, phone: true } },
@@ -88,6 +89,7 @@ interface AppointmentRow {
   canceledBy: string | null
   notes: string | null
   createdByUserId: string | null
+  rescheduledToId: string | null
   createdAt: Date
   updatedAt: Date
   patient:      { id: string; name: string; phone: string }
@@ -123,6 +125,7 @@ function toRecord(row: AppointmentRow): AppointmentRecord {
     canceledBy:         row.canceledBy,
     notes:              row.notes,
     createdByUserId:    row.createdByUserId,
+    rescheduledToId:    row.rescheduledToId,
     createdAt:          row.createdAt,
     updatedAt:          row.updatedAt,
     patient:            row.patient,
@@ -292,6 +295,15 @@ export class PrismaAppointmentRepository implements IAppointmentRepository {
           },
         },
       },
+      select: appointmentSelect,
+    })
+    return toRecord(row as AppointmentRow)
+  }
+
+  async setRescheduled(originalId: string, newAppointmentId: string): Promise<AppointmentRecord> {
+    const row = await this.prisma.appointment.update({
+      where: { id: originalId },
+      data:  { rescheduledToId: newAppointmentId },
       select: appointmentSelect,
     })
     return toRecord(row as AppointmentRow)

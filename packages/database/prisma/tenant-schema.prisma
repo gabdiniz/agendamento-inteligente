@@ -353,6 +353,7 @@ model Appointment {
   canceledBy         CanceledBy?
   notes              String?
   createdByUserId    String?           @db.Uuid
+  rescheduledToId    String?           @db.Uuid
   createdAt          DateTime          @default(now()) @db.Timestamptz
   updatedAt          DateTime          @updatedAt @db.Timestamptz
 
@@ -360,6 +361,8 @@ model Appointment {
   professional  Professional @relation(fields: [professionalId], references: [id])
   procedure     Procedure    @relation(fields: [procedureId], references: [id])
   createdByUser User?        @relation("AppointmentCreatedBy", fields: [createdByUserId], references: [id])
+  rescheduledTo Appointment? @relation("AppointmentReschedule", fields: [rescheduledToId], references: [id])
+  rescheduledFrom Appointment? @relation("AppointmentReschedule")
 
   statusHistory      AppointmentStatusHistory[]
   evaluation         AppointmentEvaluation?
