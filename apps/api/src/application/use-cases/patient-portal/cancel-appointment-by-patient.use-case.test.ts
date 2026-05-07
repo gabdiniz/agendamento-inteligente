@@ -66,6 +66,7 @@ function makeAppointmentRepo(
     findById:                 vi.fn().mockResolvedValue(appointment),
     list:                     vi.fn(),
     findByProfessionalAndDate:vi.fn(),
+    findByPatientAndDate:     vi.fn(),
     updateStatus:             vi.fn(),
     cancel:                   vi.fn().mockResolvedValue({ ...appointment, status: 'CANCELED', canceledBy: 'PATIENT' }),
     ...overrides,

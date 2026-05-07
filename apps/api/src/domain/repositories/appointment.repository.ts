@@ -38,7 +38,7 @@ export interface AppointmentEvaluationData {
   comment: string | null
 }
 
-// ─── Entrada de histórico de status ──────────────────────────────────────────
+// ─── Entrada de historico de status ──────────────────────────────────────────
 
 export interface AppointmentStatusEntry {
   id: string
@@ -69,7 +69,7 @@ export interface AppointmentRecord {
   professional: AppointmentProfessional
   procedure: AppointmentProcedure
   evaluation: AppointmentEvaluationData | null
-  /** Histórico de mudanças de status — preenchido apenas no findById */
+  /** Historico de mudancas de status — preenchido apenas no findById */
   statusHistory?: AppointmentStatusEntry[]
 }
 
@@ -121,6 +121,8 @@ export interface IAppointmentRepository {
   findById(id: string): Promise<AppointmentRecord | null>
   list(params: ListAppointmentsParams): Promise<PaginatedAppointments>
   findByProfessionalAndDate(professionalId: string, date: string): Promise<AppointmentSlim[]>
+  /** Retorna agendamentos nao-cancelados de um paciente em uma data (qualquer profissional). */
+  findByPatientAndDate(patientId: string, date: string): Promise<AppointmentSlim[]>
   updateStatus(
     id: string,
     status: string,

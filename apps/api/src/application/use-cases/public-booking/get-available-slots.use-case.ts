@@ -5,7 +5,9 @@
 // Algoritmo:
 //   1. Valida profissional (ativo) e procedimento (ativo, vinculado ao profissional).
 //   2. Obtém a grade de horário do profissional para o dia da semana.
-//   3. Obtém todos os agendamentos não-cancelados naquela data.
+//   3. Obtém todos os agendamentos não-cancelados do profissional naquela data.
+//      Se patientId for fornecido, busca também os agendamentos ativos do paciente
+//      e combina os dois conjuntos de bloqueios.
 //   4. Itera de startTime até endTime com passo = slotIntervalMinutes,
 //      descartando slots que colidem com agendamentos existentes ou que
 //      não cabem antes de endTime (duração do procedimento).
@@ -71,6 +73,12 @@ export interface GetAvailableSlotsInput {
   professionalId: string
   procedureId: string
   date: string          // "YYYY-MM-DD"
+  /**
+   * Quando fornecido (fluxo autenticado do paciente), os agendamentos ativos
+   * do próprio paciente naquela data também são tratados como bloqueios,
+   * impedindo que ele veja slots que conflitem com compromissos já marcados.
+   */
+  patientId?: string
 }
 
 export interface GetAvailableSlotsOutput {
@@ -91,7 +99,7 @@ export class GetAvailableSlotsUseCase {
   ) {}
 
   async execute(input: GetAvailableSlotsInput): Promise<GetAvailableSlotsOutput> {
-    const { professionalId, procedureId, date } = input
+    const { professionalId, procedureId, date, patientId } = input
 
     // ── 1. Validar entidades ──────────────────────────────────────────────
     const [professional, procedure] = await Promise.all([
@@ -131,13 +139,26 @@ export class GetAvailableSlotsUseCase {
     }
 
     // ── 3. Buscar agendamentos existentes ─────────────────────────────────
-    const existingAppointments = await this.appointmentRepo.findByProfessionalAndDate(
-      professionalId,
-      date,
-    )
+    //
+    // Sempre busca os agendamentos do profissional (bloqueios de agenda).
+    // Se patientId for fornecido, busca também os agendamentos do paciente
+    // naquela data (independente do profissional) para bloquear os slots
+    // que o paciente já tem ocupados.
 
-    // Filtra apenas os que bloqueiam horário (não cancelados)
-    const busySlots = existingAppointments.filter((a) => a.status !== 'CANCELED')
+    const fetchPatient = patientId
+      ? this.appointmentRepo.findByPatientAndDate(patientId, date)
+      : Promise.resolve([])
+
+    const [professionalAppointments, patientAppointments] = await Promise.all([
+      this.appointmentRepo.findByProfessionalAndDate(professionalId, date),
+      fetchPatient,
+    ])
+
+    // Combina os dois conjuntos, filtrando cancelados
+    const busySlots = [
+      ...professionalAppointments.filter((a) => a.status !== 'CANCELED'),
+      ...patientAppointments.filter((a) => a.status !== 'CANCELED'),
+    ]
 
     // ── 4. Calcular slots disponíveis ─────────────────────────────────────
     const durationMin = procedure.durationMinutes
@@ -168,7 +189,7 @@ export class GetAvailableSlotsUseCase {
       const slotStart = cursor
       const slotEnd = cursor + durationMin
 
-      // Colisão: slot.start < busy.end AND slot.end > busy.start
+      // Colisao: slot.start < busy.end AND slot.end > busy.start
       const hasCollision = busySlots.some((appt) => {
         const busyStart = toMinutes(appt.startTime)
         const busyEnd = toMinutes(appt.endTime)

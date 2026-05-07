@@ -5,8 +5,7 @@ import type { IPatientRepository } from '../../../domain/repositories/patient.re
 import type { IWorkScheduleRepository } from '../../../domain/repositories/work-schedule.repository.js'
 import { NotFoundError, ValidationError } from '../../../domain/errors/app-error.js'
 
-// ─── Helpers de tempo ─────────────────────────────────────────────────────────
-// Converte "HH:MM" para minutos desde meia-noite — facilita aritmética
+// Converte "HH:MM" para minutos desde meia-noite
 function toMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number)
   return h! * 60 + m!
@@ -25,17 +24,19 @@ function dayOfWeekFromDate(dateStr: string): number {
   return new Date(`${dateStr}T00:00:00.000Z`).getUTCDay()
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// Retorna true quando dois intervalos [startA, endA) e [startB, endB) se sobroepem
+function intervalsOverlap(startA: string, endA: string, startB: string, endB: string): boolean {
+  return toMinutes(startA) < toMinutes(endB) && toMinutes(endA) > toMinutes(startB)
+}
 
 interface CreateAppointmentInput {
   patientId: string
   professionalId: string
   procedureId: string
-  scheduledDate: string   // "YYYY-MM-DD"
-  startTime: string       // "HH:MM"
+  scheduledDate: string
+  startTime: string
   notes?: string
   createdByUserId?: string
-  /** Duração em minutos — sobrescreve procedure.durationMinutes para este agendamento */
   durationMinutes?: number
 }
 
@@ -51,8 +52,7 @@ export class CreateAppointmentUseCase {
   async execute(input: CreateAppointmentInput): Promise<AppointmentRecord> {
     const { patientId, professionalId, procedureId, scheduledDate, startTime, notes, createdByUserId } = input
 
-    // ── 1. Validar entidades ───────────────────────────────────────────────
-
+    // 1. Validar entidades
     const [patient, professional, procedure] = await Promise.all([
       this.patientRepo.findById(patientId),
       this.professionalRepo.findById(professionalId),
@@ -60,72 +60,71 @@ export class CreateAppointmentUseCase {
     ])
 
     if (!patient) throw new NotFoundError('Paciente')
-    if (!patient.isActive) throw new ValidationError('Paciente está inativo')
+    if (!patient.isActive) throw new ValidationError('Paciente esta inativo')
 
     if (!professional) throw new NotFoundError('Profissional')
-    if (!professional.isActive) throw new ValidationError('Profissional está inativo')
+    if (!professional.isActive) throw new ValidationError('Profissional esta inativo')
 
     if (!procedure) throw new NotFoundError('Procedimento')
-    if (!procedure.isActive) throw new ValidationError('Procedimento está inativo')
+    if (!procedure.isActive) throw new ValidationError('Procedimento esta inativo')
 
-    // ── 2. Calcular endTime — usa override se fornecido, senão padrão do procedimento ───
-
+    // 2. Calcular endTime
     const duration = input.durationMinutes ?? procedure.durationMinutes
     const endTime  = addMinutes(startTime, duration)
 
-    // Sanity check: endTime não pode passar da meia-noite
     if (toMinutes(endTime) <= toMinutes(startTime)) {
-      throw new ValidationError('O agendamento ultrapassa a meia-noite — não permitido')
+      throw new ValidationError('O agendamento ultrapassa a meia-noite')
     }
 
-    // ── 3. Validar grade de horários do profissional ───────────────────────
-
+    // 3. Validar grade de horarios do profissional
     const dayOfWeek = dayOfWeekFromDate(scheduledDate)
     const schedules = await this.workScheduleRepo.findByProfessional(professionalId)
     const schedule = schedules.find((s) => s.dayOfWeek === dayOfWeek)
 
     if (!schedule) {
-      throw new ValidationError(
-        `Profissional não atende no dia selecionado (dayOfWeek=${dayOfWeek})`,
-      )
+      throw new ValidationError(`Profissional nao atende no dia selecionado (dayOfWeek=${dayOfWeek})`)
     }
     if (!schedule.isActive) {
-      throw new ValidationError('O dia da semana selecionado está desativado na grade do profissional')
+      throw new ValidationError('O dia da semana selecionado esta desativado na grade do profissional')
     }
     if (toMinutes(startTime) < toMinutes(schedule.startTime)) {
-      throw new ValidationError(
-        `Horário de início (${startTime}) é anterior ao início do expediente (${schedule.startTime})`,
-      )
+      throw new ValidationError(`Horario de inicio (${startTime}) e anterior ao inicio do expediente (${schedule.startTime})`)
     }
     if (toMinutes(endTime) > toMinutes(schedule.endTime)) {
+      throw new ValidationError(`Horario de termino (${endTime}) ultrapassa o fim do expediente (${schedule.endTime})`)
+    }
+
+    // 4. Detectar colisao com agendamentos existentes
+    //
+    // Verifica dois eixos independentes:
+    //   a) Profissional: horario ocupado por outro paciente
+    //   b) Paciente: paciente ja tem agendamento ativo naquela janela
+    //      Impede duplo agendamento mesmo sendo com profissional diferente.
+
+    const [professionalAppts, patientAppts] = await Promise.all([
+      this.appointmentRepo.findByProfessionalAndDate(professionalId, scheduledDate),
+      this.appointmentRepo.findByPatientAndDate(patientId, scheduledDate),
+    ])
+
+    const profCollision = professionalAppts.find(
+      (a) => a.status !== 'CANCELED' && intervalsOverlap(startTime, endTime, a.startTime, a.endTime),
+    )
+    if (profCollision) {
       throw new ValidationError(
-        `Horário de término (${endTime}) ultrapassa o fim do expediente (${schedule.endTime})`,
+        `Conflito de horario: o profissional ja possui agendamento das ${profCollision.startTime} as ${profCollision.endTime}`,
       )
     }
 
-    // ── 4. Detectar colisão com outros agendamentos ────────────────────────
-
-    const existingAppointments = await this.appointmentRepo.findByProfessionalAndDate(
-      professionalId,
-      scheduledDate,
+    const patientCollision = patientAppts.find(
+      (a) => a.status !== 'CANCELED' && intervalsOverlap(startTime, endTime, a.startTime, a.endTime),
     )
-
-    // Intervalos se sobrepõem quando: novo.start < exist.end AND novo.end > exist.start
-    const collision = existingAppointments.find(
-      (appt) =>
-        appt.status !== 'CANCELED' &&
-        toMinutes(startTime) < toMinutes(appt.endTime) &&
-        toMinutes(endTime) > toMinutes(appt.startTime),
-    )
-
-    if (collision) {
+    if (patientCollision) {
       throw new ValidationError(
-        `Conflito de horário: já existe um agendamento das ${collision.startTime} às ${collision.endTime}`,
+        `Voce ja possui um agendamento das ${patientCollision.startTime} as ${patientCollision.endTime} nesta data`,
       )
     }
 
-    // ── 5. Criar agendamento ───────────────────────────────────────────────
-
+    // 5. Criar agendamento
     return this.appointmentRepo.create({
       patientId,
       professionalId,

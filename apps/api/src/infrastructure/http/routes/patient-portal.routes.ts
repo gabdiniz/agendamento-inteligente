@@ -5,6 +5,7 @@ import { requirePatientAuth } from '../middlewares/patient-auth.middleware.js'
 
 import { ListAppointmentsUseCase } from '../../../application/use-cases/appointment/list-appointments.use-case.js'
 import { CreateAppointmentUseCase } from '../../../application/use-cases/appointment/create-appointment.use-case.js'
+import { GetAvailableSlotsUseCase } from '../../../application/use-cases/public-booking/get-available-slots.use-case.js'
 import { CancelAppointmentByPatientUseCase } from '../../../application/use-cases/patient-portal/cancel-appointment-by-patient.use-case.js'
 import { GetClinicPatientConfigUseCase } from '../../../application/use-cases/patient-portal/get-clinic-patient-config.use-case.js'
 import { SubmitQuickRatingUseCase } from '../../../application/use-cases/patient-portal/submit-quick-rating.use-case.js'
@@ -31,6 +32,7 @@ import { PrismaPointsRepository } from '../../database/repositories/prisma-point
 //
 // GET   /profile                         => dados do paciente autenticado
 // PATCH /profile                         => atualiza dados editaveis
+// GET   /slots                           => slots disponíveis (filtra pela agenda do paciente)
 // GET   /appointments                    => lista agendamentos (filtros via query)
 // GET   /appointments/:id                => detalhe de um agendamento
 // POST  /appointments                    => novo agendamento (autenticado)
@@ -45,6 +47,12 @@ const updateProfileSchema = z.object({
   birthDate: z.string().date().optional(),
   gender:    z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
   city:      z.string().max(255).optional(),
+})
+
+const slotsQuerySchema = z.object({
+  professionalId: z.string().uuid(),
+  procedureId:    z.string().uuid(),
+  date:           z.string().date(),
 })
 
 const listAppointmentsSchema = z.object({
@@ -81,6 +89,34 @@ const detailedRatingSchema = z.object({
 export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
 
   app.addHook('preHandler', requirePatientAuth)
+
+  // GET /slots
+  //
+  // Versão autenticada do endpoint de slots: passa o patientId automaticamente
+  // para que o use case exclua os horários que já colidem com agendamentos
+  // ativos do próprio paciente, independentemente do profissional.
+  //
+  // 30 req/min — mesma tolerância da versão pública
+  app.get('/slots', {
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
+    const query   = slotsQuerySchema.parse(request.query)
+    const prisma  = request.tenantPrisma!
+
+    const result = await new GetAvailableSlotsUseCase(
+      new PrismaProfessionalRepository(prisma),
+      new PrismaProcedureRepository(prisma),
+      new PrismaWorkScheduleRepository(prisma),
+      new PrismaAppointmentRepository(prisma),
+    ).execute({
+      professionalId: query.professionalId,
+      procedureId:    query.procedureId,
+      date:           query.date,
+      patientId:      request.currentPatient.sub,
+    })
+
+    return reply.status(200).send({ success: true, data: result })
+  })
 
   // GET /profile
   app.get('/profile', async (request, reply) => {
