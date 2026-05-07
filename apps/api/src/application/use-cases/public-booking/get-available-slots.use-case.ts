@@ -18,6 +18,12 @@ import type { IProfessionalRepository } from '../../../domain/repositories/profe
 import type { IProcedureRepository } from '../../../domain/repositories/procedure.repository.js'
 import type { IWorkScheduleRepository } from '../../../domain/repositories/work-schedule.repository.js'
 import type { IAppointmentRepository } from '../../../domain/repositories/appointment.repository.js'
+
+// ─── ScheduleBlock shape (returned directly from Prisma, no full repo needed) ─
+interface ScheduleBlock {
+  startDatetime: Date
+  endDatetime: Date
+}
 import { NotFoundError, ValidationError } from '../../../domain/errors/app-error.js'
 
 // ─── Time helpers ─────────────────────────────────────────────────────────────
@@ -96,6 +102,8 @@ export class GetAvailableSlotsUseCase {
     private readonly procedureRepo: IProcedureRepository,
     private readonly workScheduleRepo: IWorkScheduleRepository,
     private readonly appointmentRepo: IAppointmentRepository,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private readonly prisma?: any,
   ) {}
 
   async execute(input: GetAvailableSlotsInput): Promise<GetAvailableSlotsOutput> {
@@ -154,10 +162,48 @@ export class GetAvailableSlotsUseCase {
       fetchPatient,
     ])
 
+    // Busca bloqueios avulsos do profissional na data
+    let scheduleBlocks: ScheduleBlock[] = []
+    if (this.prisma) {
+      const dayStart = new Date(`${date}T00:00:00.000Z`)
+      const dayEnd   = new Date(`${date}T23:59:59.999Z`)
+      scheduleBlocks = await this.prisma.scheduleBlock.findMany({
+        where: {
+          professionalId: professionalId,
+          startDatetime:  { lt: dayEnd },
+          endDatetime:    { gt: dayStart },
+        },
+        select: { startDatetime: true, endDatetime: true },
+      })
+    }
+
+    // Se houver bloqueio de dia inteiro (cobre todo o expediente), retorna vazio
+    const fullDayBlock = scheduleBlocks.find((b) => {
+      const bStart = b.startDatetime.getUTCHours() * 60 + b.startDatetime.getUTCMinutes()
+      const bEnd   = b.endDatetime.getUTCHours()   * 60 + b.endDatetime.getUTCMinutes()
+      return bStart <= scheduleStart && bEnd >= scheduleEnd
+    })
+    if (fullDayBlock) {
+      return {
+        date,
+        professional: { id: professional.id, name: professional.name },
+        procedure: { id: procedure.id, name: procedure.name, durationMinutes: procedure.durationMinutes },
+        slots: [],
+      }
+    }
+
+    // Converte bloqueios parciais para o mesmo formato HH:MM usado nos busy slots
+    const blockBusySlots = scheduleBlocks.map((b) => {
+      const bStartMin = b.startDatetime.getUTCHours() * 60 + b.startDatetime.getUTCMinutes()
+      const bEndMin   = b.endDatetime.getUTCHours()   * 60 + b.endDatetime.getUTCMinutes()
+      return { startTime: fromMinutes(bStartMin), endTime: fromMinutes(bEndMin) }
+    })
+
     // Combina os dois conjuntos, filtrando cancelados
     const busySlots = [
       ...professionalAppointments.filter((a) => a.status !== 'CANCELED'),
       ...patientAppointments.filter((a) => a.status !== 'CANCELED'),
+      ...blockBusySlots,
     ]
 
     // ── 4. Calcular slots disponíveis ─────────────────────────────────────

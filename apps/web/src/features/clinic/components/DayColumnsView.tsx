@@ -6,7 +6,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useRef } from 'react'
-import type { Appointment, Professional } from '@/lib/api/clinic.api'
+import { ScheduleBlockModal } from './ScheduleBlockModal'
+import type { Appointment, Professional, ScheduleBlock } from '@/lib/api/clinic.api'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,12 @@ function getNowY(): number {
   return (mins - START_HOUR * 60) * (HOUR_HEIGHT / 60)
 }
 
+// Converte ISO 8601 para HH:MM em horario local do browser
+function isoToLocalHHMM(iso: string): string {
+  const d = new Date(iso)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 // ─── Colunas visiveis por tamanho de container ───────────────────────────────
 
 function useColumnsPerPage(ref: React.RefObject<HTMLDivElement | null>): number {
@@ -90,6 +97,7 @@ export interface DayColumnsViewProps {
   date: string
   professionals: Professional[]
   appointments: Appointment[]
+  scheduleBlocks?: ScheduleBlock[]
   loading: boolean
   onDateChange: (date: string) => void
   onAppointmentClick: (apt: Appointment) => void
@@ -102,6 +110,7 @@ export function DayColumnsView({
   date,
   professionals,
   appointments,
+  scheduleBlocks = [],
   loading,
   onDateChange,
   onAppointmentClick,
@@ -110,6 +119,9 @@ export function DayColumnsView({
   const containerRef = useRef<HTMLDivElement>(null)
   const columnsPerPage = useColumnsPerPage(containerRef)
   const [page, setPage] = useState(0)
+
+  // Estado do modal de bloqueio
+  const [blockTarget, setBlockTarget] = useState<{ professionalId: string; professionalName: string } | null>(null)
 
   // Reset pagina quando o numero de profissionais ou colunas muda
   useEffect(() => { setPage(0) }, [professionals.length, columnsPerPage])
@@ -125,6 +137,13 @@ export function DayColumnsView({
   for (const apt of appointments) {
     if (!byProf[apt.professional.id]) byProf[apt.professional.id] = []
     byProf[apt.professional.id]!.push(apt)
+  }
+
+  // Agrupamento: professional.id -> lista de bloqueios do dia
+  const blocksByProf: Record<string, ScheduleBlock[]> = {}
+  for (const blk of scheduleBlocks) {
+    if (!blocksByProf[blk.professionalId]) blocksByProf[blk.professionalId] = []
+    blocksByProf[blk.professionalId]!.push(blk)
   }
 
   // Indicador de hora atual
@@ -296,6 +315,26 @@ export function DayColumnsView({
                   {prof.specialty}
                 </span>
               )}
+
+              {/* Botao de bloqueio */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setBlockTarget({ professionalId: prof.id, professionalName: prof.name })
+                }}
+                title="Gerenciar bloqueios"
+                style={{
+                  width: '22px', height: '22px', borderRadius: '6px',
+                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#ef4444', padding: 0, marginTop: '2px',
+                }}
+              >
+                <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" strokeWidth={2} />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+              </button>
             </div>
           ))}
         </div>
@@ -409,6 +448,57 @@ export function DayColumnsView({
                       </div>
                     ))}
 
+                    {/* Bloqueios avulsos */}
+                    {(blocksByProf[prof.id] ?? []).map((blk) => {
+                      const startHHMM = isoToLocalHHMM(blk.startDatetime)
+                      const endHHMM   = isoToLocalHHMM(blk.endDatetime)
+                      const y = timeToY(startHHMM)
+                      const h = durationToHeight(startHHMM, endHHMM)
+                      return (
+                        <div
+                          key={blk.id}
+                          onClick={(e) => e.stopPropagation()}
+                          title={blk.reason ? `Bloqueado: ${blk.reason}` : 'Horario bloqueado'}
+                          style={{
+                            position: 'absolute',
+                            left: '3px', right: '3px',
+                            top: `${y}px`,
+                            height: `${Math.max(h, 22)}px`,
+                            background: 'rgba(239,68,68,0.10)',
+                            border: '1.5px solid rgba(239,68,68,0.35)',
+                            borderRadius: '6px',
+                            padding: '3px 6px',
+                            overflow: 'hidden',
+                            cursor: 'default',
+                            zIndex: 3,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: '3px',
+                          }}>
+                            <svg width="10" height="10" fill="none" stroke="rgb(239,68,68)" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" strokeWidth={2} />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11V7a5 5 0 0110 0v4" />
+                            </svg>
+                            <span style={{
+                              fontSize: '10px', fontWeight: 700, color: 'rgb(185,28,28)',
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {blk.reason ?? 'Bloqueado'}
+                            </span>
+                          </div>
+                          {h > 36 && (
+                            <span style={{ fontSize: '10px', color: 'rgba(185,28,28,0.75)', lineHeight: 1.2 }}>
+                              {startHHMM} – {endHHMM}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+
                     {/* Blocos de agendamento */}
                     {profApts.map((apt) => {
                       const y          = timeToY(apt.startTime)
@@ -485,6 +575,16 @@ export function DayColumnsView({
           </div>
         </div>
       </div>
+
+      {/* Modal de bloqueios */}
+      {blockTarget && (
+        <ScheduleBlockModal
+          professionalId={blockTarget.professionalId}
+          professionalName={blockTarget.professionalName}
+          date={date}
+          onClose={() => setBlockTarget(null)}
+        />
+      )}
 
       {/* Spinner de carregamento */}
       {loading && (

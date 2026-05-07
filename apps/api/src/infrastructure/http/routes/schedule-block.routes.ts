@@ -1,19 +1,22 @@
 // ─── Schedule Block Routes ────────────────────────────────────────────────────
 //
-// Gerencia bloqueios pontuais na agenda de um profissional (férias, feriados,
-// indisponibilidades). Um bloco impede a geração de slots no período informado.
+// Gerencia bloqueios pontuais na agenda de um profissional (ferias, feriados,
+// indisponibilidades). Um bloco impede a geracao de slots no periodo informado.
 //
 // Registradas em /professionals/:professionalId/schedule/blocks
-// Todas requerem autenticação; POST e DELETE exigem GESTOR ou RECEPCAO.
+// Todas requerem autenticacao.
+// POST e DELETE: GESTOR ou RECEPCAO podem gerenciar qualquer profissional.
+//                PROFISSIONAL so pode gerenciar seus proprios bloqueios.
 //
-// GET    /              → lista bloqueios do profissional (com filtros de data)
-// POST   /              → cria um bloqueio
-// DELETE /:blockId      → remove um bloqueio
+// GET    /              lista bloqueios do profissional (com filtros de data)
+// POST   /              cria um bloqueio
+// DELETE /:blockId      remove um bloqueio
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { requireAuth, requireRoles } from '../middlewares/auth.middleware.js'
+import { ForbiddenError } from '../../../domain/errors/app-error.js'
 
 const createBlockSchema = z.object({
   startDatetime: z.string().datetime({ offset: true }),
@@ -29,16 +32,49 @@ const listQuerySchema = z.object({
   until: z.string().datetime({ offset: true }).optional(),
 })
 
-const writeGuard = [requireAuth, requireRoles('GESTOR', 'RECEPCAO')]
+// ─── Guard: GESTOR/RECEPCAO ou proprio profissional ───────────────────────────
+//
+// Verifica se o usuario logado tem permissao para escrever bloqueios do
+// profissional especificado na rota.
+//   - GESTOR ou RECEPCAO: sempre permitido
+//   - PROFISSIONAL: so permitido se o registro Professional vinculado ao
+//     seu userId corresponde ao :professionalId da rota
+
+async function requireWriteAccess(request: any, reply: any): Promise<void> {
+  const roles: string[] = request.currentUser?.roles ?? []
+
+  if (roles.includes('GESTOR') || roles.includes('RECEPCAO')) return
+
+  if (!roles.includes('PROFISSIONAL')) {
+    throw new ForbiddenError('Acesso restrito a GESTOR, RECEPCAO ou PROFISSIONAL')
+  }
+
+  // PROFISSIONAL: valida que e o dono do registro
+  const userId = request.currentUser.sub
+  const params = request.params as Record<string, string>
+  const professionalIdInRoute = params['professionalId']
+
+  const db = request.tenantPrisma as any
+  const linked = await db.professional.findFirst({
+    where:  { userId },
+    select: { id: true },
+  })
+
+  if (!linked || linked.id !== professionalIdInRoute) {
+    throw new ForbiddenError('Voce so pode gerenciar seus proprios bloqueios')
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const scheduleBlockRoutes: FastifyPluginAsync = async (app) => {
 
-  // ─── GET / ─────────────────────────────────────────────────
+  // ─── GET / ─────────────────────────────────────────────────────────────────
   app.get('/', { preHandler: [requireAuth] }, async (request, reply) => {
-    const params     = request.params as Record<string, string>
-    const profId     = params['professionalId']
-    const query      = listQuerySchema.parse(request.query)
-    const db         = request.tenantPrisma as any
+    const params = request.params as Record<string, string>
+    const profId = params['professionalId']
+    const query  = listQuerySchema.parse(request.query)
+    const db     = request.tenantPrisma as any
 
     const where: Record<string, unknown> = { professionalId: profId }
 
@@ -57,8 +93,8 @@ export const scheduleBlockRoutes: FastifyPluginAsync = async (app) => {
     return reply.status(200).send({ success: true, data: blocks })
   })
 
-  // ─── POST / ────────────────────────────────────────────────
-  app.post('/', { preHandler: writeGuard }, async (request, reply) => {
+  // ─── POST / ────────────────────────────────────────────────────────────────
+  app.post('/', { preHandler: [requireAuth, requireWriteAccess] }, async (request, reply) => {
     const params = request.params as Record<string, string>
     const profId = params['professionalId']
     const body   = createBlockSchema.parse(request.body)
@@ -67,10 +103,10 @@ export const scheduleBlockRoutes: FastifyPluginAsync = async (app) => {
     // Verifica se o profissional existe
     const prof = await db.professional.findUnique({ where: { id: profId }, select: { id: true } })
     if (!prof) {
-      return reply.status(404).send({ success: false, error: 'Profissional não encontrado.' })
+      return reply.status(404).send({ success: false, error: 'Profissional nao encontrado.' })
     }
 
-    // Verifica conflito com bloqueios existentes (opcional — mais usabilidade que bloqueio hard)
+    // Verifica conflito com bloqueios existentes
     const overlap = await db.scheduleBlock.findFirst({
       where: {
         professionalId: profId,
@@ -81,7 +117,7 @@ export const scheduleBlockRoutes: FastifyPluginAsync = async (app) => {
     if (overlap) {
       return reply.status(409).send({
         success: false,
-        error:   'Já existe um bloqueio que se sobrepõe a este período.',
+        error:   'Ja existe um bloqueio que se sobrepoem a este periodo.',
       })
     }
 
@@ -98,8 +134,8 @@ export const scheduleBlockRoutes: FastifyPluginAsync = async (app) => {
     return reply.status(201).send({ success: true, data: block })
   })
 
-  // ─── DELETE /:blockId ──────────────────────────────────────
-  app.delete('/:blockId', { preHandler: writeGuard }, async (request, reply) => {
+  // ─── DELETE /:blockId ──────────────────────────────────────────────────────
+  app.delete('/:blockId', { preHandler: [requireAuth, requireWriteAccess] }, async (request, reply) => {
     const params  = request.params as Record<string, string>
     const profId  = params['professionalId']
     const blockId = params['blockId']
@@ -110,7 +146,7 @@ export const scheduleBlockRoutes: FastifyPluginAsync = async (app) => {
     })
 
     if (!block) {
-      return reply.status(404).send({ success: false, error: 'Bloqueio não encontrado.' })
+      return reply.status(404).send({ success: false, error: 'Bloqueio nao encontrado.' })
     }
 
     await db.scheduleBlock.delete({ where: { id: blockId } })

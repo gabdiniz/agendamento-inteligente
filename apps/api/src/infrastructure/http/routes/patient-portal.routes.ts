@@ -108,6 +108,7 @@ export const patientPortalRoutes: FastifyPluginAsync = async (app) => {
       new PrismaProcedureRepository(prisma),
       new PrismaWorkScheduleRepository(prisma),
       new PrismaAppointmentRepository(prisma),
+      prisma,
     ).execute({
       professionalId: query.professionalId,
       procedureId:    query.procedureId,

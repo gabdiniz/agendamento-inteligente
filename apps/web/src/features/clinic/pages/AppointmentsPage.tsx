@@ -14,7 +14,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import type { DateSelectArg, EventClickArg, DatesSetArg, EventContentArg, EventDropArg } from '@fullcalendar/core'
 import ptBrLocale from '@fullcalendar/core/locales/pt-br'
 
-import { appointmentsApi, professionalsApi, type Appointment, type AppointmentStatusEntry } from '@/lib/api/clinic.api'
+import { appointmentsApi, professionalsApi, scheduleBlocksApi, type Appointment, type AppointmentStatusEntry } from '@/lib/api/clinic.api'
 import { DayColumnsView } from '../components/DayColumnsView'
 import { clinicTokens } from '@/lib/api/client'
 
@@ -649,6 +649,27 @@ export function AppointmentsPage() {
     placeholderData: (prev) => prev,
   })
 
+  // Query de bloqueios avulsos — buscados por profissional visivel no dia
+  const { data: blocksData } = useQuery({
+    queryKey: ['schedule-blocks-day', slug, dayDate, profFilter],
+    queryFn: async () => {
+      // Se ha filtro de profissional, busca so dele; senao busca de todos
+      const dayStart = `${dayDate}T00:00:00.000Z`
+      const dayEnd   = `${dayDate}T23:59:59.999Z`
+      if (profFilter) {
+        return scheduleBlocksApi.list(profFilter, { from: dayStart, until: dayEnd })
+      }
+      // Busca em paralelo para todos os profissionais ativos
+      const profs = profsData?.data?.filter((p) => p.isActive) ?? []
+      const results = await Promise.all(
+        profs.map((p) => scheduleBlocksApi.list(p.id, { from: dayStart, until: dayEnd }))
+      )
+      return results.flat()
+    },
+    enabled: viewMode === 'day' && (!!profFilter || (profsData?.data?.length ?? 0) > 0),
+    placeholderData: (prev) => prev,
+  })
+
   // ── Mutations ─────────────────────────────────────────────────────────────
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -1160,6 +1181,7 @@ export function AppointmentsPage() {
       {viewMode === 'day' && (
         <DayColumnsView
           date={dayDate}
+          scheduleBlocks={blocksData ?? []}
           professionals={professionals.filter((p) => p.isActive && (!profFilter || p.id === profFilter))}
           appointments={dayData?.data ?? []}
           loading={dayLoading}
