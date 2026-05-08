@@ -83,8 +83,10 @@ export class CancelAppointmentByPatientUseCase {
 
   private parseAppointmentDatetime(scheduledDate: string, startTime: string): Date {
     // scheduledDate: "YYYY-MM-DD", startTime: "HH:MM"
-    // Constrói datetime em UTC (consistente com como as datas são armazenadas)
-    return new Date(`${scheduledDate}T${startTime}:00.000Z`)
+    // Os horários são armazenados como strings no fuso de Brasília (UTC-3).
+    // Usar 'Z' seria errado: trataria 17:00 BRT como 17:00 UTC (= 14:00 BRT real).
+    // O sufixo -03:00 garante a conversão correta para UTC independente do TZ do servidor.
+    return new Date(`${scheduledDate}T${startTime}:00.000-03:00`)
   }
 
   private translateStatus(status: string): string {

@@ -96,7 +96,8 @@ export function PatientOtpLoginPage() {
       // Foca no primeiro campo do código
       setTimeout(() => codeRefs.current[0]?.focus(), 100)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      const msg = (err as { response?: { data?: { message?: string; error?: string } } })?.response?.data?.message
+        ?? (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setError(msg ?? 'Não foi possível enviar o código. Tente novamente.')
     } finally {
       setSending(false)
@@ -117,7 +118,8 @@ export function PatientOtpLoginPage() {
       setPatient(result.patient, result.accessToken, result.refreshToken, slug)
       void navigate({ to: '/$slug/minha-conta', params: { slug } })
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      const msg = (err as { response?: { data?: { message?: string; error?: string } } })?.response?.data?.message
+        ?? (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setError(msg ?? 'Código inválido ou expirado.')
       // Limpa o código para redigitar
       setCode(['', '', '', '', '', ''])
@@ -155,7 +157,8 @@ export function PatientOtpLoginPage() {
       setPatient(result.patient, result.accessToken, result.refreshToken, slug)
       void navigate({ to: '/$slug/minha-conta', params: { slug } })
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      const msg = (err as { response?: { data?: { message?: string; error?: string } } })?.response?.data?.message
+        ?? (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setError(msg ?? 'Código inválido ou expirado.')
       setCode(['', '', '', '', '', ''])
       setTimeout(() => codeRefs.current[0]?.focus(), 50)

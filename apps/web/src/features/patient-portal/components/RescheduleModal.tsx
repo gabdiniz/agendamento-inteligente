@@ -74,7 +74,8 @@ export function RescheduleModal({ slug, appointment, onClose, onSuccess }: Props
       })
       onSuccess(newAppointment)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      const msg = (err as { response?: { data?: { message?: string; error?: string } } })?.response?.data?.message
+        ?? (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setError(msg ?? 'Nao foi possivel remarcar. Tente novamente.')
       setSubmitting(false)
     }

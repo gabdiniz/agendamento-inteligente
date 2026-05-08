@@ -547,6 +547,19 @@ model PatientRefreshToken {
   @@map("patient_refresh_tokens")
 }
 
+model PatientOtpCode {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phone     String    @db.VarChar(20)
+  codeHash  String    @db.VarChar(255)
+  expiresAt DateTime  @db.Timestamptz
+  usedAt    DateTime? @db.Timestamptz
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  @@index([phone, createdAt])
+  @@map("patient_otp_codes")
+}
+
 // Configuração do portal do paciente por clínica (singleton por tenant — uma linha)
 // Controla regras de cancelamento pelo paciente
 model ClinicPatientConfig {
@@ -608,13 +621,16 @@ model Appointment {
   canceledBy         CanceledBy?
   notes              String?
   createdByUserId    String?           @db.Uuid
+  rescheduledToId    String?           @unique @db.Uuid
   createdAt          DateTime          @default(now()) @db.Timestamptz
   updatedAt          DateTime          @updatedAt @db.Timestamptz
 
-  patient       Patient      @relation(fields: [patientId], references: [id])
-  professional  Professional @relation(fields: [professionalId], references: [id])
-  procedure     Procedure    @relation(fields: [procedureId], references: [id])
-  createdByUser User?        @relation("AppointmentCreatedBy", fields: [createdByUserId], references: [id])
+  patient         Patient      @relation(fields: [patientId], references: [id])
+  professional    Professional @relation(fields: [professionalId], references: [id])
+  procedure       Procedure    @relation(fields: [procedureId], references: [id])
+  createdByUser   User?        @relation("AppointmentCreatedBy", fields: [createdByUserId], references: [id])
+  rescheduledTo   Appointment? @relation("AppointmentReschedule", fields: [rescheduledToId], references: [id])
+  rescheduledFrom Appointment? @relation("AppointmentReschedule")
 
   statusHistory      AppointmentStatusHistory[]
   evaluation         AppointmentEvaluation?

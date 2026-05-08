@@ -7,6 +7,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams } from '@tanstack/react-router'
 import { patientPortalApi, type PatientAppointment, type QuickRating } from '@/lib/api/patient-auth.api'
 import { QuickRatingCard } from '../components/QuickRatingCard'
@@ -301,7 +302,8 @@ export function PatientAppointmentsPage() {
       setAppointments((prev) => prev.map((a) => (a.id === id ? updated : a)))
       setJustCanceledId(id)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      const msg = (err as { response?: { data?: { message?: string; error?: string } } })?.response?.data?.message
+        ?? (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setCancelError(msg ?? 'Não foi possível cancelar. Tente novamente.')
     } finally {
       setCanceling(null)
@@ -448,11 +450,11 @@ export function PatientAppointmentsPage() {
         </div>
       )}
 
-      {/* Modal confirmação cancelamento */}
-      {confirmId && (
+      {/* Modal confirmação cancelamento — portal no body para escapar overflow dos ancestrais */}
+      {confirmId && createPortal(
         <>
           <div
-            style={{ position: 'fixed', inset: 0, background: 'rgba(26,22,20,0.5)', zIndex: 100, backdropFilter: 'blur(2px)' }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(26,22,20,0.5)', zIndex: 1000, backdropFilter: 'blur(2px)' }}
             onClick={() => setConfirmId(null)}
           />
           <div style={{
@@ -460,7 +462,7 @@ export function PatientAppointmentsPage() {
             transform: 'translate(-50%, -50%)',
             background: '#fff', borderRadius: '20px',
             padding: '28px', width: '90%', maxWidth: '360px',
-            zIndex: 101, boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+            zIndex: 1001, boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
             animation: 'scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           }}>
             <div style={{
@@ -506,7 +508,8 @@ export function PatientAppointmentsPage() {
               </button>
             </div>
           </div>
-        </>
+        </>,
+        document.body,
       )}
 
       {/* Prompt "deseja remarcar?" exibido logo apos um cancelamento */}
