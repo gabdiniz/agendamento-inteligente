@@ -48,6 +48,7 @@ function AppointmentCard({
   canceling,
   onRated,
   onDetailedRated,
+  onReschedule,
 }: {
   apt: PatientAppointment
   slug: string
