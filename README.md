@@ -126,6 +126,17 @@ Isso sobe a API e o Web em paralelo via Turborepo.
 | Clínica Demo — Pacientes | http://localhost:5173/app/clinica-demo/patients | — |
 | Página pública de agendamento | http://localhost:5173/clinica-demo | Sem login |
 
+### Páginas de documentação
+
+Servidas diretamente pela API (porta 3333 em dev, sem nginx):
+
+| Página | Local (dev) | Produção |
+|--------|-------------|----------|
+| Roadmap do produto (MVP 1/2/3) | http://localhost:3333/docs/roadmap | https://dev.myagendix.com.br/docs/roadmap |
+| Histórico de erros e soluções | http://localhost:3333/docs/errors | https://dev.myagendix.com.br/docs/errors |
+
+> Os arquivos HTML ficam em `apps/api/public/docs/`. A fonte de dados dos erros é `docs/errors.json` na raiz do projeto.
+
 ---
 
 ## Uso diário

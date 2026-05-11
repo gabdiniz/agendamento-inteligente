@@ -4,7 +4,8 @@ import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
 import multipart from '@fastify/multipart'
 import { createReadStream } from 'node:fs'
-import { join, extname } from 'node:path'
+import { join, extname, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import tenantPlugin from './middlewares/tenant.middleware.js'
 import { errorHandler } from './middlewares/error.middleware.js'
@@ -57,6 +58,40 @@ export async function buildApp() {
     status: 'ok',
     timestamp: new Date().toISOString(),
   }))
+
+  // ─── Docs — páginas estáticas públicas ────────────────────────
+  //
+  // Acessíveis em:
+  //   /docs/roadmap  → roadmap público do produto (MVP 1/2/3)
+  //   /docs/errors   → histórico de erros e soluções
+  //
+  // Os arquivos HTML ficam em apps/api/public/docs/.
+  // Quando um novo erro for corrigido: atualizar docs/errors.json (raiz)
+  // E sincronizar apps/api/public/docs/errors.html (array ERRORS no <script>).
+  //
+  const __docsDir = join(dirname(fileURLToPath(import.meta.url)), '../../../public/docs')
+
+  app.get('/docs/roadmap', async (_request, reply) => {
+    try {
+      const stream = createReadStream(join(__docsDir, 'roadmap.html'))
+      reply.header('Content-Type', 'text/html; charset=utf-8')
+      reply.header('Cache-Control', 'public, max-age=300') // 5 min cache
+      return reply.send(stream)
+    } catch {
+      return reply.status(404).send({ error: 'Página não encontrada.' })
+    }
+  })
+
+  app.get('/docs/errors', async (_request, reply) => {
+    try {
+      const stream = createReadStream(join(__docsDir, 'errors.html'))
+      reply.header('Content-Type', 'text/html; charset=utf-8')
+      reply.header('Cache-Control', 'no-store') // sempre fresh — pode mudar a cada sessão
+      return reply.send(stream)
+    } catch {
+      return reply.status(404).send({ error: 'Página não encontrada.' })
+    }
+  })
 
   // ─── Serving de uploads (logos e avatars) ────────────────────
   //

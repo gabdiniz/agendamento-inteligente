@@ -1,0 +1,78 @@
+{
+  "version": "1.0",
+  "project": "MyAgendix",
+  "lastUpdated": "2026-05-08",
+  "errors": [
+    {
+      "id": "ERR-001",
+      "date": "2026-05-08",
+      "title": "Fastify: plugins de infra sem fp() encapsulam hooks no próprio scope",
+      "area": "backend",
+      "severity": "high",
+      "description": "Plugins de infraestrutura (database, auth, etc.) registrados sem fastify-plugin (fp()) ficam encapsulados em seu próprio scope do Fastify. Hooks (onRequest, preHandler) e decorators definidos dentro desses plugins não vazam para rotas irmãs registradas fora do plugin. O resultado é que middlewares de autenticação não eram aplicados nas rotas, retornando 200 sem validar o token.",
+      "solution": "Sempre envolver plugins de infraestrutura com fp() de fastify-plugin. Isso instrui o Fastify a 'escalar' o plugin para o scope pai, tornando hooks e decorators disponíveis para todas as rotas irmãs. Exemplo: export default fp(async function myPlugin(fastify) { ... })",
+      "files": [
+        "apps/api/src/infrastructure/http/",
+        "apps/api/src/infrastructure/database/",
+        "apps/api/src/infrastructure/cache/"
+      ],
+      "tags": ["fastify", "plugin", "scope", "auth", "fp"]
+    },
+    {
+      "id": "ERR-002",
+      "date": "2026-05-08",
+      "title": "Timezone: agendamentos salvos com 3h de diferença (Z UTC vs -03:00 BRT)",
+      "area": "backend",
+      "severity": "high",
+      "description": "A função parseAppointmentDatetime construía Date objects concatenando a data/hora com sufixo 'Z' (UTC). No fuso de São Paulo (UTC-3), isso resultava em agendamentos salvos com 3 horas a mais do que o horário real informado pelo usuário. Ex: agendamento marcado para 14:00 era salvo como 17:00 no banco.",
+      "solution": "Substituir o sufixo 'Z' por '-03:00' na construção da string de datetime. Adicionado também TZ=America/Sao_Paulo no .env como camada de proteção adicional para todo o processo Node.js.",
+      "files": [
+        "apps/api/src/application/use-cases/appointment/"
+      ],
+      "tags": ["timezone", "datetime", "UTC", "BRT", "prisma", "appointment"]
+    },
+    {
+      "id": "ERR-003",
+      "date": "2026-05-08",
+      "title": "Modal de cancelamento/reagendamento renderizado dentro do stacking context da sidebar",
+      "area": "frontend",
+      "severity": "medium",
+      "description": "Os modais de cancelamento e reagendamento eram renderizados como filhos diretos do componente AppointmentCard, que vive dentro da sidebar. A sidebar usa position:fixed e overflow:hidden (ou similar), criando um novo stacking context. Isso fazia os modais aparecerem cortados ou parcialmente ocultos pela sidebar, especialmente em viewports menores.",
+      "solution": "Usar ReactDOM.createPortal(..., document.body) para renderizar os modais diretamente no body do documento, escapando completamente do stacking context da sidebar. Isso garante z-index correto e posicionamento global na viewport.",
+      "files": [
+        "apps/web/src/features/clinic/components/AppointmentCard.tsx",
+        "apps/web/src/features/patient-portal/components/"
+      ],
+      "tags": ["react", "portal", "createPortal", "modal", "z-index", "stacking-context", "sidebar"]
+    },
+    {
+      "id": "ERR-004",
+      "date": "2026-05-08",
+      "title": "AppointmentCard: prop onReschedule declarada na interface mas não desestruturada",
+      "area": "frontend",
+      "severity": "low",
+      "description": "A interface Props do componente AppointmentCard declarava a prop onReschedule: () => void, mas a desestruturação no início da função do componente não incluía essa prop. Isso fazia com que onReschedule fosse sempre undefined, e o botão/ação de reagendamento não disparava o callback correto, silenciosamente falhando sem erro no console.",
+      "solution": "Adicionar onReschedule à desestruturação dos props no componente: const { appointment, onStatusChange, onReschedule } = props. Bug silencioso que não gera erro de TypeScript pois a prop é opcional na prática de uso.",
+      "files": [
+        "apps/web/src/features/clinic/components/AppointmentCard.tsx"
+      ],
+      "tags": ["react", "typescript", "props", "destructuring", "callback"]
+    },
+    {
+      "id": "ERR-005",
+      "date": "2026-05-08",
+      "title": "Erros 422 da API ilegíveis no frontend: response.data.error vs response.data.message",
+      "area": "frontend",
+      "severity": "medium",
+      "description": "O frontend extraía a mensagem de erro da API usando response.data.error, mas a API Fastify/Zod retorna erros de validação e de negócio no campo response.data.message. Isso causava erros silenciosos onde o toast ou alert mostrava 'undefined' ao invés da mensagem real de erro (ex: 'Horário já ocupado', 'Paciente inativo'). Afetava cancelamentos, reagendamentos e criação de agendamentos.",
+      "solution": "Corrigir todos os catch handlers para usar response.data.message ao invés de response.data.error. Verificado e corrigido em 4 arquivos de API calls no frontend.",
+      "files": [
+        "apps/web/src/lib/api/clinic.api.ts",
+        "apps/web/src/features/patient-portal/pages/",
+        "apps/web/src/features/clinic/pages/NewAppointmentPage.tsx",
+        "apps/web/src/features/clinic/pages/EditAppointmentPage.tsx"
+      ],
+      "tags": ["axios", "error-handling", "toast", "api", "422", "validation", "fastify"]
+    }
+  ]
+}

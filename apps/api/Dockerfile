@@ -68,6 +68,9 @@ COPY --from=builder /app/packages              ./packages
 COPY --from=builder /app/apps/api/dist         ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 
+# Páginas estáticas de docs (roadmap e error log)
+COPY --from=builder /app/apps/api/public       ./apps/api/public
+
 # Prisma schema (necessário para migrations)
 COPY --from=builder /app/packages/database/prisma ./packages/database/prisma
 

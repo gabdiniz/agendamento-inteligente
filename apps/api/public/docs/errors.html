@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyAgendix — Error Log</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #08080D;
+      --bg-card:    #0D0D16;
+      --bg-hover:   #111120;
+      --border:     #1A1A2A;
+      --border-hi:  #252535;
+      --text:       #E8E8F0;
+      --text-muted: #8B8BA8;
+      --text-dim:   #4A4A62;
+      --teal:       #2DD4BF;
+      --teal-dim:   #0D3B36;
+      --high:       #F87171;
+      --high-bg:    rgba(248,113,113,0.08);
+      --high-bdr:   rgba(248,113,113,0.25);
+      --med:        #FBBF24;
+      --med-bg:     rgba(251,191,36,0.08);
+      --med-bdr:    rgba(251,191,36,0.22);
+      --low:        #60A5FA;
+      --low-bg:     rgba(96,165,250,0.07);
+      --low-bdr:    rgba(96,165,250,0.2);
+      --green:      #34D399;
+      --green-bg:   rgba(52,211,153,0.08);
+      --green-bdr:  rgba(52,211,153,0.22);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Manrope', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(8,8,13,0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .header-inner {
+      max-width: 980px; margin: 0 auto;
+      padding: 0 1.5rem; height: 58px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-mark {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--teal-dim); border: 1px solid rgba(45,212,191,0.2);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-mark svg { width: 16px; height: 16px; }
+    .logo-name {
+      font-size: 15px; font-weight: 700; color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .logo-name span { color: var(--teal); }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .header-pill {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--teal); background: var(--teal-dim);
+      border: 1px solid rgba(45,212,191,0.2);
+      padding: 4px 10px; border-radius: 20px;
+    }
+    .header-date { font-size: 12px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+
+    /* ── HERO ── */
+    .hero {
+      max-width: 980px; margin: 0 auto;
+      padding: 2.5rem 1.5rem 2rem;
+    }
+    .hero-eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--text-dim);
+      letter-spacing: 0.05em; margin-bottom: 0.75rem;
+    }
+    .hero-eyebrow span { color: var(--teal); }
+    .hero h1 {
+      font-size: clamp(1.5rem, 3.5vw, 2.2rem);
+      font-weight: 800; letter-spacing: -0.03em;
+      color: var(--text); line-height: 1.15; margin-bottom: 0.75rem;
+    }
+    .hero-sub { font-size: 14px; color: var(--text-muted); max-width: 480px; line-height: 1.65; margin-bottom: 2rem; }
+
+    /* ── STATS ── */
+    .stats-row {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 18px;
+      text-align: center; min-width: 90px;
+    }
+    .stat-num { display: block; font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
+    .stat-num.red    { color: var(--high); }
+    .stat-num.yellow { color: var(--med); }
+    .stat-num.blue   { color: var(--low); }
+    .stat-num.green  { color: var(--green); }
+    .stat-lbl { display: block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); margin-top: 3px; }
+
+    /* ── FILTERS ── */
+    .filter-bar {
+      max-width: 980px; margin: 0 auto;
+      padding: 0 1.5rem 1.5rem;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .filter-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); margin-right: 4px; }
+    .filter-btn {
+      font-family: 'Manrope', sans-serif;
+      font-size: 12px; font-weight: 600;
+      padding: 5px 12px; border-radius: 6px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--text-muted); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-btn:hover { border-color: var(--border-hi); color: var(--text); }
+    .filter-btn.active { background: var(--border); color: var(--text); border-color: var(--border-hi); }
+    .filter-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+
+    /* ── MAIN ── */
+    main { max-width: 980px; margin: 0 auto; padding: 0 1.5rem 6rem; }
+
+    /* ── ERROR CARD ── */
+    .error-card {
+      border-radius: 12px; border: 1px solid var(--border);
+      background: var(--bg-card); margin-bottom: 12px;
+      overflow: hidden; transition: border-color 0.15s;
+    }
+    .error-card:hover { border-color: var(--border-hi); }
+    .error-card.sev-high   { border-left: 3px solid var(--high); }
+    .error-card.sev-medium { border-left: 3px solid var(--med); }
+    .error-card.sev-low    { border-left: 3px solid var(--low); }
+
+    .card-header {
+      padding: 14px 16px; cursor: pointer;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .card-header:hover { background: var(--bg-hover); }
+
+    .card-meta { flex: 1; min-width: 0; }
+    .card-top {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 5px;
+    }
+    .err-id {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; font-weight: 500;
+      color: var(--text-dim); flex-shrink: 0;
+    }
+    .sev-pill {
+      font-size: 9px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; padding: 2px 7px; border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .sev-pill.high   { background: var(--high-bg);  color: var(--high);  border: 1px solid var(--high-bdr); }
+    .sev-pill.medium { background: var(--med-bg);   color: var(--med);   border: 1px solid var(--med-bdr); }
+    .sev-pill.low    { background: var(--low-bg);   color: var(--low);   border: 1px solid var(--low-bdr); }
+    .area-pill {
+      font-size: 9px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; padding: 2px 7px; border-radius: 4px;
+      background: var(--bg); color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+    .err-date {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; color: var(--text-dim);
+      margin-left: auto; flex-shrink: 0;
+    }
+    .card-title {
+      font-size: 14px; font-weight: 600; color: var(--text);
+      line-height: 1.4;
+    }
+
+    .card-toggle {
+      width: 20px; height: 20px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-dim); font-size: 12px;
+      transition: transform 0.2s;
+      margin-top: 2px;
+    }
+    .card-toggle svg { width: 14px; height: 14px; }
+    .error-card.open .card-toggle { transform: rotate(180deg); }
+
+    /* ── CARD BODY ── */
+    .card-body {
+      display: none;
+      border-top: 1px solid var(--border);
+      padding: 0;
+    }
+    .error-card.open .card-body { display: block; }
+
+    .body-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .body-section:last-child { border-bottom: none; }
+
+    .body-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .body-label.solution { color: var(--green); }
+
+    .body-text {
+      font-size: 13px; color: var(--text-muted); line-height: 1.7;
+    }
+
+    .solution-box {
+      background: var(--green-bg);
+      border: 1px solid var(--green-bdr);
+      border-radius: 8px; padding: 12px 14px;
+    }
+    .solution-box .body-text { color: #A7F3D0; }
+
+    .files-list {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .file-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--teal);
+      background: var(--teal-dim);
+      border: 1px solid rgba(45,212,191,0.15);
+      padding: 3px 8px; border-radius: 5px;
+      white-space: nowrap;
+    }
+
+    .tags-list { display: flex; flex-wrap: wrap; gap: 5px; }
+    .tag {
+      font-size: 10px; font-weight: 600;
+      color: var(--text-dim); background: var(--bg);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 2px 7px;
+    }
+
+    /* ── EMPTY STATE ── */
+    #empty-state {
+      display: none;
+      text-align: center; padding: 4rem 1.5rem;
+      color: var(--text-dim);
+    }
+    #empty-state svg { width: 40px; height: 40px; margin-bottom: 1rem; opacity: 0.3; }
+    #empty-state p { font-size: 14px; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.25rem 1.5rem;
+    }
+    .footer-inner {
+      max-width: 980px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 0.75rem;
+    }
+    .footer-text { font-size: 11px; color: var(--text-dim); }
+    .footer-note {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--text-dim);
+    }
+
+    @media (max-width: 640px) {
+      .stats-row { gap: 7px; }
+      .stat-card { padding: 10px 14px; min-width: 78px; }
+      .header-date { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <a href="#" class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="9" stroke="#2DD4BF" stroke-width="1.5" fill="none"/>
+            <path d="M12 8v4l3 3" stroke="#2DD4BF" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="logo-name">My<span>Agendix</span></span>
+      </a>
+      <div class="header-right">
+        <span class="header-pill">Error Log</span>
+        <span class="header-date" id="current-date"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="hero">
+    <div class="hero-eyebrow">// <span>docs/errors.json</span> — fonte da verdade</div>
+    <h1>Histórico de Erros &amp; Soluções</h1>
+    <p class="hero-sub">Registro persistente de todos os bugs encontrados e resolvidos no projeto. Atualizado a cada sessão de desenvolvimento.</p>
+    <div class="stats-row" id="stats-row">
+      <!-- preenchido pelo JS -->
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <span class="filter-label">Filtro</span>
+    <button class="filter-btn active" data-filter="all">Todos</button>
+    <div class="filter-sep"></div>
+    <button class="filter-btn" data-filter="area:backend">Backend</button>
+    <button class="filter-btn" data-filter="area:frontend">Frontend</button>
+    <button class="filter-btn" data-filter="area:infra">Infra</button>
+    <div class="filter-sep"></div>
+    <button class="filter-btn" data-filter="sev:high">Alta</button>
+    <button class="filter-btn" data-filter="sev:medium">Média</button>
+    <button class="filter-btn" data-filter="sev:low">Baixa</button>
+  </div>
+
+  <main id="errors-list"></main>
+
+  <div id="empty-state">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+    <p>Nenhum erro encontrado para este filtro.</p>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <p class="footer-text">MyAgendix Error Log — atualizado a cada sessão de desenvolvimento</p>
+      <p class="footer-note">// Para adicionar: editar docs/errors.json + regenerar esta página</p>
+    </div>
+  </footer>
+
+  <script>
+    // ── DADOS — atualizado a partir de docs/errors.json ──────────────────────
+    const ERRORS = [
+      {
+        id: "ERR-001",
+        date: "2026-05-08",
+        title: "Fastify: plugins de infra sem fp() encapsulam hooks no próprio scope",
+        area: "backend",
+        severity: "high",
+        description: "Plugins de infraestrutura (database, auth, etc.) registrados sem fastify-plugin (fp()) ficam encapsulados em seu próprio scope do Fastify. Hooks (onRequest, preHandler) e decorators definidos dentro desses plugins não vazam para rotas irmãs registradas fora do plugin. O resultado é que middlewares de autenticação não eram aplicados nas rotas, retornando 200 sem validar o token.",
+        solution: "Sempre envolver plugins de infraestrutura com fp() de fastify-plugin. Isso instrui o Fastify a 'escalar' o plugin para o scope pai, tornando hooks e decorators disponíveis para todas as rotas irmãs. Exemplo: export default fp(async function myPlugin(fastify) { ... })",
+        files: ["apps/api/src/infrastructure/http/", "apps/api/src/infrastructure/database/", "apps/api/src/infrastructure/cache/"],
+        tags: ["fastify", "plugin", "scope", "auth", "fp"]
+      },
+      {
+        id: "ERR-002",
+        date: "2026-05-08",
+        title: "Timezone: agendamentos salvos com 3h de diferença (Z UTC vs -03:00 BRT)",
+        area: "backend",
+        severity: "high",
+        description: "A função parseAppointmentDatetime construía Date objects concatenando a data/hora com sufixo 'Z' (UTC). No fuso de São Paulo (UTC-3), isso resultava em agendamentos salvos com 3 horas a mais do que o horário real informado pelo usuário. Ex: agendamento marcado para 14:00 era salvo como 17:00 no banco.",
+        solution: "Substituir o sufixo 'Z' por '-03:00' na construção da string de datetime. Adicionado também TZ=America/Sao_Paulo no .env como camada de proteção adicional para todo o processo Node.js.",
+        files: ["apps/api/src/application/use-cases/appointment/"],
+        tags: ["timezone", "datetime", "UTC", "BRT", "prisma", "appointment"]
+      },
+      {
+        id: "ERR-003",
+        date: "2026-05-08",
+        title: "Modal de cancelamento/reagendamento cortado pelo stacking context da sidebar",
+        area: "frontend",
+        severity: "medium",
+        description: "Os modais eram renderizados como filhos diretos do componente AppointmentCard, que vive dentro da sidebar. A sidebar usa position:fixed e overflow criando um novo stacking context. Isso fazia os modais aparecerem cortados ou parcialmente ocultos pela sidebar, especialmente em viewports menores.",
+        solution: "Usar ReactDOM.createPortal(..., document.body) para renderizar os modais diretamente no body, escapando completamente do stacking context da sidebar. Isso garante z-index correto e posicionamento global na viewport.",
+        files: ["apps/web/src/features/clinic/components/AppointmentCard.tsx", "apps/web/src/features/patient-portal/components/"],
+        tags: ["react", "portal", "createPortal", "modal", "z-index", "stacking-context", "sidebar"]
+      },
+      {
+        id: "ERR-004",
+        date: "2026-05-08",
+        title: "AppointmentCard: prop onReschedule declarada na interface mas não desestruturada",
+        area: "frontend",
+        severity: "low",
+        description: "A interface Props do componente AppointmentCard declarava a prop onReschedule: () => void, mas a desestruturação no início da função do componente não a incluía. Isso fazia com que onReschedule fosse sempre undefined, e o botão de reagendamento silenciosamente não disparava o callback. Sem erro no console ou no TypeScript.",
+        solution: "Adicionar onReschedule à desestruturação dos props no componente: const { appointment, onStatusChange, onReschedule } = props. Bug silencioso clássico — sem erro de TS pois a prop é opcional na prática.",
+        files: ["apps/web/src/features/clinic/components/AppointmentCard.tsx"],
+        tags: ["react", "typescript", "props", "destructuring", "callback"]
+      },
+      {
+        id: "ERR-005",
+        date: "2026-05-08",
+        title: "Erros 422 da API mostram 'undefined' no frontend (response.data.error vs .message)",
+        area: "frontend",
+        severity: "medium",
+        description: "O frontend extraía a mensagem de erro usando response.data.error, mas a API Fastify/Zod retorna erros no campo response.data.message. Isso causava toasts e alerts mostrando 'undefined' ao invés da mensagem real (ex: 'Horário já ocupado', 'Paciente inativo'). Afetava cancelamentos, reagendamentos e criação de agendamentos.",
+        solution: "Corrigir todos os catch handlers para usar response.data.message ao invés de response.data.error. Verificado e corrigido em 4 arquivos de API calls no frontend.",
+        files: ["apps/web/src/lib/api/clinic.api.ts", "apps/web/src/features/patient-portal/pages/", "apps/web/src/features/clinic/pages/NewAppointmentPage.tsx", "apps/web/src/features/clinic/pages/EditAppointmentPage.tsx"],
+        tags: ["axios", "error-handling", "toast", "api", "422", "validation", "fastify"]
+      }
+    ];
+
+    // ── RENDER ────────────────────────────────────────────────────────────────
+    const SEV_LABEL = { high: 'Alta', medium: 'Média', low: 'Baixa' };
+    const AREA_LABEL = { backend: 'Backend', frontend: 'Frontend', infra: 'Infra', database: 'Database' };
+
+    function buildCard(err) {
+      const d = document.createElement('div');
+      d.className = `error-card sev-${err.severity}`;
+      d.dataset.area = err.area;
+      d.dataset.sev = err.severity;
+
+      d.innerHTML = `
+        <div class="card-header" onclick="this.closest('.error-card').classList.toggle('open')">
+          <div class="card-meta">
+            <div class="card-top">
+              <span class="err-id">${err.id}</span>
+              <span class="sev-pill ${err.severity}">${SEV_LABEL[err.severity] || err.severity}</span>
+              <span class="area-pill">${AREA_LABEL[err.area] || err.area}</span>
+              <span class="err-date">${err.date}</span>
+            </div>
+            <div class="card-title">${err.title}</div>
+          </div>
+          <div class="card-toggle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="body-section">
+            <div class="body-label">Descrição do problema</div>
+            <p class="body-text">${err.description}</p>
+          </div>
+          <div class="body-section">
+            <div class="body-label solution">✓ Solução aplicada</div>
+            <div class="solution-box">
+              <p class="body-text">${err.solution}</p>
+            </div>
+          </div>
+          ${err.files && err.files.length ? `
+          <div class="body-section">
+            <div class="body-label">Arquivos afetados</div>
+            <div class="files-list">
+              ${err.files.map(f => `<span class="file-chip">${f}</span>`).join('')}
+            </div>
+          </div>` : ''}
+          ${err.tags && err.tags.length ? `
+          <div class="body-section">
+            <div class="body-label">Tags</div>
+            <div class="tags-list">
+              ${err.tags.map(t => `<span class="tag">#${t}</span>`).join('')}
+            </div>
+          </div>` : ''}
+        </div>
+      `;
+      return d;
+    }
+
+    function buildStats(errors) {
+      const total = errors.length;
+      const high = errors.filter(e => e.severity === 'high').length;
+      const med  = errors.filter(e => e.severity === 'medium').length;
+      const low  = errors.filter(e => e.severity === 'low').length;
+      const statsRow = document.getElementById('stats-row');
+      statsRow.innerHTML = `
+        <div class="stat-card"><span class="stat-num">${total}</span><span class="stat-lbl">Total</span></div>
+        <div class="stat-card"><span class="stat-num red">${high}</span><span class="stat-lbl">Alta</span></div>
+        <div class="stat-card"><span class="stat-num yellow">${med}</span><span class="stat-lbl">Média</span></div>
+        <div class="stat-card"><span class="stat-num blue">${low}</span><span class="stat-lbl">Baixa</span></div>
+        <div class="stat-card"><span class="stat-num green">${total}</span><span class="stat-lbl">Resolvidos</span></div>
+      `;
+    }
+
+    function render(filter) {
+      const list = document.getElementById('errors-list');
+      const empty = document.getElementById('empty-state');
+      list.innerHTML = '';
+
+      const filtered = ERRORS.filter(e => {
+        if (filter === 'all') return true;
+        if (filter.startsWith('area:')) return e.area === filter.slice(5);
+        if (filter.startsWith('sev:'))  return e.severity === filter.slice(4);
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        empty.style.display = 'block';
+      } else {
+        empty.style.display = 'none';
+        filtered.forEach(e => list.appendChild(buildCard(e)));
+      }
+    }
+
+    // ── FILTERS ──────────────────────────────────────────────────────────────
+    let activeFilter = 'all';
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeFilter = btn.dataset.filter;
+        render(activeFilter);
+      });
+    });
+
+    // ── INIT ──────────────────────────────────────────────────────────────────
+    const d = new Date();
+    document.getElementById('current-date').textContent =
+      d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    buildStats(ERRORS);
+    render('all');
+  </script>
+
+</body>
+</html>
